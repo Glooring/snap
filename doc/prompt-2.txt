@@ -1,0 +1,3345 @@
+**Objective:** You are a senior AI software engineer tasked with completing and modernizing a Rust command-line tool. I will provide you with the complete history, source code, and a research report. Your goal is to use all of this information to produce the final, fully updated, and polished Rust code.
+
+**Project Briefing:**
+
+The project is a CLI tool called `snap`, a user-friendly wrapper around Git for creating versioned snapshots of project folders.
+
+**Part 1: The Original Node.js Project**
+
+The project started as a Node.js application. While it was fully functional, its main drawback was a noticeable startup delay due to the Node.js runtime overhead. The goal was to achieve the instantaneous performance of a native binary like `git` itself.
+
+Here is the complete file hierarchy and source code for the original Node.js version. This establishes the feature set and user experience that the new Rust version must replicate.
+
+**[<<< Hierarchy of folders and files:
+
+snap_bat
+├── doc
+├── node_modules
+├── snap_cmds
+│   ├── delete.desc
+│   ├── delete.js
+│   ├── diff.desc
+│   ├── diff.js
+│   ├── edit.desc
+│   ├── edit.js
+│   ├── init.desc
+│   ├── init.js
+│   ├── list.desc
+│   ├── list.js
+│   ├── new.desc
+│   ├── new.js
+│   ├── options.desc
+│   ├── options.js
+│   ├── restore.desc
+│   ├── restore.js
+│   ├── update.desc
+│   ├── update.js
+│   └── utils.js
+├── .snapconfig
+├── build.js
+├── git-snap.exe
+├── image.png
+├── package-lock.json
+├── package.json
+├── README.md
+├── snap.exe
+└── snap.js
+
+Contents of files:
+
+.snapconfig:
+```
+{
+  "options": {
+    "showIds": false,
+    "confirm_command": true
+  },
+  "backup_root": "D:/Backups/projects_backup"
+}
+```
+
+README.md:
+```markdown
+# 📦 Snap
+
+**A blazing fast, Git-powered snapshot tool for Windows developers. Create efficient, versioned backups of your project folders with full support for hidden file attributes.**
+
+`snap` is a command-line utility that provides a simple way to capture point-in-time states of your projects. It uses the power and reliability of Git for its core operations but provides a simplified, focused workflow. It's perfect for quick, local backups before a major refactor, for archiving project milestones, or for any situation where you need a reliable "undo" button for your entire directory.
+
+---
+
+## 📋 Table of Contents
+
+*   [Key Features](#-key-features)
+*   [How It Works](#-how-it-works)
+*   [Directory Structure](#-directory-structure)
+*   [Prerequisites](#-prerequisites)
+*   [Installation](#-installation)
+*   [Usage](#-usage)
+    *   [`snap init`](#1-snap-init)
+    *   [`snap new [<label>] [<description...>]`](#2-snap-new-label-description)
+    *   [`snap list`](#3-snap-list)
+    *   [`snap diff <snapshot-A> <snapshot-B>`](#4-snap-diff-snapshot-a-snapshot-b)
+    *   [`snap restore [<id_or_label>]`](#5-snap-restore-id_or_label)
+    *   [`snap delete [<id_or_label>]`](#6-snap-delete-id_or_label)
+    *   [`snap edit [<id_or_label>]`](#7-snap-edit-id_or_label)
+    *   [`snap update`](#8-snap-update)
+    *   [`snap options`](#9-snap-options)
+*   [Troubleshooting](#️-troubleshooting)
+*   [Contributing](#-contributing)
+*   [License](#-license)
+
+---
+
+## ✨ Key Features
+
+*   **🚀 Git-Powered Core**: Leverages the rock-solid foundation of Git for all file storage and versioning. Snapshots are lightweight, annotated Git tags pointing to specific commits.
+*   **💨 Blazing Fast & Scalable**: Designed for performance on projects of all sizes. `snap` uses a hybrid approach: native `git.exe` for filesystem-heavy tasks (like checking for changes) and a lightweight internal library for simple reads, ensuring it's fast on both small and multi-gigabyte repositories.
+*   **⚡️ Efficient Storage**: Benefits from Git's mature Content-Addressable Storage model. Identical files across hundreds of snapshots consume the space of just one file.
+*   **🎯 Smart Restores**: `snap restore` intelligently checks for uncommitted local changes and prompts you to prevent accidental data loss. It also restores your project files and synchronizes hidden file attributes.
+*   **🪟 Windows Native**: Fully aware of Windows file attributes. It correctly preserves and restores the **Hidden** status of files and folders using an external metadata store.
+*   **✍️ Rich Metadata**: Snapshots are tagged with a simple `label` and a more detailed `description`, which are stored directly in Git's annotated tags.
+*   **💻 User-Friendly CLI**: Features an interactive, arrow-key menu, human-readable timestamps, a compact list view, and an **`(active)`** marker to show you exactly which version your project is on.
+*   **🚫 Zero Dependencies (for users)**: Once built, the `snap.exe` tool runs without requiring Node.js to be installed on the user's machine.
+
+---
+
+## ⚙️ How It Works
+
+`snap` uses a clever hybrid approach. It manages your project as a standard Git repository but interacts with it in two different ways to maximize performance and reliability.
+
+1.  **The Project Repository (`.git`)**
+    When you run `snap init`, your project folder becomes a standard Git repository.
+
+2.  **The Interaction Model (Fast Reads, Robust Writes)**
+    *   **For Fast Reads (e.g., getting the active commit):** `snap` uses an internal, pure JavaScript Git library (`isomorphic-git`) to read simple data from the `.git` folder. This is extremely fast for targeted reads.
+    *   **For Robust Reads & Writes (e.g., `list`, `new`, `restore`):** For most operations, especially those that are complex or filesystem-heavy, `snap` calls the official `git.exe` command-line tool. This ensures maximum compatibility, speed, and robustness.
+
+3.  **The External Metadata Store**
+    Because Git doesn't track the "Hidden" attribute, `snap` saves this information in a central `backup_root` directory you configure. For each snapshot, it creates a simple JSON file listing all hidden paths.
+
+**Visualized Structure:**
+
+```text
+// Your project folder becomes a Git repository:
+D:/Projects/MyUnityGame/
+└── .git/
+
+// A separate, central location stores the hidden attribute metadata:
+D:/Backups/Snap_Metadata/
+└── MyUnityGame_[a4e8b91c]/  <-- Human-readable, unique ID for your project
+    ├── 0a1b2c...d3e4.json   <-- Hidden paths for commit 0a1b...
+    └── 5f6a7b...c8d9.json   <-- Hidden paths for commit 5f6a...
+```
+
+This design keeps your project folder clean and standard while ensuring no data is lost and performance is optimal.
+
+---
+
+## 📁 Directory Structure
+
+The `snap` tool itself is organized for clarity and a single build step. The `snap_bat` folder is the root of the tool's source code.
+
+```text
+snap_bat/
+├── snap.js                 # The main dispatcher. It loads and runs command modules.
+├── snap.exe                # The final, single executable after building.
+├── package.json            # Defines ALL dependencies and build configuration for `pkg`.
+├── build.js                # A simple script that runs the `pkg` build command.
+├── .snapconfig             # Your global configuration file for the tool.
+├── node_modules/           # Dependencies used only for building the executable.
+└── snap_cmds/              # Contains all logic for individual commands.
+    ├── init.js             # Source code for the 'init' command.
+    ├── init.desc           # A one-line description for the 'init' command.
+    ├── ... (all other command and description files)
+    └── utils.js            # Shared helper functions for all command modules.
+```
+
+---
+
+## 🔧 Prerequisites
+
+*   **For Running `snap`**:
+    *   Windows 10 or later.
+    *   **Git for Windows** must be installed and accessible in your system's PATH. `snap` relies on it for core operations. You can get it from [git-scm.com](https://git-scm.com/download/win).
+*   **For Building from Source**:
+    *   **Node.js LTS** (version 18 or newer recommended).
+
+---
+
+## 📥 Installation
+
+Installation involves a one-time build step to create the fast, single executable.
+
+1.  **Get the Project Files**
+    Clone or download the repository to a permanent location on your system (e.g., `D:\Tools\snap-tool`). The main project folder is `snap_bat`.
+
+2.  **Install Dependencies & Build**
+    Open a command prompt and navigate to the **`snap_bat`** directory. Run the following commands:
+    ```cmd
+    cd D:\Tools\snap-tool\snap_bat
+    
+    rem This installs dependencies like inquirer, chalk, isomorphic-git, etc.
+    npm install
+    
+    rem This builds the single, fast, standalone snap.exe file.
+    npm run build
+    ```
+    After this step, you will see a new `snap.exe` file inside the `snap_bat` folder. This is your program.
+
+3.  **Update Your PATH**
+    Add the `snap_bat` directory (e.g., `D:\Tools\snap-tool\snap_bat`) to your Windows PATH environment variable. This allows you to run the `snap` command from any terminal.
+
+4.  **First-Time Configuration**
+    The first time you run `snap init` in a project, it will prompt you to set up a central `backup_root` directory. This is where the metadata for hidden files will be stored. This configuration is saved in a `.snapconfig` file alongside your `snap.exe`.
+
+5.  **Verify**
+    Open a **new** terminal window (so it loads the new PATH). Navigate to a project you want to back up and run `snap init`. It should initialize the repository.
+
+---
+
+## 🚀 Usage
+
+All commands are run from within your project's directory.
+
+### 1. `snap init`
+Initializes the current folder as a `snap` repository. **This must be run once for each project.**
+
+```cmd
+D:\Projects\my-app>snap init
+[snap] The `backup_root` location... is not configured.
+? Enter the full path for your central backup directory: D:/Snap_Metadata
+[snap] Set backup_root to: D:/Snap_Metadata
+[snap] Initialized empty snap repository in D:\Projects\my-app
+```
+
+### 2. `snap new [<label>] [<description...>]`
+Creates a snapshot of the current project state by committing all changes and creating an annotated Git tag.
+
+```cmd
+D:\Projects\my-app>snap new v1.0 "Initial release"
+
+[snap] Step 1/4: Staging all files...
+[snap] Step 2/4: Creating the commit...
+[snap] Step 3/4: Saving file attribute metadata...
+[snap] Step 4/4: Creating the annotated snapshot tag...
+
+[snap] New snapshot created: [a1b2c3d] v1.0
+```
+
+### 3. `snap list`
+Lists all available snapshots in a compact view, showing the active one.
+
+```cmd
+D:\Projects\my-app>snap list
+[snap] Snapshots for "my-app":
+
+  Label           Description                 Timestamp
+  --------------  --------------------------  ----------------
+  v1.1-hotfix     Fixed critical login bug    15.06.2025 10:30
+  v1.1            Second public release       15.06.2025 09:15   (active)
+  v1.0            Initial release             15.06.2025 17:45
+```
+
+### 4. `snap diff <snapshot-A> <snapshot-B>`
+Compares two snapshots and shows a list of added, deleted, and modified files, as well as changes in file visibility (Hidden attribute).
+
+```cmd
+D:\Projects\my-app>snap diff v1.0 v1.1
+[snap] Comparing snapshots a1b2c3d ("v1.0") ➜ f4e5d6c ("v1.1"):
+
+  + src/auth/new-logic.js
+  - config/old-settings.json
+  ~ src/app.js
+  ! .env (visibility changed)
+
+[snap] Summary: 1 added, 1 deleted, 1 modified, 1 visibility change.
+```
+
+### 5. `snap restore [<id_or_label>]`
+Restores the project to a previous state. It checks out the corresponding Git tag and synchronizes the hidden file attributes. If run without arguments, it displays an interactive menu.
+
+```cmd
+D:\Projects\my-app>snap restore v1.0
+[snap] Restoring project files for snapshot "v1.0"...
+[snap] Synchronizing hidden file attributes...
+[snap] Restore complete. Your project is now at the state of this snapshot.
+```
+
+### 6. `snap delete [<id_or_label>]`
+Permanently deletes a snapshot. This removes the Git tag and its associated hidden attribute metadata file.
+
+```cmd
+D:\Projects\my-app>snap delete v1.1-hotfix
+[snap] You are about to delete snapshot:
+  Label: v1.1-hotfix
+[snap] WARNING: This will permanently delete the snapshot tag. Continue? [y/N] y
+[snap] Deleting tag "v1.1-hotfix"...
+[snap] Cleaned up attribute metadata.
+[snap] Snapshot "v1.1-hotfix" deleted successfully.
+```
+
+### 7. `snap edit [<id_or_label>]`
+Edits the label (tag name) and description of an existing snapshot.
+
+```cmd
+D:\Projects\my-app>snap edit v1.0
+[snap] Editing snapshot "v1.0":
+? Enter new label (tag name): v1.0-final
+? Enter new description: Final version for initial release
+...
+[snap] Snapshot successfully updated to "v1.0-final".
+```
+
+### 8. `snap update`
+Amends the **active** snapshot with the current state of the project. This is for making small fixes to the last snapshot without creating a whole new one. It amends the commit, updates the hidden attribute metadata, and moves the Git tag.
+
+```cmd
+D:\Projects\my-app>snap update
+[snap] This command will replace the active snapshot...
+  Target Snapshot:
+    Label:       v1.1
+[snap] This will amend the commit... This action is hard to undo. [y/N] y
+...
+[snap] Update complete. Snapshot "v1.1" now points to new commit [b8c9d0e].
+```
+
+### 9. `snap options`
+Allows you to configure global settings for the tool, such as whether to display snapshot IDs.
+
+```cmd
+D:\Projects\my-app>snap options
+? Select option to change: (Use arrow keys)
+> showIds         - (Controls if IDs are shown in lists)
+  confirm_command - (Asks for y/N on destructive actions)
+```
+
+---
+
+## 🛠️ Troubleshooting
+
+*   **`Error: Git is not installed or not in your system PATH.`**: This can still appear if a command like `init` or `restore` fails. `snap` requires Git for its core operations. Install Git for Windows and ensure its `bin` and `cmd` directories are in your system's PATH.
+*   **`'snap' is not recognized...`**: This means the `snap_bat` directory was not correctly added to your PATH, or you haven't opened a new terminal window since adding it.
+*   **`Error: Not a snap repository...`**: You are trying to run a command (like `list` or `new`) inside a directory that has not been initialized. Run `snap init` first.
+*   **`Error: EPERM: operation not permitted, unlink '...snap.exe'`**: The `snap.exe` executable is locked. Close all terminals where you might have run `snap`, or use Task Manager to ensure no `snap.exe` process is running, then run `npm run build` again.
+
+---
+
+## 🤝 Contributing
+
+Contributions are welcome!
+
+1.  Fork the repository.
+2.  Create your feature branch (`git checkout -b feature/my-new-feature`).
+3.  Make your changes to the `.js` files within the `snap_bat/snap_cmds/` directory.
+4.  **Rebuild the executable** by running `npm run build` from the `snap_bat/` directory.
+5.  Test the new `snap.exe` file thoroughly.
+6.  Commit your changes (`git commit -am 'Add some feature'`).
+7.  Push to the branch (`git push origin feature/my-new-feature`).
+8.  Open a Pull Request.
+
+---
+
+## 📜 License
+
+This project is licensed under the MIT License.
+
+```
+
+build.js:
+```javascript
+// snap_bat/build.js
+const { execSync } = require('child_process');
+
+console.log('Starting unified build process from project root...');
+
+try {
+  // ✅ CHANGE: Output 'git-snap.exe' instead of 'snap.exe'
+  execSync('npx pkg . --output git-snap --compress GZip', { stdio: 'inherit' });
+  console.log('\n✅ Unified git-snap.exe rebuilt successfully!');
+} catch (error) {
+  console.error('\n❌ Build failed. Please check the output above for errors.');
+  process.exit(1);
+}
+```
+
+package.json:
+```json
+{
+  "name": "snap-tool",
+  "version": "6.0.0",
+  "description": "A lightweight, Git-powered snapshot tool for Windows developers.",
+  "private": true,
+  "main": "snap.js",
+  "bin": "snap.js",
+  "dependencies": {
+    "chalk": "^4.1.2",
+    "fs-extra": "^11.2.0",
+    "inquirer": "^8.2.4",
+    "isomorphic-git": "^1.30.3"
+  },
+  "devDependencies": {
+    "pkg": "^5.8.1"
+  },
+  "pkg": {
+    "targets": [
+      "node18-win-x64"
+    ],
+    "scripts": [
+      "snap_cmds/*.js"
+    ],
+    "assets": [
+      "snap_cmds/*.desc"
+    ]
+  },
+  "scripts": {
+    "build": "node build.js"
+  }
+}
+
+```
+
+snap.js:
+```javascript
+#!/usr/bin/env node
+const fs = require('fs');
+const path = require('path');
+
+const chalk = {
+    cyan: (str) => `\x1b[36m${str}\x1b[0m`,
+    yellow: (str) => `\x1b[33m${str}\x1b[0m`,
+    red: (str) => `\x1b[31m${str}\x1b[0m`,
+    green: (str) => `\x1b[32m${str}\x1b[0m`,
+    gray: (str) => `\x1b[90m${str}\x1b[0m`,
+    bold: (str) => `\x1b[1m${str}\x1b[22m`,
+};
+
+const SNAP_EXE_DIR = path.dirname(process.execPath);
+const VIRTUAL_DIR = __dirname;
+const CMDS_DIR_VIRTUAL = path.join(VIRTUAL_DIR, 'snap_cmds');
+const CONFIG_PATH = path.join(SNAP_EXE_DIR, '.snapconfig');
+
+// The synchronous git check has been removed to improve startup speed.
+// Individual commands will now perform this check asynchronously.
+
+function getAvailableCommands() {
+    try {
+        return fs.readdirSync(CMDS_DIR_VIRTUAL)
+            .filter(file => file.endsWith('.js') && file !== 'utils.js')
+            .map(file => path.parse(file).name);
+    } catch (e) { return []; }
+}
+
+function showHelp() {
+    console.log('Usage: snap <command> [options]');
+    console.log('\nAvailable snap commands:');
+    const commands = getAvailableCommands().sort();
+    for (const cmdName of commands) {
+        const descPath = path.join(CMDS_DIR_VIRTUAL, `${cmdName}.desc`);
+        let desc = 'No description.';
+        if (fs.existsSync(descPath)) {
+            desc = fs.readFileSync(descPath, 'utf8').trim();
+        }
+        console.log(`  ${chalk.bold(cmdName.padEnd(10))} ${desc}`);
+    }
+    console.log(`\nGlobal options:\n  --debug    Enable detailed diagnostic output.`);
+}
+
+(async function main() {
+    let args = process.argv.slice(2);
+    
+    // ** DEBUG FLAG HANDLING **
+    const debugIndex = args.indexOf('--debug');
+    if (debugIndex > -1) {
+        process.env.SNAP_DEBUG = 'true';
+        args.splice(debugIndex, 1); // Remove the flag from args
+        console.log(chalk.yellow.bold('--- DEBUG MODE ENABLED ---'));
+    }
+
+    const command = args[0];
+
+    if (!command) {
+        showHelp();
+        process.exit(0);
+    }
+    
+    if (!fs.existsSync(CONFIG_PATH) && command !== 'init') {
+        console.error(chalk.red(`[snap] ERROR: Configuration file ".snapconfig" not found.`));
+        process.exit(1);
+    }
+    
+    process.env.SNAP_CONFIG_PATH = CONFIG_PATH;
+
+    const cmdScriptPath = path.join(CMDS_DIR_VIRTUAL, `${command}.js`);
+
+    if (!fs.existsSync(cmdScriptPath)) {
+        console.error(chalk.red(`[snap] Unknown command: "${command}"`));
+        showHelp();
+        process.exit(1);
+    }
+    
+    try {
+        const commandModule = require(cmdScriptPath);
+        const subArgs = args.slice(1);
+        await commandModule(subArgs);
+    } catch (error) {
+        console.error(chalk.red(`\n[snap] An unexpected error occurred while running the "${command}" command:`));
+        console.error(error.message);
+        if (error.stderr) {
+            console.error(chalk.gray('--- STDERR ---'));
+            console.error(chalk.gray(error.stderr));
+            console.error(chalk.gray('--------------'));
+        }
+        process.exit(1);
+    }
+})();
+```
+
+snap_cmds/delete.desc:
+```
+Permanently delete a snapshot and its data
+```
+
+snap_cmds/delete.js:
+```javascript
+const inquirer = require('inquirer');
+const {
+    isGitRepo, getSnapshots, findSnapshot, askYesNo,
+    runCommand, chalk, formatSnapshotLine, getConfig,
+    deleteExternalMetadata
+} = require('./utils');
+
+module.exports = async (args) => {
+    if (!(await isGitRepo())) {
+        console.error(chalk.red('[snap] Error: Not a snap repository. Run "snap init" first.'));
+        process.exit(1);
+    }
+
+    let idOrLabel = args[0];
+    const snapshots = await getSnapshots();
+
+    if (snapshots.length === 0) {
+        console.error(chalk.yellow('[snap] No snapshots found to delete.'));
+        process.exit(1);
+    }
+
+    if (!idOrLabel) {
+        const { selectedTag } = await inquirer.prompt([{
+            type: 'list',
+            name: 'selectedTag',
+            message: 'Select snapshot to delete:',
+            choices: snapshots.map(s => ({ name: formatSnapshotLine(s), value: s.tag })),
+            pageSize: 15,
+        }]);
+        idOrLabel = selectedTag;
+    }
+
+    const snapshotInfo = findSnapshot(snapshots, idOrLabel);
+    if (!snapshotInfo) {
+        console.error(chalk.red(`[snap] Error: Snapshot "${idOrLabel}" not found.`));
+        process.exit(1);
+    }
+    
+    console.log(chalk.cyan('\n[snap] You are about to delete snapshot:'));
+    console.log(`  Label: ${snapshotInfo.tag}`);
+    const { confirm_command } = getConfig().options;
+    if (confirm_command && !(await askYesNo('[snap] WARNING: This will permanently delete the snapshot tag. Continue?'))) {
+        console.log(chalk.yellow('[snap] Deletion cancelled.'));
+        return;
+    }
+
+    console.log(chalk.cyan(`[snap] Deleting tag "${snapshotInfo.tag}"...`));
+    runCommand(`git tag -d ${snapshotInfo.tag}`);
+
+    deleteExternalMetadata(snapshotInfo.fullId);
+
+    console.log(chalk.green(`[snap] Snapshot "${snapshotInfo.tag}" deleted successfully.`));
+};
+```
+
+snap_cmds/diff.desc:
+```
+Compare two snapshots and show a list of changes
+```
+
+snap_cmds/diff.js:
+```javascript
+const { isGitRepo, runCommand, findSnapshot, getSnapshots, chalk, loadExternalMetadata } = require('./utils');
+
+const statusMap = {
+    'A': { prefix: '+', color: 'green', label: 'added' },
+    'D': { prefix: '-', color: 'red', label: 'deleted' },
+    'M': { prefix: '~', color: 'yellow', label: 'modified' },
+    'R': { prefix: '»', color: 'cyan', label: 'renamed' },
+    'C': { prefix: 'C', color: 'cyan', label: 'copied' },
+};
+
+module.exports = async (args) => {
+    if (!(await isGitRepo())) {
+        console.error(chalk.red('[snap] Error: Not a snap repository. Run "snap init" first.'));
+        process.exit(1);
+    }
+
+    if (args.length !== 2) {
+        console.error(chalk.red('[snap] Error: The "diff" command requires exactly two snapshot identifiers.'));
+        console.error(chalk.gray('  Usage: snap diff <snapshot-A> <snapshot-B>'));
+        process.exit(1);
+    }
+
+    const [idOrLabelA, idOrLabelB] = args;
+    const snapshots = await getSnapshots();
+    const snapshotA = findSnapshot(snapshots, idOrLabelA);
+    const snapshotB = findSnapshot(snapshots, idOrLabelB);
+
+    if (!snapshotA || !snapshotB) {
+        console.error(chalk.red(`[snap] Error: Could not find one or both snapshots.`));
+        process.exit(1);
+    }
+
+    console.log(chalk.cyan(`\n[snap] Comparing snapshots ${snapshotA.id} ("${snapshotA.tag}") ➜ ${snapshotB.id} ("${snapshotB.tag}"):\n`));
+
+    const hiddenA = new Set(loadExternalMetadata(snapshotA.fullId, 'hidden'));
+    const hiddenB = new Set(loadExternalMetadata(snapshotB.fullId, 'hidden'));
+    const emptyA = new Set(loadExternalMetadata(snapshotA.fullId, 'emptydirs'));
+    const emptyB = new Set(loadExternalMetadata(snapshotB.fullId, 'emptydirs'));
+
+    const diffOutput = runCommand(`git diff --name-status ${snapshotA.fullId} ${snapshotB.fullId}`);
+    const changes = { added: 0, deleted: 0, modified: 0, renamed: 0, copied: 0, visibility: 0, empty_added: 0, empty_removed: 0 };
+    const allFilesMentioned = new Set();
+
+    if (diffOutput) {
+        for (const line of diffOutput.split('\n')) {
+            const [status, file, newFile] = line.split('\t');
+            const statusChar = status.charAt(0);
+            const mapEntry = statusMap[statusChar] || { prefix: '?', color: 'gray', label: 'unknown' };
+            console.log(chalk[mapEntry.color](`  ${mapEntry.prefix} ${file}${newFile ? ` -> ${newFile}` : ''}`));
+            allFilesMentioned.add(file.replace(/\\/g, '/'));
+            if (newFile) allFilesMentioned.add(newFile.replace(/\\/g, '/'));
+            if (mapEntry.label in changes) changes[mapEntry.label]++;
+        }
+    }
+
+    const allHiddenPaths = new Set([...hiddenA, ...hiddenB]);
+    for (const filePath of allHiddenPaths) {
+        if (allFilesMentioned.has(filePath)) continue;
+        if (hiddenA.has(filePath) !== hiddenB.has(filePath)) {
+            console.log(chalk.magenta(`  ! ${filePath} (visibility changed)`));
+            changes.visibility++;
+        }
+    }
+
+    for (const dir of emptyB) {
+        if (!emptyA.has(dir)) {
+            console.log(chalk.green(`  + ${dir}/ (empty directory)`));
+            changes.empty_added++;
+        }
+    }
+    for (const dir of emptyA) {
+        if (!emptyB.has(dir)) {
+            console.log(chalk.red(`  - ${dir}/ (empty directory)`));
+            changes.empty_removed++;
+        }
+    }
+
+    const summaryParts = Object.entries(changes)
+        .filter(([, count]) => count > 0)
+        .map(([label, count]) => {
+            if (label === 'visibility') return `${count} visibility ${count > 1 ? 'changes' : 'change'}`;
+            if (label === 'empty_added') return `${count} empty dir added`;
+            if (label === 'empty_removed') return `${count} empty dir removed`;
+            return `${count} ${label}`;
+        });
+
+    if (summaryParts.length === 0) {
+        console.log(chalk.green('[snap] The two snapshots are identical. No differences found.'));
+    } else {
+        console.log(chalk.cyan(`\n[snap] Summary: ${summaryParts.join(', ')}.`));
+    }
+};
+```
+
+snap_cmds/edit.desc:
+```
+Edit the label and description of a snapshot
+```
+
+snap_cmds/edit.js:
+```javascript
+// UPDATED to use async/await
+const inquirer = require('inquirer');
+const {
+  isGitRepo, getSnapshots, findSnapshot, runCommand, chalk, formatSnapshotLine, logDebug
+} = require('./utils');
+
+function sanitizeTagName(label) {
+    if (!label) return null;
+    return label.trim().replace(/\s+/g, '-').replace(/[^a-zA-Z0-9-._]/g, '');
+}
+
+module.exports = async (args) => {
+  logDebug("Executing 'edit' command...");
+  if (!(await isGitRepo())) {
+    console.error(chalk.red('[snap] Error: Not a snap repository. Run "snap init" first.'));
+    process.exit(1);
+  }
+
+  let idOrLabel = args[0];
+  const snapshots = await getSnapshots();
+
+  if (snapshots.length === 0) {
+    console.error(chalk.yellow('[snap] No snapshots found to edit.'));
+    process.exit(1);
+  }
+
+  if (!idOrLabel) {
+    const { selectedTag } = await inquirer.prompt([{
+      type: 'list',
+      name: 'selectedTag',
+      message: 'Select snapshot to edit:',
+      choices: snapshots.map(s => ({ name: formatSnapshotLine(s), value: s.tag })),
+      pageSize: 15,
+    }]);
+    idOrLabel = selectedTag;
+  }
+
+  const snap = findSnapshot(snapshots, idOrLabel);
+  if (!snap) {
+    console.error(chalk.red(`[snap] Error: Snapshot "${idOrLabel}" not found.`));
+    process.exit(1);
+  }
+
+  console.log(chalk.cyan(`\n[snap] Editing snapshot "${snap.tag}":`));
+  
+  const { newLabel, newDescription } = await inquirer.prompt([
+    {
+      type: 'input',
+      name: 'newLabel',
+      message: 'Enter new label (tag name):',
+      default: snap.tag,
+      validate: v => !!v.trim() || 'Label cannot be empty.',
+    },
+    {
+      type: 'input',
+      name: 'newDescription',
+      message: 'Enter new description:',
+      default: snap.description,
+    }
+  ]);
+
+  const newTagName = sanitizeTagName(newLabel);
+  const newTagMessage = newDescription.trim() || newTagName;
+
+  if (snap.tag === newTagName && snap.description === newTagMessage) {
+    console.log(chalk.yellow('[snap] No changes detected. Edit cancelled.'));
+    return;
+  }
+  
+  console.log(chalk.cyan('\n[snap] Review changes:'));
+  console.log(`  Old Label:       ${snap.tag}`);
+  console.log(`  New Label:       ${newTagName}`);
+  console.log(`  Old Description: ${snap.description}`);
+  console.log(`  New Description: ${newTagMessage}`);
+  
+  console.log(chalk.yellow(`\n[snap] Applying changes... This will replace the old tag.`));
+
+  // Tagging is a write operation, `runCommand` is fine.
+  runCommand(`git tag -d "${snap.tag}"`, `Deleting old tag "${snap.tag}"`);
+  runCommand(`git tag -a "${newTagName}" -m "${newTagMessage}" ${snap.fullId}`, `Creating new tag "${newTagName}" on commit ${snap.id}`);
+
+  console.log(chalk.green(`\n[snap] Snapshot successfully updated to "${newTagName}".`));
+};
+```
+
+snap_cmds/init.desc:
+```
+Initialize a new snap repository for this project
+```
+
+snap_cmds/init.js:
+```javascript
+// UPDATED to use async/await
+const fs = require('fs');
+const path = require('path');
+const inquirer = require('inquirer');
+const { runCommand, isGitRepo, chalk, getConfig, updateConfigOption } = require('./utils');
+
+module.exports = async (args) => {
+    if (await isGitRepo()) {
+        console.error(chalk.yellow('[snap] This directory is already a Git repository.'));
+        return;
+    }
+
+    let config = getConfig();
+    if (!config.backup_root || !fs.existsSync(config.backup_root)) {
+        console.log(chalk.yellow('[snap] The `backup_root` location for storing file attribute metadata is not configured.'));
+        const { backupRootPath } = await inquirer.prompt([{
+            type: 'input',
+            name: 'backupRootPath',
+            message: 'Enter the full path for your central backup directory:',
+            validate: (input) => {
+                if (!input) return 'Path cannot be empty.';
+                if (!path.isAbsolute(input)) return 'Please provide an absolute path (e.g., D:/SnapBackups).';
+                return true;
+            }
+        }]);
+
+        const normalizedPath = backupRootPath.replace(/\\/g, '/');
+        try {
+            fs.mkdirSync(normalizedPath, { recursive: true });
+            updateConfigOption('backup_root', normalizedPath);
+            console.log(chalk.green(`[snap] Set backup_root to: ${normalizedPath}`));
+        } catch (e) {
+            console.error(chalk.red(`[snap] Error: Could not create or access directory: ${normalizedPath}`));
+            console.error(chalk.red(e.message));
+            process.exit(1);
+        }
+    }
+
+    if (!process.env.SNAP_CONFIG_PATH || !fs.existsSync(process.env.SNAP_CONFIG_PATH)) {
+        updateConfigOption('showIds', false);
+        updateConfigOption('confirm_command', true);
+        console.log(chalk.gray('[snap] Created default .snapconfig file with default options.'));
+    }
+    
+    // `git init` is a one-time setup command, `runCommand` is perfect.
+    runCommand('git init');
+    console.log(chalk.green(`[snap] Initialized empty snap repository in ${process.cwd()}`));
+};
+```
+
+snap_cmds/list.desc:
+```
+List all available snapshots for this project
+```
+
+snap_cmds/list.js:
+```javascript
+// UPDATED to use async/await
+const { isGitRepo, getSnapshots, generateList, chalk, logDebug } = require('./utils');
+
+module.exports = async (args) => {
+    logDebug("Executing 'list' command...");
+    if (!(await isGitRepo())) {
+        console.error(chalk.red('[snap] Error: Not a snap repository. Run "snap init" first.'));
+        process.exit(1);
+    }
+    const snapshots = await getSnapshots();
+    const output = await generateList(snapshots);
+    console.log(output);
+};
+```
+
+snap_cmds/new.desc:
+```
+Create a new versioned snapshot of the project
+```
+
+snap_cmds/new.js:
+```javascript
+const {
+    isGitRepo, runCommand, checkDirty, chalk, logDebug, saveExternalMetadata, getActiveCommitFull,
+    getSnapshots // <-- Added this function
+} = require('./utils');
+
+function sanitizeTagName(label) {
+    if (!label) return `snap-${Date.now()}`;
+    return label.trim().replace(/\s+/g, '-').replace(/[^a-zA-Z0-9-._]/g, '');
+}
+
+module.exports = async (args) => {
+    logDebug("Executing 'new' command...");
+    if (!(await isGitRepo())) {
+        console.error(chalk.red('[snap] Error: Not a snap repository. Run "snap init" first.'));
+        process.exit(1);
+    }
+
+    const label = args[0];
+    if (!label) {
+        console.error(chalk.red('[snap] Error: A label is required for a new snapshot.'));
+        console.error(chalk.gray('  Usage: snap new <label> [<description...>]'));
+        process.exit(1);
+    }
+    
+    const tagName = sanitizeTagName(label);
+
+    // ✅ FIX: Check for duplicate tag name BEFORE doing any work.
+    const existingSnapshots = await getSnapshots();
+    if (existingSnapshots.some(s => s.tag === tagName)) {
+        console.error(chalk.red(`[snap] Error: A snapshot with the label "${tagName}" already exists.`));
+        console.error(chalk.gray('  Please choose a unique label or delete the existing snapshot first.'));
+        process.exit(1); // Abort cleanly.
+    }
+
+    // Now that the tag is validated, check for changes.
+    if (!(await checkDirty())) {
+        console.log(chalk.yellow('[snap] No changes to commit. Working tree is clean.'));
+        return;
+    }
+
+    const description = args.slice(1).join(' ').trim();
+
+    console.log(chalk.green('\n[snap] Step 1/4: Staging all files...'));
+    runCommand('git add -A', 'Staging all changes');
+
+    console.log(chalk.green('[snap] Step 2/4: Creating the commit...'));
+    const commitMessage = `Snapshot: ${tagName}`;
+    runCommand(`git commit -m "${commitMessage}"`, 'Creating commit');
+
+    const fullCommitId = await getActiveCommitFull();
+
+    // This correctly calls your custom function.
+    console.log(chalk.green('[snap] Step 3/4: Saving external metadata (hidden files, empty dirs)...'));
+    await saveExternalMetadata(fullCommitId);
+
+    console.log(chalk.green('[snap] Step 4/4: Creating the annotated snapshot tag...'));
+
+    const tagMessage = description;
+    const command = `git tag -a "${tagName}" -F -`;
+    const cmdDescription = `Creating annotated tag ${tagName}`;
+    
+    runCommand(command, cmdDescription, { input: tagMessage });
+
+    const shortCommitId = fullCommitId.substring(0, 7);
+    console.log(chalk.green(`\n[snap] New snapshot created: [${shortCommitId}] ${tagName}`));
+};
+```
+
+snap_cmds/options.desc:
+```
+Configure global snap options
+```
+
+snap_cmds/options.js:
+```javascript
+const inquirer = require('inquirer');
+const chalk = require('chalk');
+const { getConfig, updateConfigOption } = require('./utils');
+
+module.exports = async (args) => {
+    const config = getConfig();
+    const { showIds: currentShowIds, confirm_command: currentConfirmCommand } = config.options;
+
+    const { selectedOption } = await inquirer.prompt([{
+        type: 'list',
+        name: 'selectedOption',
+        message: 'Select option to change:',
+        choices: [
+            { name: `showIds         - (Controls if IDs are shown in lists)`, value: 'showIds' },
+            { name: `confirm_command - (Asks for y/N on destructive actions)`, value: 'confirm_command' },
+            new inquirer.Separator('─'.repeat(40)),
+            new inquirer.Separator(chalk.dim(`Current value for 'showIds': ${currentShowIds}`)),
+            new inquirer.Separator(chalk.dim(`Current value for 'confirm_command': ${currentConfirmCommand}`)),
+        ]
+    }]);
+
+    const currentValue = selectedOption === 'showIds' ? currentShowIds : currentConfirmCommand;
+
+    const { newValue } = await inquirer.prompt([{
+        type: 'list',
+        name: 'newValue',
+        message: `Set "${selectedOption}" to:`,
+        choices: ['true', 'false'],
+        default: currentValue.toString(),
+    }]);
+
+    const finalValue = newValue === 'true';
+    updateConfigOption(selectedOption, finalValue);
+    console.log(chalk.green(`\n[snap] Configuration saved: ${selectedOption} is now ${chalk.bold(finalValue)}.`));
+
+    if (selectedOption === 'showIds') {
+        console.log(chalk.gray(`[snap] The 'snap list' command will now ${finalValue ? 'show' : 'hide'} snapshot IDs.`));
+    }
+};
+```
+
+snap_cmds/restore.desc:
+```
+Restore project to a previous snapshot state
+```
+
+snap_cmds/restore.js:
+```javascript
+const fs = require('fs');
+const inquirer = require('inquirer');
+const path = require('path');
+const {
+    isGitRepo, getSnapshots, findSnapshot, askYesNo, checkDirty,
+    runCommand, chalk, formatSnapshotLine,
+    getActiveCommitFull, loadExternalMetadata, logDebug
+} = require('./utils');
+
+module.exports = async (args) => {
+    if (!(await isGitRepo())) {
+        console.error(chalk.red('[snap] Error: Not a snap repository. Run "snap init" first.'));
+        process.exit(1);
+    }
+
+    const sourceCommitId = await getActiveCommitFull();
+
+    if (await checkDirty()) {
+        console.log(chalk.yellow('\n[snap] WARNING: Your project has uncommitted changes.'));
+        const proceed = await askYesNo('To restore a snapshot, all local changes must be discarded. Continue?');
+        if (!proceed) {
+            console.log(chalk.yellow('[snap] Restore cancelled.'));
+            process.exit(0);
+        }
+        console.log(chalk.cyan('[snap] Discarding all local changes...'));
+        runCommand('git reset --hard HEAD');
+        runCommand('git clean -fd');
+        console.log(chalk.green('[snap] Workspace is now clean. Proceeding with restore.\n'));
+    }
+
+    let idOrLabel = args[0];
+    const snapshots = await getSnapshots();
+    if (snapshots.length === 0) {
+        console.error(chalk.yellow('[snap] No snapshots found to restore.'));
+        process.exit(1);
+    }
+
+    if (!idOrLabel) {
+        const { selectedTag } = await inquirer.prompt([{
+            type: 'list',
+            name: 'selectedTag',
+            message: 'Select snapshot to restore:',
+            choices: snapshots.map(s => ({ name: formatSnapshotLine(s), value: s.tag })),
+            pageSize: 15,
+        }]);
+        idOrLabel = selectedTag;
+    }
+
+    const snapshotInfo = findSnapshot(snapshots, idOrLabel);
+    if (!snapshotInfo) {
+        console.error(chalk.red(`[snap] Error: Snapshot "${idOrLabel}" not found.`));
+        process.exit(1);
+    }
+
+    console.log(chalk.cyan(`\n[snap] Restoring project files for snapshot "${snapshotInfo.tag}"...`));
+    runCommand(`git checkout --force ${snapshotInfo.tag}`);
+
+    console.log(chalk.cyan('[snap] Synchronizing external metadata...'));
+    
+    // Load all metadata types
+    const sourceHidden = loadExternalMetadata(sourceCommitId, 'hidden');
+    const targetHidden = loadExternalMetadata(snapshotInfo.fullId, 'hidden');
+    const sourceEmpty = loadExternalMetadata(sourceCommitId, 'emptydirs');
+    const targetEmpty = loadExternalMetadata(snapshotInfo.fullId, 'emptydirs');
+    
+    const sourceHiddenSet = new Set(sourceHidden);
+    const targetHiddenSet = new Set(targetHidden);
+    const sourceEmptySet = new Set(sourceEmpty);
+    const targetEmptySet = new Set(targetEmpty);
+
+    // Reconcile empty directories
+    logDebug('Reconciling empty directories...');
+    const dirsToCreate = targetEmpty.filter(p => !sourceEmptySet.has(p) && !fs.existsSync(path.join(process.cwd(), p)));
+    const dirsToRemove = sourceEmpty.filter(p => !targetEmptySet.has(p) && fs.existsSync(path.join(process.cwd(), p)));
+    dirsToRemove.sort((a, b) => b.length - a.length); // Remove children before parents
+
+    for (const relativePath of dirsToRemove) {
+        const fullPath = path.join(process.cwd(), relativePath);
+        try {
+            if (fs.readdirSync(fullPath).length === 0) {
+                logDebug(`  - Removing empty directory: ${relativePath}`);
+                fs.rmdirSync(fullPath);
+            }
+        } catch (e) { logDebug(`Failed to remove directory ${relativePath}: ${e.message}`); }
+    }
+    for (const relativePath of dirsToCreate) {
+        const fullPath = path.join(process.cwd(), relativePath);
+        logDebug(`  - Creating empty directory: ${relativePath}`);
+        try { fs.mkdirSync(fullPath, { recursive: true }); } 
+        catch (e) { logDebug(`Failed to create directory ${relativePath}: ${e.message}`); }
+    }
+
+    // Reconcile hidden file attributes
+    logDebug('Reconciling hidden file attributes...');
+    const pathsToUnhide = sourceHidden.filter(p => !targetHiddenSet.has(p) && fs.existsSync(p));
+    const pathsToHide = targetHidden.filter(p => fs.existsSync(p));
+
+    const applyAttribute = (verb, attr, paths) => {
+        for (const relativePath of paths) {
+            const fullPath = path.join(process.cwd(), relativePath);
+            logDebug(`  - Making ${verb} (${attr}): ${relativePath}`);
+            try { runCommand(`attrib ${attr} "${fullPath}"`); } catch (e) {
+                logDebug(`Failed to apply attribute to ${relativePath}: ${e.message}`);
+            }
+        }
+    };
+    
+    applyAttribute('visible', '-H', pathsToUnhide);
+    applyAttribute('hidden', '+H', pathsToHide);
+
+    console.log(chalk.green('\n[snap] Restore complete. Your project is now at the state of this snapshot.'));
+};
+```
+
+snap_cmds/update.desc:
+```
+Replaces the latest snapshot with the current project state
+```
+
+snap_cmds/update.js:
+```javascript
+const {
+    isGitRepo, getSnapshots, getActiveCommitFull, runCommand,
+    askYesNo, checkDirty, chalk, getConfig, findSnapshot,
+    deleteExternalMetadata, saveExternalMetadata
+} = require('./utils');
+
+module.exports = async (args) => {
+    if (!(await isGitRepo())) {
+        console.error(chalk.red('[snap] Error: Not a snap repository. Run "snap init" first.'));
+        process.exit(1);
+    }
+
+    if (!(await checkDirty())) {
+        console.log(chalk.yellow('[snap] No changes to update. Working tree is clean.'));
+        return;
+    }
+
+    const activeCommitFull = await getActiveCommitFull();
+    if (!activeCommitFull) {
+        console.error(chalk.red('[snap] Error: Cannot update. No active snapshot found.'));
+        process.exit(1);
+    }
+
+    const snapshots = await getSnapshots();
+    const activeSnapshot = findSnapshot(snapshots, activeCommitFull);
+    if (!activeSnapshot) {
+        console.error(chalk.red('[snap] Error: The current state (HEAD) does not correspond to a known snapshot.'));
+        console.error(chalk.gray('[snap] Hint: You may need to run `snap restore` to an existing snapshot first.'));
+        process.exit(1);
+    }
+
+    console.log(chalk.cyan(`\n[snap] This command will replace the active snapshot with the current project state.`));
+    console.log(chalk.yellow('  Target Snapshot:'));
+    console.log(`    Label:       ${activeSnapshot.tag}`);
+    console.log(`    Description: ${activeSnapshot.description}`);
+
+
+    const { confirm_command } = getConfig().options;
+    const proceed = confirm_command ? await askYesNo(`[snap] This will amend the commit for snapshot "${activeSnapshot.tag}". This action is hard to undo.`) : true;
+    
+    if (!proceed) {
+        console.log(chalk.yellow('[snap] Update cancelled.'));
+        return;
+    }
+
+    console.log(chalk.cyan('\n[snap] Step 1/4: Deleting old external metadata...'));
+    deleteExternalMetadata(activeSnapshot.fullId);
+
+    console.log(chalk.cyan('[snap] Step 2/4: Staging changes and amending commit...'));
+    runCommand('git add -A', 'Staging changes');
+    runCommand('git commit --amend --no-edit --allow-empty', 'Amending commit');
+
+    const newCommitId = await getActiveCommitFull();
+
+    console.log(chalk.cyan('[snap] Step 3/4: Saving new external metadata...'));
+    await saveExternalMetadata(newCommitId);
+
+    const newShortCommitId = newCommitId.substring(0, 7);
+    console.log(chalk.cyan(`[snap] Step 4/4: Moving tag "${activeSnapshot.tag}" to new commit ${newShortCommitId}...`));
+    
+    const tagMessage = activeSnapshot.description;
+    const command = `git tag -a -f "${activeSnapshot.tag}" -F -`;
+    const description = `Re-creating annotated tag ${activeSnapshot.tag}`;
+    
+    runCommand(command, description, { input: tagMessage });
+
+    console.log(chalk.green(`\n[snap] Update complete. Snapshot "${activeSnapshot.tag}" now points to new commit [${newShortCommitId}].`));
+};
+```
+
+snap_cmds/utils.js:
+```javascript
+const fs = require('fs');
+const path = require('path');
+const crypto = require('crypto');
+const { execSync } = require('child_process');
+const readline = require('readline');
+const chalk = require('chalk');
+const git = require('isomorphic-git');
+
+// ** DEBUG HELPER **
+function logDebug(message) {
+    if (process.env.SNAP_DEBUG === 'true') {
+        console.log(chalk.cyanBright(`[DEBUG] ${message}`));
+    }
+}
+
+// --- CONFIGURATION ---
+function getConfig() {
+    const cfgPath = process.env.SNAP_CONFIG_PATH;
+    let cfg = {};
+    if (cfgPath && fs.existsSync(cfgPath)) {
+        try { cfg = JSON.parse(fs.readFileSync(cfgPath, 'utf8')); }
+        catch { logDebug('.snapconfig is corrupt'); }
+    }
+    cfg.options = cfg.options || {};
+    return cfg;
+}
+
+function updateConfigOption(key, val) {
+    const cfgPath = process.env.SNAP_CONFIG_PATH;
+    if (!cfgPath) {
+        console.error(chalk.red('[snap] Error: SNAP_CONFIG_PATH not set'));
+        process.exit(1);
+    }
+    const cfg = fs.existsSync(cfgPath) ? JSON.parse(fs.readFileSync(cfgPath, 'utf8')) : {};
+    
+    if (key === 'backup_root') {
+        cfg[key] = val;
+    } else {
+        cfg.options = cfg.options || {};
+        cfg.options[key] = val;
+    }
+
+    fs.writeFileSync(cfgPath, JSON.stringify(cfg, null, 2));
+}
+
+// --- GENERIC COMMAND RUNNER ---
+function runCommand(cmd, description, options = {}) {
+    logDebug(`> Running Shell Command: ${description || cmd}`);
+    try {
+        const execOptions = {
+            encoding: 'utf8',
+            stdio: 'pipe',
+            maxBuffer: 1024 * 1024 * 100, // 100 MB
+            ...options
+        };
+        const output = execSync(cmd, execOptions);
+        const cleanOutput = output.trim();
+        logDebug(`< Clean Output:\n---\n${cleanOutput || '(empty)'}\n---`);
+        return cleanOutput;
+    } catch (error) {
+        const errorMessage = error.stderr || error.stdout || 'Unknown command error.';
+        const err = new Error(`Command failed: ${cmd}\n${errorMessage}`);
+        err.stderr = errorMessage;
+        logDebug(`! FAILED with exit code ${error.status}:\n${errorMessage}`);
+        throw err;
+    }
+}
+
+// --- EXTERNAL METADATA HANDLING (HIDDEN FILES & EMPTY DIRS) ---
+function getProjectId() {
+    const projectPath = process.cwd();
+    const projectName = path.basename(projectPath);
+    const projectHash = crypto.createHash('sha1').update(projectPath).digest('hex').substring(0, 8);
+    const sanitizedName = projectName.replace(/[<>:"/\\|?*]/g, '_');
+    return `${sanitizedName}_[${projectHash}]`;
+}
+
+function getExternalMetadataPath(commitId, type) {
+    const config = getConfig();
+    if (!config.backup_root) {
+        logDebug('Cannot get metadata path: backup_root is not configured.');
+        return null;
+    }
+    const projectId = getProjectId();
+    const metadataDir = path.join(config.backup_root, projectId);
+    return {
+        dir: metadataDir,
+        file: path.join(metadataDir, `${commitId}.${type}.json`)
+    };
+}
+
+function _getEmptyDirs(rootDir) {
+    logDebug(`Scanning for empty directories in: ${rootDir}`);
+    const emptyDirs = [];
+    const allDirs = [];
+    const rootPath = path.resolve(rootDir);
+    const ignoredDirs = new Set(['.git', 'node_modules']);
+    
+    function findAllDirs(currentPath) {
+        try {
+            const entries = fs.readdirSync(currentPath, { withFileTypes: true });
+            for (const entry of entries) {
+                if (ignoredDirs.has(entry.name)) continue;
+                if (entry.isDirectory()) {
+                    const dirPath = path.join(currentPath, entry.name);
+                    allDirs.push(dirPath);
+                    findAllDirs(dirPath);
+                }
+            }
+        } catch (e) {
+            logDebug(`Cannot read directory to find subdirs: ${currentPath}`);
+        }
+    }
+    
+    findAllDirs(rootPath);
+
+    for (const dir of allDirs) {
+        try {
+            if (fs.readdirSync(dir).length === 0) {
+                emptyDirs.push(path.relative(rootPath, dir).replace(/\\/g, '/'));
+            }
+        } catch (e) {
+            logDebug(`Cannot read directory to check for emptiness: ${dir}`);
+        }
+    }
+    
+    logDebug(`Total found ${emptyDirs.length} empty directories.`);
+    return emptyDirs.sort();
+}
+
+async function _getHiddenPathsOptimized(rootDir) {
+    logDebug(`Scanning for hidden attributes in: ${rootDir}`);
+    const hiddenPaths = [];
+    const cmd = `dir /s /b /a:h "${rootDir}"`;
+    try {
+        const output = execSync(cmd, { maxBuffer: 10 * 1024 * 1024, encoding: 'utf8' });
+        const lines = output.split(/\r?\n/);
+        for (const line of lines) {
+            const fullPath = line.trim();
+            if (fullPath && fs.existsSync(fullPath)) {
+                const relativePath = path.relative(rootDir, fullPath).replace(/\\/g, '/');
+                if (!relativePath.startsWith('.git/')) {
+                    hiddenPaths.push(relativePath);
+                }
+            }
+        }
+    } catch (error) {
+        logDebug(`'dir' command for hidden files returned no results or an error (this is often normal).`);
+    }
+    logDebug(`Total found ${hiddenPaths.length} hidden items.`);
+    return hiddenPaths.sort();
+}
+
+async function saveExternalMetadata(commitId) {
+    // Hidden files
+    const hiddenPathsData = getExternalMetadataPath(commitId, 'hidden');
+    if (hiddenPathsData) {
+        console.log(chalk.cyan('[snap] Scanning for hidden file attributes...'));
+        const hiddenPaths = await _getHiddenPathsOptimized(process.cwd());
+        if (hiddenPaths.length > 0) {
+            logDebug(`Saving metadata for ${hiddenPaths.length} hidden items to ${hiddenPathsData.file}`);
+            fs.mkdirSync(hiddenPathsData.dir, { recursive: true });
+            fs.writeFileSync(hiddenPathsData.file, JSON.stringify(hiddenPaths, null, 2));
+        } else if (fs.existsSync(hiddenPathsData.file)) {
+            fs.unlinkSync(hiddenPathsData.file);
+        }
+    }
+
+    // Empty directories
+    const emptyDirsData = getExternalMetadataPath(commitId, 'emptydirs');
+    if (emptyDirsData) {
+        console.log(chalk.cyan('[snap] Scanning for empty directories...'));
+        const emptyDirs = _getEmptyDirs(process.cwd());
+        if (emptyDirs.length > 0) {
+            logDebug(`Saving metadata for ${emptyDirs.length} empty directories to ${emptyDirsData.file}`);
+            fs.mkdirSync(emptyDirsData.dir, { recursive: true });
+            fs.writeFileSync(emptyDirsData.file, JSON.stringify(emptyDirs, null, 2));
+        } else if (fs.existsSync(emptyDirsData.file)) {
+            fs.unlinkSync(emptyDirsData.file);
+        }
+    }
+}
+
+function loadExternalMetadata(commitId, type) {
+    if (!commitId || !type) return [];
+    const paths = getExternalMetadataPath(commitId, type);
+    if (!paths || !fs.existsSync(paths.file)) return [];
+    try {
+        return JSON.parse(fs.readFileSync(paths.file, 'utf8'));
+    } catch (e) { return []; }
+}
+
+function deleteExternalMetadata(commitId) {
+    if (!commitId) return;
+    const types = ['hidden', 'emptydirs'];
+    let cleanedSomething = false;
+
+    for (const type of types) {
+        const paths = getExternalMetadataPath(commitId, type);
+        if (paths && fs.existsSync(paths.file)) {
+            logDebug(`Deleting metadata file: ${paths.file}`);
+            try {
+                fs.unlinkSync(paths.file);
+                cleanedSomething = true;
+            } catch (e) {
+                console.warn(chalk.yellow(`[snap] Warning: Could not delete metadata file ${paths.file}`));
+            }
+        }
+    }
+    if (cleanedSomething) {
+        console.log(chalk.gray(`[snap] Cleaned up external metadata.`));
+    }
+}
+
+// --- GIT HELPERS ---
+const gitArgs = { fs, dir: process.cwd() };
+
+const isGitRepo = async () => {
+    try {
+        await git.findRoot({ fs, filepath: process.cwd() });
+        return true;
+    } catch (e) {
+        return false;
+    }
+};
+
+const getActiveCommitFull = async () => {
+    try { return await git.resolveRef({ ...gitArgs, ref: 'HEAD' }); }
+    catch (e) { return null; }
+};
+
+const getSnapshots = async () => {
+    logDebug("--- Getting Snapshots (system git) ---");
+    try {
+        const command = 'git tag -l --sort=-taggerdate --format="%(refname:short)\t%(*objectname)\t%(taggerdate:iso8601)\t%(contents:subject)"';
+        const tagOutput = runCommand(command);
+        
+        if (!tagOutput) return [];
+
+        const lines = tagOutput.split('\n').filter(line => line.trim() !== '');
+        const snapshots = lines.map(line => {
+            const [tag, fullId, timestamp, description] = line.split('\t');
+            if (!tag || !fullId) return null;
+            return {
+                fullId,
+                id: fullId.substring(0, 7),
+                tag,
+                label: tag,
+                description: (description || '').trim(),
+                timestamp,
+            };
+        }).filter(Boolean);
+        
+        snapshots.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+        return snapshots;
+    } catch (e) {
+        logDebug(`! ERROR during getSnapshots: ${e.message}. Returning empty array.`);
+        return [];
+    }
+};
+
+const findSnapshot = (snaps, key) => snaps.find(s => s.tag === key || s.id === key || s.fullId === key) || null;
+
+const checkDirty = async () => {
+    logDebug("--- Checking dirty status (system git) ---");
+    const output = runCommand('git status --porcelain');
+    return output.length > 0;
+};
+
+// --- FORMATTING AND UI HELPERS ---
+function formatTimestamp(iso) {
+    if (!iso) return '';
+    const d = new Date(iso);
+    if (isNaN(d)) return 'Invalid date';
+    const z = n => n.toString().padStart(2, '0');
+    return `${z(d.getDate())}.${z(d.getMonth() + 1)}.${d.getFullYear()} ${z(d.getHours())}:${z(d.getMinutes())}`;
+}
+
+async function generateList(snaps) {
+    const { showIds } = getConfig().options;
+    const outputLines = [];
+    outputLines.push(chalk.cyan(`[snap] Snapshots for "${path.basename(process.cwd())}":`));
+
+    if (!snaps || snaps.length === 0) {
+        outputLines.push(chalk.yellow('\n  No snapshots found. Use "snap new <label>" to create one.'));
+        return outputLines.join('\n');
+    }
+
+    outputLines.push('');
+    const idCol = 9;
+    const labelCol = 16;
+    const descCol = 28;
+    const timeCol = 17;
+  
+    let header = '  ';
+    let separator = '  ';
+  
+    if (showIds) {
+        header += 'ID'.padEnd(idCol);
+        separator += '-'.repeat(idCol - 2).padEnd(idCol);
+    }
+    header += 'Label'.padEnd(labelCol) + 'Description'.padEnd(descCol) + 'Timestamp';
+    separator += '-'.repeat(labelCol - 2).padEnd(labelCol) +
+                 '-'.repeat(descCol - 2).padEnd(descCol) +
+                 '-'.repeat(timeCol - 1).padEnd(timeCol);
+               
+    outputLines.push(chalk.bold(header));
+    outputLines.push(chalk.bold(separator));
+  
+    const activeCommitId = await getActiveCommitFull(); 
+    logDebug(`Active commit ID for list comparison is: "${activeCommitId}"`);
+
+    for (const snap of snaps) {
+        const isActive = activeCommitId && activeCommitId === snap.fullId;
+        const labelStr = (snap.tag || '').substring(0, labelCol - 2).padEnd(labelCol);
+        const descStr  = (snap.description || '').substring(0, descCol - 2).padEnd(descCol);
+        const timeStr  = formatTimestamp(snap.timestamp).padEnd(timeCol);
+        
+        let line = '  ';
+        if (showIds) {
+            line += (snap.id || '').substring(0, idCol - 2).padEnd(idCol);
+        }
+        line += labelStr + descStr + timeStr;
+    
+        if (isActive) {
+            line += chalk.green.bold('   (active)');
+        }
+        outputLines.push(line);
+    }
+    return outputLines.join('\n');
+}
+
+const formatSnapshotLine = s => {
+    const { showIds } = getConfig().options;
+    const descText = s.description || '';
+    return showIds ? `${s.id} - ${s.tag} ${chalk.gray(descText)}` : `${s.tag} ${chalk.gray(descText)}`;
+};
+
+const askYesNo = (q, def = false) => new Promise(res => {
+    const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+    rl.question(chalk.yellow(`${q} ${def ? '[Y/n]' : '[y/N]'} `), ans => {
+        rl.close();
+        res(ans.trim().toLowerCase() === '' ? def : ans.trim().toLowerCase().startsWith('y'));
+    });
+});
+
+module.exports = {
+    chalk, getConfig, updateConfigOption, runCommand,
+    isGitRepo, getActiveCommitFull,
+    getSnapshots, findSnapshot, logDebug,
+    generateList, formatSnapshotLine,
+    askYesNo, checkDirty,
+    saveExternalMetadata, loadExternalMetadata, deleteExternalMetadata
+};
+```
+
+ >>>]**
+
+---
+
+**Part 2: The Port to Rust (Current State)**
+
+To solve the performance issue, the project was ported to Rust. The following code represents the complete, but partially outdated, Rust implementation. It successfully translates all the features from the Node.js version, including command-line parsing, interactive menus, and the external metadata system for hidden files.
+
+However, this Rust code was written using dependencies and knowledge from around mid-2023. It needs to be modernized.
+
+Here is the complete file hierarchy and source code for the current Rust project.
+
+**[<<< Hierarchy of folders and files:
+
+snap
+├── .cargo
+│   └── config.toml
+├── .git
+├── doc
+├── src
+│   ├── commands
+│   │   ├── delete.rs
+│   │   ├── diff.rs
+│   │   ├── edit.rs
+│   │   ├── init.rs
+│   │   ├── list.rs
+│   │   ├── mod.rs
+│   │   ├── new.rs
+│   │   ├── options.rs
+│   │   ├── restore.rs
+│   │   └── update.rs
+│   ├── cli.rs
+│   ├── config.rs
+│   ├── main.rs
+│   └── utils.rs
+├── .gitignore
+├── Cargo.toml
+└── README.md
+
+Contents of files:
+
+.cargo/config.toml:
+```toml
+[profile.release]
+lto = true
+codegen-units = 1
+strip = true
+```
+
+Cargo.toml:
+```toml
+[package]
+name = "snap"
+version = "7.0.0"
+edition = "2021"
+description = "A blazing fast, Git-powered snapshot tool for Windows developers."
+
+[dependencies]
+# For command-line argument parsing
+clap = { version = "4.5.4", features = ["derive"] }
+
+# For interactive prompts (inquirer equivalent)
+inquire = "0.7.5"
+
+# For colored terminal output (chalk equivalent)
+colored = "2.1.0"
+
+# For JSON serialization/deserialization (.snapconfig)
+serde = { version = "1.0.203", features = ["derive"] }
+serde_json = "1.0.117"
+
+# For robust error handling
+anyhow = "1.0.86"
+
+# For SHA1 hashing (project ID)
+sha1 = "0.10.6"
+
+# For date and time formatting
+chrono = "0.4.38"
+
+# To get the path of the current executable
+std-ext = "0.1.2"
+```
+
+README.md:
+```markdown
+# 📦 Snap (The Rust Edition)
+
+**A truly native, blazing-fast snapshot tool for Windows developers. Create efficient, versioned backups of your project folders with full support for hidden file attributes.**
+
+`snap` is a command-line utility that provides a simple way to capture point-in-time states of your projects. It uses the power and reliability of Git for its core operations but provides a simplified, focused workflow. It's perfect for quick, local backups before a major refactor, for archiving project milestones, or for any situation where you need a reliable "undo" button for your entire directory.
+
+---
+
+## From Node.js to Native: The Quest for Speed
+
+This project began its life as a Node.js application, packaged into an `.exe` for convenience. While functional, it had a noticeable startup delay inherent to the Node.js runtime. For a tool designed to be a quick, seamless part of a developer's workflow, this was a critical friction point.
+
+The desire for **instantaneous, native-level performance** led to a complete rewrite in **Rust**. By compiling directly to a native binary, `snap` now launches as fast as `git` itself, eliminating all runtime overhead. This new version retains 100% of the original's features while providing the speed and responsiveness a command-line power tool deserves.
+
+---
+
+## 📋 Table of Contents
+
+*   [Key Features](#-key-features)
+*   [How It Works](#-how-it-works)
+*   [Prerequisites](#-prerequisites)
+*   [Installation](#-installation)
+*   [Usage](#-usage)
+    *   [`snap init`](#1-snap-init)
+    *   [`snap new <label> [description...]`](#2-snap-new-label-description)
+    *   [`snap list`](#3-snap-list)
+    *   [`snap diff <snapshot-A> <snapshot-B>`](#4-snap-diff-snapshot-a-snapshot-b)
+    *   [`snap restore [id_or_label]`](#5-snap-restore-id_or_label)
+    *   [`snap delete [id_or_label]`](#6-snap-delete-id_or_label)
+    *   [`snap edit [id_or_label]`](#7-snap-edit-id_or_label)
+    *   [`snap update`](#8-snap-update)
+    *   [`snap options`](#9-snap-options)
+*   [Building from Source](#-building-from-source)
+*   [Troubleshooting](#️-troubleshooting)
+*   [Contributing](#-contributing)
+*   [License](#-license)
+
+---
+
+## ✨ Key Features
+
+*   **🚀 Truly Native Performance**: Rewritten in Rust for instantaneous startup and execution. Feels as fast and responsive as `git` itself.
+*   ** dependable Git Core**: Leverages the rock-solid foundation of `git.exe` for all file storage and versioning. Snapshots are lightweight, annotated Git tags.
+*   **⚡️ Efficient Storage**: Benefits from Git's mature Content-Addressable Storage model. Identical files across hundreds of snapshots consume the space of just one file.
+*   **🎯 Smart Restores**: `snap restore` intelligently checks for uncommitted local changes and prompts you to prevent accidental data loss. It also restores your project files and synchronizes hidden file attributes.
+*   **🪟 Windows Native**: Fully aware of Windows file attributes. It correctly preserves and restores the **Hidden** status of files and folders using an external metadata store.
+*   **✍️ Rich Metadata**: Snapshots are tagged with a simple `label` and a more detailed `description`, which are stored directly in Git's annotated tags.
+*   **💻 User-Friendly CLI**: Features an interactive, arrow-key menu, human-readable timestamps, a compact list view, and an **`(active)`** marker to show you exactly which version your project is on.
+*   **🚫 Zero Dependencies**: The compiled `snap.exe` is a single, standalone binary. No need for Node.js, Rust, or any other runtime on the user's machine.
+
+---
+
+## ⚙️ How It Works
+
+`snap` manages your project as a standard Git repository but uses a simple, robust interaction model.
+
+1.  **The Project Repository (`.git`)**
+    When you run `snap init`, your project folder becomes a standard Git repository. `snap` then acts as a user-friendly wrapper around `git.exe`.
+
+2.  **The External Metadata Store**
+    Because Git doesn't track the "Hidden" attribute on Windows, `snap` saves this information in a central `backup_root` directory you configure. For each snapshot, it creates a simple JSON file listing all hidden paths.
+
+**Visualized Structure:**
+
+```text
+// Your project folder becomes a Git repository:
+D:/Projects/MyUnityGame/
+└── .git/
+
+// A separate, central location stores the hidden attribute metadata:
+D:/Backups/Snap_Metadata/
+└── MyUnityGame_[a4e8b91c]/  <-- Human-readable, unique ID for your project
+    ├── 0a1b2c...d3e4.json   <-- Hidden paths for commit 0a1b...
+    └── 5f6a7b...c8d9.json   <-- Hidden paths for commit 5f6a...
+```
+
+This design keeps your project folder clean and standard while ensuring no data is lost.
+
+---
+
+## 🔧 Prerequisites
+
+*   Windows 10 or later.
+*   **Git for Windows** must be installed and accessible in your system's PATH. `snap` relies on `git.exe` for all core operations. You can get it from [git-scm.com](https://git-scm.com/download/win).
+
+---
+
+## 📥 Installation
+
+You can either download a pre-compiled binary or build it from the source yourself.
+
+1.  **Download the Release**
+    *   Go to the [Releases](https://github.com/your-username/snap/releases) page of this repository.
+    *   Download the latest `snap.exe` file.
+
+2.  **Place it in your PATH**
+    *   Move `snap.exe` to a permanent location on your system (e.g., `D:\Tools\`).
+    *   Add this directory (`D:\Tools`) to your Windows PATH environment variable. This allows you to run the `snap` command from any terminal.
+
+3.  **First-Time Configuration**
+    The first time you run `snap init` in a project, it will prompt you to set up a central `backup_root` directory. This is where the metadata for hidden files will be stored. This configuration is saved in a `.snapconfig` file alongside your `snap.exe`.
+
+4.  **Verify**
+    Open a **new** terminal window (so it loads the new PATH). Navigate to a project you want to back up and run `snap init`. It should initialize the repository instantly.
+
+---
+
+## 🚀 Usage
+
+All commands are run from within your project's directory.
+
+### 1. `snap init`
+Initializes the current folder as a `snap` repository. **Must be run once per project.**
+
+```cmd
+D:\Projects\my-app>snap init
+[snap] The `backup_root` location is not configured.
+? Enter the full path for your central backup directory: D:/Snap_Metadata
+[snap] Set backup_root to: D:/Snap_Metadata
+[snap] Initialized empty snap repository in D:\Projects\my-app
+```
+
+### 2. `snap new <label> [description...]`
+Creates a snapshot of the current project state.
+
+```cmd
+D:\Projects\my-app>snap new v1.0 Initial release
+
+[snap] Step 1/4: Staging all files...
+[snap] Step 2/4: Creating the commit...
+[snap] Step 3/4: Saving file attribute metadata...
+[snap] Step 4/4: Creating the annotated snapshot tag...
+
+[snap] New snapshot created: [a1b2c3d] v1.0
+```
+
+### 3. `snap list`
+Lists all available snapshots in a compact view, showing the active one.
+
+```cmd
+D:\Projects\my-app>snap list
+
+[snap] Snapshots for "my-app":
+
+  Label           Description                 Timestamp
+  --------------  --------------------------  -----------------
+  v1.1-hotfix     Fixed critical login bug    15.06.2025 10:30
+  v1.1            Second public release       15.06.2025 09:15   (active)
+  v1.0            Initial release             15.06.2025 17:45
+```
+
+### 4. `snap diff <snapshot-A> <snapshot-B>`
+Compares two snapshots and shows a list of changes.
+
+```cmd
+D:\Projects\my-app>snap diff v1.0 v1.1
+
+[snap] Comparing snapshots a1b2c3d ("v1.0") ➜ f4e5d6c ("v1.1"):
+
+  + src/auth/new-logic.js
+  - config/old-settings.json
+  ~ src/app.js
+  ! .env (visibility changed)
+
+[snap] Summary: 1 added, 1 deleted, 1 modified, 1 visibility change
+```
+
+### 5. `snap restore [id_or_label]`
+Restores the project to a previous state. If run without arguments, it displays an interactive menu.
+
+```cmd
+D:\Projects\my-app>snap restore v1.0
+
+[snap] Restoring project files for snapshot "v1.0"...
+[snap] Synchronizing hidden file attributes...
+
+[snap] Restore complete. Your project is now at the state of this snapshot.
+```
+
+### 6. `snap delete [id_or_label]`
+Permanently deletes a snapshot.
+
+```cmd
+D:\Projects\my-app>snap delete v1.1-hotfix
+
+[snap] You are about to delete snapshot:
+  Label: v1.1-hotfix
+? [snap] WARNING: This will permanently delete the snapshot tag. Continue? [y/N] y
+[snap] Deleting tag "v1.1-hotfix"...
+[snap] Cleaned up attribute metadata.
+[snap] Snapshot "v1.1-hotfix" deleted successfully.
+```
+
+### 7. `snap edit [id_or_label]`
+Edits the label and description of an existing snapshot.
+
+```cmd
+D:\Projects\my-app>snap edit v1.0
+? Select snapshot to edit: › v1.0 Initial release
+[snap] Editing snapshot "v1.0":
+? Enter new label (tag name): v1.0-final
+? Enter new description: Final version for initial release
+...
+[snap] Snapshot successfully updated to "v1.0-final".
+```
+
+### 8. `snap update`
+Amends the **active** snapshot with the current state of the project.
+
+```cmd
+D:\Projects\my-app>snap update
+
+[snap] This command will replace the active snapshot...
+  Target Snapshot:
+    Label:       v1.1
+[snap] This will amend the commit... This action is hard to undo. [y/N] y
+...
+[snap] Update complete. Snapshot "v1.1" now points to new commit [b8c9d0e].
+```
+
+### 9. `snap options`
+Allows you to configure global settings for the tool.
+
+```cmd
+D:\Projects\my-app>snap options
+? Select option to change:
+> showIds            - Controls if IDs are shown in lists (current: false)
+  confirm_command    - Asks for y/N on destructive actions (current: true)
+```
+---
+
+## 🏗️ Building from Source
+
+If you want to modify the tool or build it yourself, you'll need the Rust toolchain.
+
+1.  **Install Rust**: If you don't have it, get it from [rustup.rs](https://rustup.rs).
+2.  **Clone the Repository**:
+    ```cmd
+    git clone https://github.com/your-username/snap.git
+    cd snap
+    ```
+3.  **Build the Release Executable**:
+    ```cmd
+    cargo build --release
+    ```
+4.  **Find the Executable**: The final `snap.exe` will be in the `target/release/` directory. You can then copy it to a location in your PATH.
+
+---
+
+## 🛠️ Troubleshooting
+
+*   **`Error: Git is not installed or not in your system PATH.`**: `snap` requires `git.exe` to function. Install Git for Windows and ensure its `bin` and `cmd` directories are in your system's PATH.
+*   **`'snap' is not recognized...`**: This means the directory containing `snap.exe` was not correctly added to your PATH, or you haven't opened a new terminal window since adding it.
+*   **`Error: Not a snap repository...`**: You are trying to run a command (like `list` or `new`) inside a directory that has not been initialized. Run `snap init` first.
+
+---
+
+## 🤝 Contributing
+
+Contributions are welcome!
+
+1.  Fork the repository.
+2.  Create your feature branch (`git checkout -b feature/my-new-feature`).
+3.  Make your changes to the `.rs` files within the `src/` directory.
+4.  Test your changes by running `cargo run -- <command>` (e.g., `cargo run -- list`).
+5.  **Rebuild the release executable** by running `cargo build --release`.
+6.  Test the new `snap.exe` file thoroughly.
+7.  Commit your changes (`git commit -am 'Add some feature'`).
+8.  Push to the branch (`git push origin feature/my-new-feature`).
+9.  Open a Pull Request.
+
+---
+
+## 📜 License
+
+This project is licensed under the MIT License.
+```
+
+src/cli.rs:
+```rust
+use clap::{Args, Parser, Subcommand};
+
+#[derive(Parser, Debug)]
+#[command(author, version, about = "A blazing fast, Git-powered snapshot tool.", long_about = None)]
+pub struct Cli {
+    #[command(subcommand)]
+    pub command: Commands,
+}
+
+#[derive(Subcommand, Debug)]
+pub enum Commands {
+    /// Initialize a new snap repository for this project
+    Init(InitArgs),
+    /// Create a new versioned snapshot of the project
+    New(NewArgs),
+    /// List all available snapshots for this project
+    List(ListArgs),
+    /// Restore project to a previous snapshot state
+    Restore(RestoreArgs),
+    /// Permanently delete a snapshot and its data
+    Delete(DeleteArgs),
+    /// Edit the label and description of a snapshot
+    Edit(EditArgs),
+    /// Replaces the latest snapshot with the current project state
+    Update(UpdateArgs),
+    /// Compare two snapshots and show a list of changes
+    Diff(DiffArgs),
+    /// Configure global snap options
+    Options(OptionsArgs),
+}
+
+#[derive(Args, Debug)]
+pub struct InitArgs {}
+
+#[derive(Args, Debug)]
+pub struct NewArgs {
+    /// The short, memorable name for the snapshot (e.g., "v1.0")
+    pub label: String,
+    /// A longer description of the changes in this snapshot
+    #[arg(trailing_var_arg = true, allow_hyphen_values = true)]
+    pub description: Vec<String>,
+}
+
+#[derive(Args, Debug)]
+pub struct ListArgs {}
+
+#[derive(Args, Debug)]
+pub struct RestoreArgs {
+    /// The ID or label of the snapshot to restore. Shows a menu if omitted.
+    pub id_or_label: Option<String>,
+}
+
+#[derive(Args, Debug)]
+pub struct DeleteArgs {
+    /// The ID or label of the snapshot to delete. Shows a menu if omitted.
+    pub id_or_label: Option<String>,
+}
+
+#[derive(Args, Debug)]
+pub struct EditArgs {
+    /// The ID or label of the snapshot to edit. Shows a menu if omitted.
+    pub id_or_label: Option<String>,
+}
+
+#[derive(Args, Debug)]
+pub struct UpdateArgs {}
+
+#[derive(Args, Debug)]
+pub struct DiffArgs {
+    /// The first snapshot (ID or label) to compare
+    pub snapshot_a: String,
+    /// The second snapshot (ID or label) to compare
+    pub snapshot_b: String,
+}
+
+#[derive(Args, Debug)]
+pub struct OptionsArgs {}
+```
+
+src/commands/delete.rs:
+```rust
+use crate::cli::DeleteArgs;
+use crate::config::{ensure_config_exists, load_config};
+use crate::utils::{
+    ask_yes_no, delete_external_attributes, find_snapshot, format_snapshot_line, get_snapshots,
+    run_command, Snapshot,
+};
+use anyhow::{anyhow, Result};
+use colored::*;
+use inquire::Select;
+
+pub fn execute(args: DeleteArgs) -> Result<()> {
+    ensure_config_exists()?;
+    let config = load_config()?;
+
+    let snapshots = get_snapshots()?;
+    if snapshots.is_empty() {
+        return Err(anyhow!("No snapshots found to delete."));
+    }
+
+    // Determine which snapshot to delete, either from args or an interactive menu
+    let snapshot_to_delete = match args.id_or_label {
+        Some(key) => find_snapshot(&snapshots, &key)
+            .cloned()
+            .ok_or_else(|| anyhow!("Snapshot \"{}\" not found.", key)),
+        None => {
+            let choices: Vec<String> = snapshots
+                .iter()
+                .map(|s| format_snapshot_line(s, config.options.show_ids))
+                .collect();
+            let choice = Select::new("Select snapshot to delete:", choices).prompt()?;
+            snapshots
+                .iter()
+                .find(|s| format_snapshot_line(s, config.options.show_ids) == choice)
+                .cloned()
+                .ok_or_else(|| anyhow!("Could not find selected snapshot."))
+        }
+    }?;
+
+    println!("\n{}", "[snap] You are about to delete snapshot:".cyan());
+    println!("  Label: {}", snapshot_to_delete.tag);
+
+    if config.options.confirm_command {
+        let proceed = ask_yes_no(
+            "[snap] WARNING: This will permanently delete the snapshot tag. Continue?",
+            false,
+        )?;
+        if !proceed {
+            println!("{}", "[snap] Deletion cancelled.".yellow());
+            return Ok(());
+        }
+    }
+
+    println!("{}", format!("[snap] Deleting tag \"{}\"...", snapshot_to_delete.tag).cyan());
+    run_command(&format!("git tag -d {}", snapshot_to_delete.tag), None)?;
+
+    delete_external_attributes(&snapshot_to_delete.full_id)?;
+
+    println!("{}", format!("[snap] Snapshot \"{}\" deleted successfully.", snapshot_to_delete.tag).green());
+    Ok(())
+}
+```
+
+src/commands/diff.rs:
+```rust
+use crate::cli::DiffArgs;
+use crate::config::ensure_config_exists;
+use crate::utils::{find_snapshot, get_snapshots, load_external_metadata};
+use anyhow::{anyhow, Result};
+use colored::*;
+use std::collections::{HashMap, HashSet};
+
+pub fn execute(args: DiffArgs) -> Result<()> {
+    ensure_config_exists()?;
+
+    let snapshots = get_snapshots()?;
+    let snapshot_a = find_snapshot(&snapshots, &args.snapshot_a)
+        .ok_or_else(|| anyhow!("Could not find snapshot '{}'", args.snapshot_a))?;
+    let snapshot_b = find_snapshot(&snapshots, &args.snapshot_b)
+        .ok_or_else(|| anyhow!("Could not find snapshot '{}'", args.snapshot_b))?;
+
+    println!(
+        "\n{} {} (\"{}\") ➜ {} (\"{}\"):\n",
+        "[snap] Comparing snapshots".cyan(),
+        snapshot_a.id.yellow(),
+        snapshot_a.tag,
+        snapshot_b.id.yellow(),
+        snapshot_b.tag
+    );
+
+    let hidden_a: HashSet<_> = load_external_metadata(&snapshot_a.full_id)?.into_iter().collect();
+    let hidden_b: HashSet<_> = load_external_metadata(&snapshot_b.full_id)?.into_iter().collect();
+    
+    let diff_output = crate::utils::run_command(
+        &format!("git diff --name-status {} {}", snapshot_a.full_id, snapshot_b.full_id),
+        None,
+    )?;
+
+    let mut changes = HashMap::from([
+        ("added", 0), ("deleted", 0), ("modified", 0), ("renamed", 0), ("copied", 0), ("visibility", 0)
+    ]);
+    let mut files_in_diff = HashSet::new();
+
+    for line in diff_output.lines() {
+        let parts: Vec<&str> = line.split('\t').collect();
+        let status = parts[0].chars().next().unwrap_or('?');
+        let file_path = parts.get(1).copied().unwrap_or("");
+        
+        let (prefix, color, label) = match status {
+            'A' => ("+", "green", "added"),
+            'D' => ("-", "red", "deleted"),
+            'M' => ("~", "yellow", "modified"),
+            'R' => (">", "cyan", "renamed"),
+            'C' => ("C", "cyan", "copied"),
+            _ => ("?", "white", "unknown"),
+        };
+
+        println!("  {}", format!("{} {}", prefix, file_path).color(color));
+        *changes.entry(label).or_insert(0) += 1;
+        files_in_diff.insert(file_path.to_string());
+    }
+
+    let all_hidden_paths: HashSet<_> = hidden_a.union(&hidden_b).cloned().collect();
+
+    for path in all_hidden_paths {
+        if files_in_diff.contains(&path) { continue; }
+        
+        let is_hidden_a = hidden_a.contains(&path);
+        let is_hidden_b = hidden_b.contains(&path);
+
+        if is_hidden_a != is_hidden_b {
+            println!("  {}", format!("! {} (visibility changed)", path).magenta());
+            *changes.entry("visibility").or_insert(0) += 1;
+        }
+    }
+
+    let summary_parts: Vec<String> = changes.iter()
+        .filter(|(_, &count)| count > 0)
+        .map(|(&label, &count)| {
+            if label == "visibility" {
+                format!("{} visibility {}", count, if count > 1 {"changes"} else {"change"})
+            } else {
+                format!("{} {}", count, label)
+            }
+        }).collect();
+
+    if summary_parts.is_empty() {
+        println!("{}", "[snap] The two snapshots are identical. No differences found.".green());
+    } else {
+        println!("\n{} {}", "[snap] Summary:".cyan(), summary_parts.join(", "));
+    }
+
+    Ok(())
+}
+```
+
+src/commands/edit.rs:
+```rust
+use crate::cli::EditArgs;
+use crate::config::{ensure_config_exists, load_config};
+use crate::utils::{find_snapshot, format_snapshot_line, get_snapshots, run_command, Snapshot};
+use anyhow::{anyhow, Result};
+use colored::*;
+use inquire::{Select, Text};
+
+fn sanitize_tag_name(label: &str) -> String {
+    label
+        .trim()
+        .replace(char::is_whitespace, "-")
+        .chars()
+        .filter(|c| c.is_alphanumeric() || *c == '-' || *c == '.' || *c == '_')
+        .collect()
+}
+
+pub fn execute(args: EditArgs) -> Result<()> {
+    ensure_config_exists()?;
+    let config = load_config()?;
+
+    let snapshots = get_snapshots()?;
+    if snapshots.is_empty() {
+        return Err(anyhow!("No snapshots found to edit."));
+    }
+
+    // Determine which snapshot to edit, either from args or an interactive menu
+    let snapshot_to_edit = match args.id_or_label {
+        Some(key) => find_snapshot(&snapshots, &key)
+            .cloned()
+            .ok_or_else(|| anyhow!("Snapshot \"{}\" not found.", key)),
+        None => {
+            let choices: Vec<String> = snapshots
+                .iter()
+                .map(|s| format_snapshot_line(s, config.options.show_ids))
+                .collect();
+            let choice = Select::new("Select snapshot to edit:", choices).prompt()?;
+            snapshots
+                .iter()
+                .find(|s| format_snapshot_line(s, config.options.show_ids) == choice)
+                .cloned()
+                .ok_or_else(|| anyhow!("Could not find selected snapshot."))
+        }
+    }?;
+
+    println!("\n{} \"{}\":", "[snap] Editing snapshot".cyan(), snapshot_to_edit.tag);
+
+    let new_label = Text::new("Enter new label (tag name):")
+        .with_initial_value(&snapshot_to_edit.tag)
+        .with_validator(inquire::required!("Label cannot be empty."))
+        .prompt()?;
+    
+    let new_description = Text::new("Enter new description:")
+        .with_initial_value(&snapshot_to_edit.description)
+        .prompt()?;
+
+    let new_tag_name = sanitize_tag_name(&new_label);
+
+    if new_tag_name == snapshot_to_edit.tag && new_description == snapshot_to_edit.description {
+        println!("{}", "[snap] No changes detected. Edit cancelled.".yellow());
+        return Ok(());
+    }
+
+    // Fail fast if the new tag name already exists (and it's not the same tag)
+    if new_tag_name != snapshot_to_edit.tag && snapshots.iter().any(|s| s.tag == new_tag_name) {
+        return Err(anyhow!("A snapshot with the label \"{}\" already exists.", new_tag_name));
+    }
+
+    println!("\n{}", "[snap] Applying changes... This will replace the old tag.".yellow());
+
+    // Delete the old tag
+    run_command(&format!("git tag -d {}", snapshot_to_edit.tag), None)?;
+
+    // Create the new tag pointing to the same commit
+    let tag_cmd = format!("git tag -a \"{}\" -F - {}", new_tag_name, snapshot_to_edit.full_id);
+    run_command(&tag_cmd, Some(&new_description))?;
+
+    println!("\n{}", format!("[snap] Snapshot successfully updated to \"{}\".", new_tag_name).green());
+
+    Ok(())
+}
+```
+
+src/commands/init.rs:
+```rust
+use crate::cli::InitArgs;
+use crate::config::{load_config, save_config, SnapConfig};
+use crate::utils::{is_git_repo, run_command};
+use anyhow::Result;
+use colored::*;
+use inquire::Text;
+use std::fs;
+
+pub fn execute(_args: InitArgs) -> Result<()> {
+    if is_git_repo() {
+        println!("{}", "[snap] This directory is already a Git repository.".yellow());
+        return Ok(());
+    }
+
+    let mut config = load_config()?;
+    if config.backup_root.is_empty() || !fs::metadata(&config.backup_root).is_ok() {
+        println!("{}", "[snap] The `backup_root` location is not configured.".yellow());
+        let path = Text::new("Enter the full path for your central backup directory:")
+            .with_validator(inquire::required!("Path cannot be empty."))
+            .prompt()?;
+        
+        let normalized_path = path.replace('\\', "/");
+        fs::create_dir_all(&normalized_path)?;
+        config.backup_root = normalized_path;
+        save_config(&config)?;
+        println!("{} {}", "[snap] Set backup_root to:".green(), config.backup_root);
+    } else {
+         // ensure default config is saved if file didn't exist
+        save_config(&config)?;
+    }
+
+    run_command("git init", None)?;
+    let cwd = std::env::current_dir()?.to_string_lossy().to_string();
+    println!("{} {}", "[snap] Initialized empty snap repository in".green(), cwd);
+    Ok(())
+}
+```
+
+src/commands/list.rs:
+```rust
+use crate::cli::ListArgs;
+use crate::config::{ensure_config_exists, load_config};
+use crate::utils::{format_timestamp, get_active_commit_full, get_snapshots};
+use anyhow::Result;
+use colored::*;
+use std::path::Path;
+
+// A small helper trait to make padding strings to a fixed width easier.
+trait PadStr {
+    fn pad_to_width(&self, width: usize) -> String;
+}
+
+// Implement the trait for string slices. This will truncate long strings and pad short ones.
+impl PadStr for &str {
+    fn pad_to_width(&self, width: usize) -> String {
+        let mut s = self.to_string();
+        // Truncate if the string is longer than the available space
+        if s.len() > width.saturating_sub(2) {
+            s.truncate(width.saturating_sub(2));
+        }
+        // Pad with spaces to fill the column width
+        format!("{:<width$}", s, width = width)
+    }
+}
+
+pub fn execute(_args: ListArgs) -> Result<()> {
+    // Ensure we are in an initialized snap project
+    ensure_config_exists()?;
+    let config = load_config()?;
+    let snapshots = get_snapshots()?;
+    let active_commit = get_active_commit_full()?.unwrap_or_default();
+
+    // Get the current directory name for the header
+    let project_name = Path::new(".")
+        .canonicalize()?
+        .file_name()
+        .and_then(|s| s.to_str())
+        .unwrap_or("current project");
+
+    println!("\n{} \"{}\":", "[snap] Snapshots for".cyan(), project_name);
+
+    if snapshots.is_empty() {
+        println!("\n  {}", "No snapshots found. Use \"snap new <label>\" to create one.".yellow());
+        return Ok(());
+    }
+
+    // Define column widths, matching the original Node.js version
+    let show_ids = config.options.show_ids;
+    let id_w = if show_ids { 9 } else { 0 };
+    let label_w = 16;
+    let desc_w = 28;
+    let time_w = 17;
+
+    // Build the header string
+    let mut header = "  ".to_string();
+    let mut separator = "  ".to_string();
+
+    if show_ids {
+        header.push_str(&"ID".pad_to_width(id_w));
+        separator.push_str(&"-".repeat(id_w - 2).pad_to_width(id_w));
+    }
+    header.push_str(&"Label".pad_to_width(label_w));
+    header.push_str(&"Description".pad_to_width(desc_w));
+    header.push_str("Timestamp");
+
+    separator.push_str(&"-".repeat(label_w - 2).pad_to_width(label_w));
+    separator.push_str(&"-".repeat(desc_w - 2).pad_to_width(desc_w));
+    separator.push_str(&"-".repeat(time_w - 1).pad_to_width(time_w));
+    
+    println!("\n{}", header.bold());
+    println!("{}", separator.bold());
+
+    // Iterate through snapshots and print each formatted row
+    for snap in snapshots {
+        let is_active = !active_commit.is_empty() && snap.full_id == active_commit;
+        let mut line = "  ".to_string();
+
+        if show_ids {
+            line.push_str(&snap.id.as_str().pad_to_width(id_w));
+        }
+        line.push_str(&snap.tag.as_str().pad_to_width(label_w));
+        line.push_str(&snap.description.as_str().pad_to_width(desc_w));
+        line.push_str(&format_timestamp(&snap.timestamp).as_str().pad_to_width(time_w));
+        
+        if is_active {
+            line.push_str(&format!("   {}", "(active)".green().bold()));
+        }
+        println!("{}", line);
+    }
+    
+    Ok(())
+}
+```
+
+src/commands/mod.rs:
+```rust
+pub mod delete;
+pub mod diff;
+pub mod edit;
+pub mod init;
+pub mod list;
+pub mod new;
+pub mod options;
+pub mod restore;
+pub mod update;
+```
+
+src/commands/new.rs:
+```rust
+use crate::cli::NewArgs;
+use crate::config::ensure_config_exists;
+use crate::utils::{
+    check_dirty, get_active_commit_full, get_snapshots, run_command, save_external_attributes,
+};
+use anyhow::{anyhow, Result};
+use colored::*;
+
+fn sanitize_tag_name(label: &str) -> String {
+    label
+        .trim()
+        .replace(char::is_whitespace, "-")
+        .chars()
+        .filter(|c| c.is_alphanumeric() || *c == '-' || *c == '.' || *c == '_')
+        .collect()
+}
+
+pub fn execute(args: NewArgs) -> Result<()> {
+    ensure_config_exists()?;
+    
+    let tag_name = sanitize_tag_name(&args.label);
+    
+    // Fail fast if tag exists
+    if get_snapshots()?.iter().any(|s| s.tag == tag_name) {
+        return Err(anyhow!("Snapshot \"{}\" already exists.", tag_name));
+    }
+    
+    if !check_dirty()? {
+        println!("{}", "[snap] No changes to commit. Working tree is clean.".yellow());
+        return Ok(());
+    }
+
+    let description = args.description.join(" ");
+
+    println!("\n{}", "[snap] Step 1/4: Staging all files...".green());
+    run_command("git add -A", None)?;
+
+    println!("{}", "[snap] Step 2/4: Creating the commit...".green());
+    let commit_msg = format!("Snapshot: {}", tag_name);
+    run_command(&format!("git commit -m \"{}\"", commit_msg), None)?;
+
+    let full_id = get_active_commit_full()?.ok_or_else(|| anyhow!("Failed to get new commit ID"))?;
+
+    println!("{}", "[snap] Step 3/4: Saving file attribute metadata...".green());
+    save_external_attributes(&full_id)?;
+
+    println!("{}", "[snap] Step 4/4: Creating the annotated snapshot tag...".green());
+    let tag_cmd = format!("git tag -a \"{}\" -F -", tag_name);
+    run_command(&tag_cmd, Some(&description))?;
+
+    let short_id = &full_id[..7];
+    println!("\n{} [{}] {}", "[snap] New snapshot created:".green(), short_id, tag_name);
+
+    Ok(())
+}
+```
+
+src/commands/options.rs:
+```rust
+use crate::cli::OptionsArgs;
+use crate::config::{load_config, save_config};
+use anyhow::Result;
+use colored::*;
+use inquire::{Select, Confirm};
+
+pub fn execute(_args: OptionsArgs) -> Result<()> {
+    let mut config = load_config()?;
+
+    let options_map = vec![
+        ("showIds", "Controls if IDs are shown in lists"),
+        ("confirm_command", "Asks for y/N on destructive actions"),
+    ];
+
+    let display_options: Vec<String> = options_map
+        .iter()
+        .map(|(key, desc)| {
+            let current_value = match *key {
+                "showIds" => config.options.show_ids,
+                "confirm_command" => config.options.confirm_command,
+                _ => false,
+            };
+            format!("{:<18} - {} (current: {})", key, desc, current_value.to_string().cyan())
+        })
+        .collect();
+
+    let choice = Select::new("Select option to change:", display_options).prompt()?;
+
+    // Find the key from the selected display string
+    let key_to_change = options_map
+        .iter()
+        .find(|(_, _)| choice.contains(&format!("{} -", _ .0)))
+        .map(|(key, _)| *key)
+        .unwrap();
+
+    let current_value = match key_to_change {
+        "showIds" => config.options.show_ids,
+        "confirm_command" => config.options.confirm_command,
+        _ => unreachable!(),
+    };
+
+    let new_value = Confirm::new(&format!("Set '{}' to:", key_to_change))
+        .with_default(current_value)
+        .with_formatter(&|ans| if ans { "true" } else { "false" }.to_string())
+        .prompt()?;
+
+    match key_to_change {
+        "showIds" => config.options.show_ids = new_value,
+        "confirm_command" => config.options.confirm_command = new_value,
+        _ => {}
+    }
+
+    save_config(&config)?;
+
+    println!(
+        "\n{}",
+        format!("[snap] Configuration saved: {} is now {}.", key_to_change, new_value.to_string().bold()).green()
+    );
+
+    Ok(())
+}
+```
+
+src/commands/restore.rs:
+```rust
+use crate::cli::RestoreArgs;
+use crate::config::{ensure_config_exists, load_config};
+use crate::utils::{
+    ask_yes_no, check_dirty, find_snapshot, format_snapshot_line, get_active_commit_full,
+    get_snapshots, load_external_metadata, run_command, Snapshot,
+};
+use anyhow::{anyhow, Result};
+use colored::*;
+use inquire::Select;
+use std::collections::HashSet;
+use std::env;
+use std::path::Path;
+
+pub fn execute(args: RestoreArgs) -> Result<()> {
+    ensure_config_exists()?;
+    let config = load_config()?;
+
+    let source_commit_id = get_active_commit_full()?.unwrap_or_default();
+
+    if check_dirty()? {
+        println!("\n{}", "[snap] WARNING: Your project has uncommitted changes.".yellow());
+        let proceed = ask_yes_no(
+            "To restore a snapshot, all local changes must be discarded. Continue?",
+            false,
+        )?;
+        if !proceed {
+            println!("{}", "[snap] Restore cancelled.".yellow());
+            return Ok(());
+        }
+        println!("{}", "[snap] Discarding all local changes...".cyan());
+        run_command("git reset --hard HEAD", None)?;
+        run_command("git clean -fd", None)?;
+        println!("{}\n", "[snap] Workspace is now clean. Proceeding with restore.".green());
+    }
+
+    let snapshots = get_snapshots()?;
+    if snapshots.is_empty() {
+        return Err(anyhow!("No snapshots found to restore."));
+    }
+
+    // Determine which snapshot to restore, either from args or an interactive menu
+    let snapshot_to_restore = match args.id_or_label {
+        Some(key) => find_snapshot(&snapshots, &key)
+            .cloned() // Clone the snapshot data
+            .ok_or_else(|| anyhow!("Snapshot \"{}\" not found.", key)),
+        None => {
+            let choices: Vec<String> = snapshots
+                .iter()
+                .map(|s| format_snapshot_line(s, config.options.show_ids))
+                .collect();
+            let choice = Select::new("Select snapshot to restore:", choices).prompt()?;
+            // Find the original snapshot struct from the formatted string
+            snapshots
+                .iter()
+                .find(|s| format_snapshot_line(s, config.options.show_ids) == choice)
+                .cloned()
+                .ok_or_else(|| anyhow!("Could not find selected snapshot."))
+        }
+    }?;
+
+    println!("\n{} \"{}\"...", "[snap] Restoring project files for snapshot".cyan(), snapshot_to_restore.tag);
+    run_command(&format!("git checkout --force {}", snapshot_to_restore.tag), None)?;
+
+    // --- Attribute Synchronization ---
+    println!("{}", "[snap] Synchronizing hidden file attributes...".cyan());
+    
+    // Use HashSets for efficient lookups
+    let source_hidden: HashSet<_> = load_external_metadata(&source_commit_id)?.into_iter().collect();
+    let target_hidden: HashSet<_> = load_external_metadata(&snapshot_to_restore.full_id)?.into_iter().collect();
+
+    let cwd = env::current_dir()?;
+
+    // Un-hide files that were hidden before but shouldn't be now
+    for path_str in source_hidden.difference(&target_hidden) {
+        let full_path = cwd.join(path_str);
+        if full_path.exists() {
+            // The `attrib -H` command in Windows makes a file visible
+            let _ = run_command(&format!("attrib -H \"{}\"", full_path.to_string_lossy()), None);
+        }
+    }
+
+    // Hide files that should be hidden in the target snapshot
+    for path_str in &target_hidden {
+        let full_path = cwd.join(path_str);
+        if full_path.exists() {
+            // The `attrib +H` command in Windows makes a file hidden
+            let _ = run_command(&format!("attrib +H \"{}\"", full_path.to_string_lossy()), None);
+        }
+    }
+
+    println!("\n{}", "[snap] Restore complete. Your project is now at the state of this snapshot.".green());
+
+    Ok(())
+}
+```
+
+src/commands/update.rs:
+```rust
+use crate::cli::UpdateArgs;
+use crate::config::{ensure_config_exists, load_config};
+use crate::utils::{
+    ask_yes_no, check_dirty, delete_external_attributes, find_snapshot, get_active_commit_full,
+    get_snapshots, run_command, save_external_attributes,
+};
+use anyhow::{anyhow, Result};
+use colored::*;
+
+pub fn execute(_args: UpdateArgs) -> Result<()> {
+    ensure_config_exists()?;
+    let config = load_config()?;
+
+    if !check_dirty()? {
+        println!("{}", "[snap] No changes to update. Working tree is clean.".yellow());
+        return Ok(());
+    }
+
+    let active_commit_full = get_active_commit_full()?
+        .ok_or_else(|| anyhow!("Cannot get active commit. Are you in a git repository?"))?;
+
+    let snapshots = get_snapshots()?;
+    let active_snapshot = find_snapshot(&snapshots, &active_commit_full)
+        .ok_or_else(|| anyhow!("The current state (HEAD) does not correspond to a known snapshot.\nHint: You may need to run `snap restore` to an existing snapshot first."))?;
+
+    println!("\n{}", "[snap] This command will replace the active snapshot with the current project state.".cyan());
+    println!("{}", "  Target Snapshot:".yellow());
+    println!("    Label:       {}", active_snapshot.tag);
+    println!("    Description: {}", active_snapshot.description);
+
+    if config.options.confirm_command {
+        let proceed = ask_yes_no(
+            &format!("[snap] This will amend the commit for snapshot \"{}\". This action is hard to undo.", active_snapshot.tag),
+            false
+        )?;
+        if !proceed {
+            println!("{}", "[snap] Update cancelled.".yellow());
+            return Ok(());
+        }
+    }
+
+    println!("\n{}", "[snap] Step 1/4: Deleting old attribute metadata...".cyan());
+    delete_external_attributes(&active_snapshot.full_id)?;
+
+    println!("{}", "[snap] Step 2/4: Staging changes and amending commit...".cyan());
+    run_command("git add -A", None)?;
+    // Use --allow-empty to handle cases where an update reverts the previous change.
+    run_command("git commit --amend --no-edit --allow-empty", None)?;
+    
+    let new_commit_id = get_active_commit_full()?
+        .ok_or_else(|| anyhow!("Failed to get new commit ID after amend."))?;
+
+    println!("{}", "[snap] Step 3/4: Saving new attribute metadata...".cyan());
+    save_external_attributes(&new_commit_id)?;
+
+    let new_short_id = &new_commit_id[..7];
+    println!("{}", format!("[snap] Step 4/4: Moving tag \"{}\" to new commit {}...", active_snapshot.tag, new_short_id).cyan());
+
+    // Force-update the annotated tag, passing the original description via stdin
+    let tag_cmd = format!("git tag -a -f \"{}\" -F -", active_snapshot.tag);
+    run_command(&tag_cmd, Some(&active_snapshot.description))?;
+
+    println!("\n{}", format!("[snap] Update complete. Snapshot \"{}\" now points to new commit [{}].", active_snapshot.tag, new_short_id).green());
+
+    Ok(())
+}
+```
+
+src/config.rs:
+```rust
+use anyhow::{anyhow, Context, Result};
+use serde::{Deserialize, Serialize};
+use std::fs;
+use std::path::{Path, PathBuf};
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct SnapConfig {
+    pub options: Options,
+    pub backup_root: String,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct Options {
+    #[serde(default = "default_bool_false")]
+    pub show_ids: bool,
+    #[serde(default = "default_bool_true")]
+    pub confirm_command: bool,
+}
+
+fn default_bool_false() -> bool { false }
+fn default_bool_true() -> bool { true }
+
+impl Default for SnapConfig {
+    fn default() -> Self {
+        SnapConfig {
+            options: Options {
+                show_ids: false,
+                confirm_command: true,
+            },
+            backup_root: String::new(),
+        }
+    }
+}
+
+pub fn get_config_path() -> Result<PathBuf> {
+    let exe_path =
+        std_ext::env::current_exe().context("Failed to get current executable path")?;
+    let snap_dir = exe_path
+        .parent()
+        .ok_or_else(|| anyhow!("Failed to get parent directory of executable"))?;
+    Ok(snap_dir.join(".snapconfig"))
+}
+
+pub fn load_config() -> Result<SnapConfig> {
+    let config_path = get_config_path()?;
+    if !config_path.exists() {
+        return Ok(SnapConfig::default());
+    }
+    let content = fs::read_to_string(&config_path)
+        .with_context(|| format!("Failed to read config file at {:?}", config_path))?;
+    serde_json::from_str(&content).context("Failed to parse .snapconfig JSON")
+}
+
+pub fn save_config(config: &SnapConfig) -> Result<()> {
+    let config_path = get_config_path()?;
+    let content = serde_json::to_string_pretty(config)
+        .context("Failed to serialize config to JSON")?;
+    fs::write(&config_path, content)
+        .with_context(|| format!("Failed to write config file to {:?}", config_path))
+}
+
+pub fn ensure_config_exists() -> Result<()> {
+    let config_path = get_config_path()?;
+    if !config_path.exists() {
+        return Err(anyhow!(
+            "Configuration file .snapconfig not found. Run 'snap init' to create one."
+        ));
+    }
+    Ok(())
+}
+```
+
+src/main.rs:
+```rust
+mod cli;
+mod commands;
+mod config;
+mod utils;
+
+use anyhow::Result;
+use clap::Parser;
+use cli::{Cli, Commands};
+
+fn main() -> Result<()> {
+    let cli = Cli::parse();
+
+    match cli.command {
+        Commands::Init(args) => commands::init::execute(args),
+        Commands::New(args) => commands::new::execute(args),
+        Commands::List(args) => commands::list::execute(args),
+        Commands::Restore(args) => commands::restore::execute(args),
+        Commands::Delete(args) => commands::delete::execute(args),
+        Commands::Edit(args) => commands::edit::execute(args),
+        Commands::Update(args) => commands::update::execute(args),
+        Commands::Diff(args) => commands::diff::execute(args),
+        Commands::Options(args) => commands::options::execute(args),
+    }
+}
+```
+
+src/utils.rs:
+```rust
+use crate::config::{load_config, SnapConfig};
+use anyhow::{anyhow, Context, Result};
+use chrono::{DateTime, Local};
+use colored::*;
+use sha1::{Digest, Sha1};
+use std::io::{self, Write};
+use std::path::{Path, PathBuf};
+use std::process::{Command, Stdio};
+use std::{env, fs};
+
+#[derive(Debug, Clone)]
+pub struct Snapshot {
+    pub full_id: String,
+    pub id: String,
+    pub tag: String,
+    pub description: String,
+    pub timestamp: String,
+}
+
+// A direct translation of your `runCommand` function.
+pub fn run_command(cmd_str: &str, input: Option<&str>) -> Result<String> {
+    let mut parts = cmd_str.split_whitespace();
+    let command = parts.next().ok_or_else(|| anyhow!("Empty command"))?;
+    let args: Vec<&str> = parts.collect();
+
+    let mut cmd = Command::new(command);
+    cmd.args(&args);
+
+    if input.is_some() {
+        cmd.stdin(Stdio::piped());
+    }
+    cmd.stdout(Stdio::piped()).stderr(Stdio::piped());
+
+    let mut child = cmd.spawn().with_context(|| format!("Failed to spawn command: {}", cmd_str))?;
+
+    if let (Some(stdin), Some(input_data)) = (child.stdin.as_mut(), input) {
+        stdin.write_all(input_data.as_bytes())?;
+    }
+
+    let output = child.wait_with_output()?;
+
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        return Err(anyhow!(
+            "Command failed: {}\n---\n{}",
+            cmd_str,
+            stderr.trim()
+        ));
+    }
+
+    Ok(String::from_utf8(output.stdout)?)
+}
+
+pub fn is_git_repo() -> bool {
+    Path::new(".git").exists()
+}
+
+pub fn check_dirty() -> Result<bool> {
+    let output = run_command("git status --porcelain", None)?;
+    Ok(!output.trim().is_empty())
+}
+
+pub fn get_active_commit_full() -> Result<Option<String>> {
+    match run_command("git rev-parse HEAD", None) {
+        Ok(output) => Ok(Some(output.trim().to_string())),
+        Err(_) => Ok(None),
+    }
+}
+
+pub fn get_snapshots() -> Result<Vec<Snapshot>> {
+    // Using git's built-in atom format for robust parsing
+    let command = r#"git for-each-ref refs/tags --sort=-taggerdate --format="%(refname:short)	%(*objectname)	%(taggerdate:iso)	%(contents:subject)""#;
+    let output = match run_command(command, None) {
+        Ok(out) => out,
+        Err(_) => return Ok(vec![]), // No tags found is not an error
+    };
+
+    let snapshots: Vec<Snapshot> = output
+        .lines()
+        .filter_map(|line| {
+            let parts: Vec<&str> = line.split('\t').collect();
+            if parts.len() >= 4 {
+                let full_id = parts[1].to_string();
+                Some(Snapshot {
+                    id: full_id.chars().take(7).collect(),
+                    full_id,
+                    tag: parts[0].to_string(),
+                    timestamp: parts[2].to_string(),
+                    description: parts[3].to_string(),
+                })
+            } else {
+                None
+            }
+        })
+        .collect();
+    Ok(snapshots)
+}
+
+pub fn find_snapshot<'a>(
+    snaps: &'a [Snapshot],
+    key: &str,
+) -> Option<&'a Snapshot> {
+    snaps
+        .iter()
+        .find(|s| s.tag == key || s.id == key || s.full_id == key)
+}
+
+fn get_project_id() -> Result<String> {
+    let cwd = env::current_dir()?;
+    let project_path_str = cwd.to_string_lossy();
+    let project_name = cwd
+        .file_name()
+        .ok_or_else(|| anyhow!("Cannot get project name from path"))?
+        .to_string_lossy();
+
+    let mut hasher = Sha1::new();
+    hasher.update(project_path_str.as_bytes());
+    let hash = hasher.finalize();
+    let hash_short = &hex::encode(hash)[..8];
+
+    let sanitized_name = project_name.replace(|c: char| !c.is_alphanumeric(), "_");
+    Ok(format!("{}_[{}]", sanitized_name, hash_short))
+}
+
+fn get_external_metadata_path(config: &SnapConfig, commit_id: &str) -> Result<PathBuf> {
+    if config.backup_root.is_empty() {
+        return Err(anyhow!("'backup_root' is not configured."));
+    }
+    let project_id = get_project_id()?;
+    let metadata_dir = Path::new(&config.backup_root).join(project_id);
+    Ok(metadata_dir.join(format!("{}.json", commit_id)))
+}
+
+fn get_hidden_paths() -> Result<Vec<String>> {
+    let cwd = env::current_dir()?.to_string_lossy().to_string();
+    // This is Windows-specific, matching the original project's behavior.
+    let cmd = format!("dir /s /b /a:h \"{}\"", cwd);
+    let output = run_command(&cmd, None).unwrap_or_default(); // Ignore errors if no hidden files
+    
+    let hidden_paths: Vec<String> = output
+        .lines()
+        .filter_map(|line| {
+            let full_path = Path::new(line.trim());
+            // Make path relative and normalize
+            if let Ok(rel_path) = full_path.strip_prefix(&cwd) {
+                if !rel_path.starts_with(".git") {
+                    return Some(rel_path.to_string_lossy().replace('\\', "/"));
+                }
+            }
+            None
+        })
+        .collect();
+        
+    Ok(hidden_paths)
+}
+
+pub fn save_external_attributes(commit_id: &str) -> Result<()> {
+    let config = load_config()?;
+    let path_info = get_external_metadata_path(&config, commit_id)?;
+    
+    println!("{}", "[snap] Scanning for hidden file attributes...".cyan());
+    let hidden = get_hidden_paths()?;
+
+    if hidden.is_empty() {
+        if path_info.exists() {
+            fs::remove_file(path_info)?;
+        }
+        return Ok(());
+    }
+
+    if let Some(parent) = path_info.parent() {
+        fs::create_dir_all(parent)?;
+    }
+    
+    let json_content = serde_json::to_string_pretty(&hidden)?;
+    fs::write(path_info, json_content)?;
+
+    Ok(())
+}
+
+pub fn load_external_metadata(commit_id: &str) -> Result<Vec<String>> {
+    let config = load_config()?;
+    if commit_id.is_empty() { return Ok(vec![]); }
+    let path_info = get_external_metadata_path(&config, commit_id)?;
+    if !path_info.exists() {
+        return Ok(vec![]);
+    }
+    let content = fs::read_to_string(path_info)?;
+    Ok(serde_json::from_str(&content)?)
+}
+
+pub fn delete_external_attributes(commit_id: &str) -> Result<()> {
+    let config = load_config()?;
+    let path_info = get_external_metadata_path(&config, commit_id)?;
+    if path_info.exists() {
+        fs::remove_file(path_info)?;
+        println!("{}", "[snap] Cleaned up attribute metadata.".dimmed());
+    }
+    Ok(())
+}
+
+pub fn ask_yes_no(question: &str, default: bool) -> Result<bool> {
+    let prompt = if default { "[Y/n]" } else { "[y/N]" };
+    let answer = inquire::Text::new(&format!("{} {}", question.yellow(), prompt))
+        .with_help_message("Press Enter to accept the default")
+        .prompt_skippable()?
+        .map(|s| s.trim().to_lowercase());
+
+    Ok(match answer.as_deref() {
+        Some("") | None => default,
+        Some(s) => s.starts_with('y'),
+    })
+}
+
+pub fn format_timestamp(iso_str: &str) -> String {
+    match DateTime::parse_from_rfc3339(iso_str) {
+        Ok(dt) => dt.with_timezone(&Local).format("%d.%m.%Y %H:%M").to_string(),
+        Err(_) => "Invalid date".to_string(),
+    }
+}
+
+pub fn format_snapshot_line(s: &Snapshot, show_ids: bool) -> String {
+    let desc_text = if s.description.is_empty() {
+        "".to_string()
+    } else {
+        s.description.clone()
+    };
+
+    if show_ids {
+        format!("{} - {} {}", s.id, s.tag, desc_text.dimmed())
+    } else {
+        format!("{} {}", s.tag, desc_text.dimmed())
+    }
+}
+```
+
+ >>>]**
+
+---
+
+**Part 3: The Modernization Research Report**
+
+To bridge the knowledge gap between mid-2023 and the present (2025), I used an internet-connected AI to perform a detailed analysis. The report below contains a list of updated dependency versions, a summary of breaking changes in those dependencies, recommendations for idiomatic code improvements, and links to the latest documentation.
+
+This report is now your **"ground truth"** for the modernization task.
+
+**[<<< ChatGPT Deep Research:
+"
+Great. I’ll now perform a comprehensive review of all dependencies listed in your `Cargo.toml`, including any standard, development, or build dependencies that may be discovered. I’ll assess the latest stable versions, summarize breaking changes since the versions you're using, and recommend migration strategies—especially focusing on crates like `clap`, `inquire`, and `anyhow`.
+
+I’ll also review your Rust code for idiomatic improvements based on 2025 best practices and compile a list of up-to-date documentation links for all dependencies.
+
+I’ll let you know once the full modernization report is ready.
+
+
+# Modernization Audit: Snap CLI Project
+
+## Dependency Version Summary
+
+| **Crate**      | **Current Version**  | **Latest Version (2025)** | **Upgrade Notes**                         |
+| -------------- | -------------------- | ------------------------- | ----------------------------------------- |
+| **Clap**       | 3.x (assumed)        | **4.5.40**                | Major update (breaking changes)           |
+| **Inquire**    | 0.4 or 0.5 (assumed) | **0.7.5**                 | Minor breaking changes in 0.7.x           |
+| **Colored**    | 2.x (assumed)        | **3.0.0**                 | MSRV bump; no API break for usage         |
+| **Serde**      | \~1.0.130 (assumed)  | **1.0.219**               | Compatible (1.x series)                   |
+| **Serde JSON** | \~1.0.60 (assumed)   | **1.0.140**               | Compatible (1.x series)                   |
+| **Anyhow**     | \~1.0.40 (assumed)   | **1.0.98**                | Compatible (1.x; new features)            |
+| **sha1**       | 0.6.x (assumed)      | **0.10.6**                | Major changes (RustCrypto impl)           |
+| **Chrono**     | 0.4.1x (assumed)     | **0.4.41**                | Compatible (0.4.x series)                 |
+| **std-ext**    | 0.3.x (assumed)      | **0.3.2**                 | No recent updates (consider alternatives) |
+
+## Per-Dependency Analysis and Recommendations
+
+### Clap (Command-Line Argument Parser)
+
+**Latest:** **Clap 4.5.40** on crates.io.
+**Breaking Changes:** Upgrading from Clap 2.x/3.x to 4.x introduces significant API changes. All deprecated APIs from v2/v3 were removed in v4. Notably, the builder pattern has changed: use `Command::new()` instead of `App::new`, and `Arg::new()` instead of `Arg::with_name` (the older `with_name` is gone). The `ArgMatches` API is also updated – for example, `ArgMatches::is_present` and `ArgMatches::value_of` are removed. In Clap v4, boolean flags should use an explicit action and be retrieved with `get_flag` (or `get_one::<bool>`), and values are retrieved with `get_one` instead of `value_of`. Clap 4 introduces the `ArgAction` enum to control flag behavior (e.g. `ArgAction::SetTrue` replaces the old implicit bool flag handling). If the project currently uses features like `AppSettings` (e.g. `ColoredHelp`), note that Clap 4 polished the help system and some settings were removed or made defaults. Overall, migrating to 4.x will require code changes (especially in how arguments are defined and accessed), but the Clap maintainers provide a detailed changelog and migration guide.
+
+**Upgrade Recommendation:** **Migrate to Clap 4.x.** This is a major version bump that will require code updates, but it brings improved performance and a cleaner API. The easiest path is to use Clap’s *derive* API in v4 for defining CLI arguments via structs and attributes, which greatly simplifies argument parsing code. For example, instead of manually building an `App` with `.arg` calls, you can derive `Parser` on a struct of options. This yields more idiomatic and maintainable code. If you prefer the builder API, it’s still available in v4 but with the new conventions (use `Command`, `Arg`, etc., from `clap::builder`). Plan to replace any deprecated patterns (e.g. `is_present` -> use `ArgAction::SetTrue` and then `matches.get_flag("arg")` for booleans, and `value_of` -> `get_one`) during the upgrade. The migration is non-trivial but well worth it for long-term maintenance, as Clap 4 is the current standard and is actively supported.
+
+**Documentation:** Refer to the [**Clap 4.x official docs**](https://docs.rs/clap/4.5.40/clap/) for updated usage. The **Clap 4 changelog** (which includes a migration guide) is also essential reading.
+
+### Inquire (Interactive Prompts)
+
+**Latest:** **Inquire 0.7.5** – a library for interactive terminal prompts (confirm, text input, multi-select, etc.).
+**Breaking Changes:** The jump from earlier versions (0.4–0.6) to **0.7.x** introduced a few breaking changes. Notably, in **0.7.0** the filtering behavior for selection prompts was changed: the `Select` and `MultiSelect` prompt filter functions now return an `Option<i64>` score, whereas previously they likely returned a different type (this was done to improve how fuzzy search scoring works). If the project uses custom filters for these prompts, that code will need adjustment. Additionally, there were internal updates to the rendering and color handling; for example, a regression in 0.7.0 affecting colored text in prompts was fixed in later 0.7.x releases. For standard usage (text prompts, confirm prompts, etc.), the API remains very similar – most prompt types and method names (like `Text::new()`, `.prompt()`) are unchanged, so many upgrades will be straightforward. Just be mindful of any **custom validators or filters**, as their signatures may have changed slightly in 0.7.
+
+**Upgrade Recommendation:** **Upgrade to 0.7.5**, the latest stable. In most cases this is a **minor migration**: update the Cargo.toml version and test the prompts. Check the changelog for any deprecated methods the project might be using (for instance, earlier versions had some differently named functions or lacked some of the new builder patterns now available). If Snap’s code doesn’t use the advanced filter customization, the upgrade should be almost a drop-in replacement. If it does, adapt the filter function to the new signature introduced in 0.7.0. Inquire 0.7 also brings improvements like better UTF-8 handling and updated dependencies (e.g. using latest **crossterm** for terminal handling), which is beneficial. No alternative prompt crate is necessary unless you seek substantially different functionality; **Inquire** remains a modern choice (alternatives like `dialoguer` exist, but Inquire is up-to-date and full-featured).
+
+**Documentation:** See [**Inquire 0.7.x docs**](https://docs.rs/inquire/0.7.5/inquire/) for the latest usage. The repository’s CHANGELOG highlights the 0.7.0 changes which are useful for migration.
+
+### Colored (Terminal Text Coloring)
+
+**Latest:** **colored 3.0.0** – a crate to colorize terminal output via trait extensions (e.g. `"hello".green().bold()`).
+**Breaking Changes:** The 3.0.0 release has **minimal breaking changes for consumers**. In fact, the primary breaking change was raising the minimum supported Rust version (MSRV) to 1.80 and removing an internal dependency on `lazy_static`. This means that as long as you’re building on a recent Rust toolchain (which you likely are if updating in 2025), you won’t notice functional differences. The API for `colored` remains the same (the extension trait `Colorize` and methods like `.red()`, `.blue()`, etc., are unchanged). No migration in usage is needed besides updating the version. The only caution is if the project was on a much older Rust compiler, it will now require Rust 1.80+ to use colored 3.0.0. There were a couple of new convenience methods added (e.g. `ansi_color` methods) but no removals of existing methods in the public API.
+
+**Upgrade Recommendation:** This is a **safe version bump**. Update to **colored 3.0.0** and simply recompile. Ensure the Rust toolchain is up-to-date (Rust 2021 edition or later) to satisfy the MSRV. The crate is actively maintained (the 3.x release modernized internals and improved compatibility). There are alternative coloring crates (such as [`owo-colors`](https://crates.io/crates/owo-colors) or `yansi`), but **colored** is still perfectly fine to use. If you encounter any limitations (e.g. performance or no-support for disabling colors), you might consider `owo-colors` which offers a more explicit API, but for most CLI output needs, **colored 3.0.0** is sufficient and straightforward.
+
+**Documentation:** Refer to [**Colored 3.0 docs**](https://docs.rs/colored/3.0.0/colored/) for confirmation of methods. The usage (e.g. import `colored::Colorize`) remains the same. The changelog snippet confirms no major API changes in v3 aside from Rust version requirements.
+
+### Serde (Serialization) and Serde JSON
+
+**Latest Serde:** **1.0.219** (Serde’s API has remained at 1.0.x for years, with only patch updates).
+**Latest Serde\_JSON:** **1.0.140** (the JSON data format crate for Serde).
+
+**Breaking Changes:** **None in terms of API** – Serde upholds SemVer stability on the 1.0 series. Upgrading from an older 1.0.x (e.g. 1.0.130 or any 1.0.\*) to 1.0.219 will not break any code using the documented APIs. All derive traits (`Serialize`, `Deserialize`) and functions (like `serde_json::to_string`/`from_str`) work as before. Most changes are internal improvements, new features, or support for newer Rust features. For example, newer Serde versions may have better performance and expanded support for `no_std` or certain edge cases, but the upgrade won’t require code changes. One potential consideration: if the project’s **Cargo.toml** didn’t already enable the `derive` feature of Serde (or was using the old separate `serde_derive` crate), it’s idiomatic now to ensure `serde = { version = "1.0", features = ["derive"] }` is used, to have the derives in scope. But this is not a breaking change per se, just a check.
+
+Serde\_JSON similarly hasn’t had breaking API changes; all functions and `Value` types remain the same. Patch updates have included small additions like new methods on `Value` or more efficient implementations. (One notable internal change: Serde\_JSON no longer depends on the deprecated `ryu` or `itoa` crates for number formatting as separate dependencies, but that’s transparent to users.)
+
+**Upgrade Recommendation:** This is a **simple version bump**. Update to **serde 1.0.219** and **serde\_json 1.0.140** (or latest at time of upgrade). After updating, run tests to ensure everything (especially serialization of any custom data structures) works as before – it should. There is no new “more modern” alternative to Serde; it remains the standard for Rust serialization. Just make sure to take advantage of Serde’s idiomatic patterns if not already: for example, use `#[derive(Serialize, Deserialize)]` on your structs for config or data files rather than manual parsing. The project already uses Serde, so this is likely in place. No migration needed beyond possibly enabling any features you weren’t using (Serde has added some minor features like const generics support for arrays, etc., but those don’t require code changes unless you need them).
+
+**Documentation:** See [**Serde documentation**](https://docs.rs/serde/1.0.219/serde/) and [**Serde JSON docs**](https://docs.rs/serde_json/1.0.140/serde_json/) for the latest reference. The official Serde site also provides an overview and examples (useful if you plan to extend usage). Since there are no breaking changes, the existing usage will map directly onto the latest docs.
+
+### Anyhow (Error Handling)
+
+**Latest:** **Anyhow 1.0.98** – a ubiquitous error handling crate for application-level errors.
+**Breaking Changes:** None. Anyhow has stayed within the 1.0.x series with a stable API. All macros (`anyhow!`, `bail!`, `ensure!`), the `anyhow::Error` type, and extension traits (`Context`) function the same in 1.0.98 as in earlier 1.0.x versions. The main developments in Anyhow have been around **Error backtrace support**. Notably, since Rust 1.65 stabilized `std::error::Error::backtrace`, Anyhow now captures a backtrace by default on stable Rust (if you enable it via environment var). In older versions of Anyhow, backtrace support was gated behind nightly or the `backtrace` feature; now it’s integrated: if you run the program with `RUST_BACKTRACE=1` or `RUST_LIB_BACKTRACE=1`, an `anyhow::Error` will print a backtrace of its origin. This isn’t a breaking change, but a new feature. Another internal change was adjustments to support no-std (irrelevant for a CLI app on std) and raising MSRV when needed (Anyhow now requires Rust 1.65+ to use backtrace, and Rust 1.81+ for no-std mode as per docs).
+
+**Upgrade Recommendation:** **Bump to 1.0.98** (or latest 1.0.x). This should require no code changes. After upgrading, you can take advantage of improvements: for example, ensure you use `anyhow::Result<T>` as return types in functions (including `main`) for simplicity if not already doing so. It’s idiomatic in 2025 to have `fn main() -> anyhow::Result<()>` so that you can use the `?` operator at the top level and let errors print nicely; Anyhow supports this pattern well (the error will be printed with a message and backtrace if enabled, and return code set to 1). Also, consider using `Context` (`with_context` / `context` methods) to enrich errors with user-friendly messages – this makes troubleshooting easier. The crate has no direct “superseding” alternative; it’s still the go-to for easy error handling in CLI apps (alternatively, some use `eyre` for colorized error reports, but functionally Anyhow is solid and maintained by the community).
+
+**Documentation:** Refer to [**Anyhow 1.0 docs**](https://docs.rs/anyhow/1.0.98/anyhow/). The docs include clear examples of usage, including how to use `Result<T, Error>` and attach context. The excerpt on backtrace in the docs is worth a read to understand how to enable and use it, since this is a newer feature that might aid debugging.
+
+### sha1 (SHA-1 Hash Function)
+
+**Latest:** **sha1 0.10.6** – now part of the RustCrypto project’s hashing crates.
+**Breaking Changes:** Yes, if coming from an older 0.6.x version. The **sha1** crate was revamped when it moved under RustCrypto. In practical terms, the hashing API is a bit different and aligns with other RustCrypto hashes. For example, in sha1 0.10, you create a hasher with `Sha1::new()` and process data with the `Digest` trait’s `update` method, then call `finalize()` to get the result. This is similar to before, but if the older 0.6 version had slight differences (older versions might have had a function like `sha1::Sha1::digest_bytes` or so), you’ll need to adjust to the new usage. The RustCrypto version also requires importing the `Digest` trait from `sha1` or the `digest` crate to get methods like `update` and `finalize` in scope. Another change: the crate’s ownership and implementation changed – the old 0.6 was a minimal implementation; now 0.10.6 uses the well-vetted implementation from the `sha-1` crate and includes optional SIMD optimizations. This means performance and safety improvements. However, **one important non-code change**: **SHA-1 is considered cryptographically broken**. The docs explicitly warn that SHA-1 should not be used for security-critical purposes due to demonstrated collision attacks. If Snap was using SHA-1 for any security or cryptography context (e.g. hashing passwords, signing, etc.), this is a red flag.
+
+**Upgrade Recommendation:** If the project’s use of SHA-1 is purely for non-security identifiers or legacy reasons, you can **upgrade to sha1 0.10.6** and update the code to the new API. This likely means replacing any `Sha1::from(<data>)` or `sha1::Sha1::new()` usages with the new call and ensuring that after `finalize()` you handle the output (which is a byte array) correctly. The upgrade itself is not too complex – mostly **small code migrations** to use the `Digest` trait (e.g., `hasher.update(buf)` and `hasher.finalize()` returning a `[u8;20]` result).
+
+More importantly, **re-evaluate the necessity of SHA-1**. As part of modernization, consider moving to a stronger hash algorithm if appropriate. For example, if you need a cryptographic hash, use the `sha2` crate for SHA-256 or SHA-512, or `blake3` for a fast modern hash. These crates have similar APIs (also part of RustCrypto). If backward compatibility or a specific file format requires SHA-1, then at least you are using the updated crate – just be sure to communicate the risks (the latest crate docs themselves emphasize that SHA-1 is broken for secure use). To summarize: upgrade to **0.10.6** and **prefer a more secure alternative** if possible for new development.
+
+**Documentation:** Check the [**sha1 crate docs**](https://docs.rs/sha1/0.10.6/sha1/) for the current usage. The examples show the new pattern (using `Sha1` with the `Digest` trait). The documentation also includes the important warning about SHA-1’s security status. If migrating to another hash (e.g. sha2), see that crate’s docs similarly (they usually share the `Digest` trait interface).
+
+### Chrono (Date and Time Library)
+
+**Latest:** **Chrono 0.4.41** – Chrono is still on the 0.4.x line as of 2025. (A 0.5.0 release has been in long planning, but not released yet; instead the maintainers continue to backport fixes and features into 0.4.x.)
+**Breaking Changes:** None in the 0.4 series. Upgrading from an older 0.4.x (e.g. 0.4.19 or 0.4.30) to 0.4.41 is safe and backward-compatible. Chrono has maintained the same APIs for core types like `DateTime<Utc>`, `NaiveDate`, `Duration`, etc. What *has* changed over time are improvements and deprecations of very old dependencies. For instance, Chrono 0.4.20 finally removed its dependency on the deprecated `time 0.1` library which had potential unsoundness issues. That was a behind-the-scenes change – if you were not directly using Chrono’s internals related to time zones, you wouldn’t notice except that a vulnerability was fixed. Newer Chrono versions also add small features like additional methods (e.g. a `.quarter()` method was added around 0.4.40) and support for newer time zones data via the `chrono-tz` companion crate. No existing methods were removed; at most you might see new deprecation warnings if you use something outdated (for example, Chrono’s old `datetime.format().to_string()` usage might encourage using `.to_rfc3339()` or similar, but that’s been the case for a while).
+
+**Upgrade Recommendation:** **Update to 0.4.41.** This should cause no issues. After upgrading, you might gain minor benefits such as bug fixes for date math and the removal of the `time 0.1` dependency (meaning your project avoids a potential segfault from that old crate). Continue to use Chrono’s API as before. If the project uses Chrono’s features like parsing/formatting or time zone conversions, those remain the same. One consideration: Chrono’s development has slowed, and there is community discussion about the future (with potential for a 0.5 or a switch to the new `time` crate). At this time, Chrono is still the most straightforward choice for date/time in Rust when you need full timezone support. For modernization, you could *consider* the `time` crate v0.3 as an alternative – it’s more actively developed and has a cleaner API for some uses, but it lacks built-in timezone databases. If Snap doesn’t need time zones (only needs UTC or local times), `time 0.3` could be a modern alternative. However, migration would be a sizable change as the types differ. It’s perfectly fine to stick with Chrono 0.4.x; just keep an eye on Chrono 0.5.0 if it comes, or any advisory about Chrono. In summary, **no code changes** required for 0.4.41, and you get the most secure, up-to-date version of Chrono.
+
+**Documentation:** Use the [**Chrono docs**](https://docs.rs/chrono/0.4.41/chrono/) for reference. All familiar structures (`DateTime`, `NaiveDate`, etc.) and methods will be present. The changelog on GitHub gives details on the fixes (e.g. removal of `time 0.1` in 0.4.30), but since no API break, the docs you used for the older version still apply to 0.4.41.
+
+### std-ext (Standard Library Extensions)
+
+**Latest:** **std-ext 0.3.2** – a small crate that provides extensions to the Rust standard library (utilities like extended traits for `HashMap`, caching wrappers, etc.).
+**Status & Changes:** The std-ext crate is relatively niche and hasn’t seen a new release recently (0.3.2 is the latest, likely released some time ago). There are no indications of a 1.0 or major changes; it appears to be a collection of utility traits (e.g. `CacheMapExt`, `TimedValue`, etc. as re-exported in the crate). Since it’s not a widely known crate, there isn’t a public changelog of breaking changes beyond its own documentation. We will assume Snap is using it for something like caching (the presence of `TimedValue` suggests a time-to-live cache functionality). In updating from 0.3.x to 0.3.2 (if not already on 0.3.2), there are likely no code changes required – patch versions usually just add features or fixes. However, one concern is whether **std-ext is still the best choice** going forward.
+
+**Modern Alternatives:** The need for a crate like std-ext might be re-evaluated. Some of its functionality might now be achievable with standard library features or more popular crates:
+
+* If using `CacheMapExt` or `TimedValue` for cached entries with expiration, consider a dedicated caching crate like **cached** or **stash** which are actively maintained and well-tested for cache semantics.
+* If using `wrapper::HashExt` or `OrdExt` traits from std-ext (perhaps providing convenient methods on collections), check if the latest Rust stdlib now includes similar functionality. It’s possible that what was missing in Rust 1.50 (for example) might exist by Rust 1.70+.
+* Since std-ext is not a common dependency, verify that it’s still compatible with the latest Rust. If it builds fine, it’s okay to keep using it, but be aware it’s a small project by a specific author (“tryor”) and not widely adopted.
+
+**Upgrade Recommendation:** If you decide to keep **std-ext**, update to the latest 0.3.2 (if not already on it) – this should be a **no-impact upgrade**. Test the specific features Snap uses to ensure they behave as expected. Simultaneously, consider whether you can **eliminate this dependency** by using other means:
+
+* For example, if Snap uses a `HashMap` with expiry times, you could use `std::time::Instant` stored in your map and periodically prune expired entries, avoiding the need for an external crate.
+* If Snap uses some trait from std-ext to extend `Option` or `Result`, check if newer Rust got an equivalent (Rust often introduces methods like `Option::unwrap_or_default` or `Result::map_or` which might cover what an extension was providing).
+
+If a more modern, maintained crate covers the use case (like `once_cell` for lazy statics or `itertools` for iterator extensions), those might be preferable simply due to community support. In absence of any issues, std-ext can remain – just be mindful to watch its repo if any updates occur.
+
+**Documentation:** The [**std-ext docs**](https://docs.rs/std-ext/0.3.2/std_ext/) describe its utilities. There’s no official alternative documentation since it’s a grab-bag crate. Reading its docs or source might clarify if it’s providing critical functionality for Snap. Use that to decide if you continue with it or refactor away from it.
+
+### Dev and Build Dependencies
+
+The project’s Cargo.toml does not list any `[dev-dependencies]` or `[build-dependencies]` in the provided scope. Currently, it appears Snap doesn’t use any test-specific or build-time crates. Modernizing could involve adding some for a better development workflow:
+
+* **Testing Helpers:** If Snap includes integration tests (or if you plan to add some), consider using **`assert_cmd`** (to easily run the CLI in tests and assert on output) or **`assert_fs`** (to handle fixture files in tests). These crates make it idiomatic to test CLI apps. Another useful one is **`insta`** for snapshot testing (capturing CLI outputs and diffing on changes). These would go under `[dev-dependencies]` since they’re only for tests. For example, `assert_cmd = "2.0"` allows you to do `Command::cargo_bin("snap")...` in tests and verify it runs without error.
+
+* **Clap Complete:** If you want to generate shell completion scripts or man pages for your CLI, **`clap_complete`** is a companion crate that can be added (dev or build). Clap v4 makes it easy to build completions using this, and it’s something to consider providing for end-users of Snap. This isn’t mandatory, but it’s a modernization “nice-to-have.”
+
+* **Build-Time Info:** Some CLI projects use build-dependencies like **`vergen`** or **`built`** to embed compile-time info (git commit, build time, etc.). If Snap would benefit from a `--version` output that includes more detail, one of these crates could be added under `[build-dependencies]`. This is optional and only if you see a need.
+
+In summary, while no dev/build dependencies are present now, adding some testing and tooling deps can improve the project. This doesn’t affect runtime, only the development process.
+
+## Idiomatic Rust Usage Improvements
+
+Beyond updating crate versions, a key part of modernization is refactoring the code to use current **idiomatic Rust patterns**. After reviewing typical CLI code (in `main.rs`, `utils.rs`, `commands/init.rs`), here are recommendations:
+
+* **Use `Result` in `main`:** If not already done, have `fn main() -> anyhow::Result<()>` (or other Error type) instead of manually handling errors inside main. This lets you use the `?` operator at the top level and will automatically print error messages and set a non-zero exit code if an error occurs. It greatly simplifies error propagation from your `init` command or others. For example:
+
+  ```rust
+  fn main() -> anyhow::Result<()> {
+      commands::init::run()?;  // if this returns Err, the error prints and program exits
+      Ok(())
+  }
+  ```
+
+  This is more idiomatic in 2025 than using `std::process::exit(...)` or printing errors manually.
+
+* **Leverage Anyhow’s Context:** When handling operations like file I/O, wrap them with context. For instance, in `init.rs` if you open a file or create a directory, use `.with_context(|| "descriptive message")` to enrich any error. This yields errors like “Failed to create config directory: Permission denied” instead of just “Permission denied”. This makes the CLI more user-friendly when things go wrong.
+
+* **Clap Derive API:** Simplify argument parsing by using **derive macros** provided by Clap instead of manually constructing the CLI in code. For example, you can define:
+
+  ```rust
+  #[derive(clap::Parser)]
+  struct CliArgs {
+      #[arg(short, long, help = "Enable verbose output")]
+      verbose: bool,
+      #[command(subcommand)]
+      command: Commands,
+  }
+  #[derive(clap::Subcommand)]
+  enum Commands {
+      Init { #[arg(help="path to config")] path: String },
+      // ... other subcommands
+  }
+  ```
+
+  Then in `main()` do `let args = CliArgs::parse();` – Clap will handle the rest. This approach, introduced in Clap 3 and polished in Clap 4, is more declarative and reduces boilerplate. It automatically generates help messages from struct field metadata and validates arguments, making the code in `main.rs` much cleaner.
+
+* **Avoid `.unwrap()` and `.expect()` in non-test code:** Any legacy `.unwrap()` calls on Results or Options should be reviewed. Replace them with error propagation (`?`) or more graceful handling. For example, if `utils.rs` had something like `env::var("HOME").unwrap()`, this could crash; instead use `?` and give context: `let home = std::env::var("HOME").context("HOME environment variable not set")?;`. This ties in with using Result returns – you’d propagate the error upward rather than unwrapping.
+
+* **Use New Language Features (Rust 2021+):** The project can adopt modern Rust language improvements:
+
+  * **`if let` chains and `let-else`:** These make control flow more readable. For example, if in `init.rs` you had:
+
+    ```rust
+    if let Some(cfg) = config_path() {
+        // use cfg
+    } else {
+        return Err(anyhow!("No config path found"));
+    }
+    ```
+
+    this can be refactored to a `let-else` statement for clarity:
+
+    ```rust
+    let cfg = config_path().ok_or_else(|| anyhow!("No config path found"))?;
+    ```
+
+    Or even use `let Some(cfg) = config_path() else { return Err(...); };` (available since Rust 1.65) which clearly signals an early return on the unhappy path. This results in flatter, more linear code than deeply nested matches.
+  * **`match` ergonomics:** Use wildcard matches and ignore unused variables with `_` if needed, and prefer `matches!` macro for simple boolean conditions. For instance, `if matches!(mode, Mode::Fast)` reads nicely.
+  * **`IntoIterator` for arrays:** If you ever manually indexed arrays, note that Rust 2021 lets you iterate over arrays directly (no need for `.iter()` in for-loops).
+  * **`std::fs` convenience methods:** Use functions like `std::fs::write(path, contents)?` and `std::fs::read_to_string(path)?` instead of manually opening files and writing. These were available before, but if not utilized, they can reduce verbosity (as shown in Anyhow’s example).
+  * **Path management:** If combining paths, use the `/` operator from Rust 1.63 for `PathBuf` (e.g. `path / "subdir" / "file.txt"`).
+
+* **Replace Outdated Std APIs:** If any deprecated std functions are used, update them. For example, `std::env::home_dir` was long deprecated – the modern approach is to use the `dirs` crate (or `home` crate) for retrieving home directories. Similarly, `Error::description()` (from `std::error::Error`) is soft-deprecated; use `Display` implementation or source chaining instead. Ensure the code doesn’t use such outdated patterns.
+
+* **Use Iterators and the Standard Library Effectively:** Scan through `utils.rs` for any manual loops that could be written in a more functional style. For instance, if there’s code collecting items into a vector via push in a loop, see if using an iterator chain with `.map(...).collect()` makes it clearer. Rust’s iterator toolbox (including things from `itertools` crate if needed) can often simplify complex looping logic. This isn’t just for brevity – it often reduces chances for bugs.
+
+* **Structured Logging (Optional):** Currently, Snap likely prints to stdout/stderr directly (possibly using `println!` and colored text for emphasis). A modernization to consider is using a logging facade like **`log`** with a crate like **`env_logger`** or **`tracing`** for more structured output (especially if verbosity levels are needed). For example, rather than checking a `verbose` flag and then printing, you could do `log::info!` or `log::debug!` and control output via log levels. This is optional and depends on the complexity of the CLI – for a simple tool, direct `println!` might be sufficient. If keeping direct prints, at least ensure errors go to `eprintln!` and not stdout, for proper CLI behavior.
+
+In summary, aim to make the code *feel* like 2025-era Rust: minimize manual error handling in favor of `?` and `Result` returns, use modern Clap for argument parsing, eliminate deprecated calls, and take advantage of the language’s evolving features for clarity. These changes will not only make the code base more robust and easier to maintain, but also more accessible to other Rust developers who may contribute.
+
+## Documentation Links (Latest Versions)
+
+For convenience, here are direct links to the official documentation for each dependency’s latest release:
+
+* **Clap v4.5** – [Docs.rs Reference](https://docs.rs/clap/4.5.40/clap/) – *Command-line argument parser documentation (usage, derive macros, examples).*
+* **Inquire v0.7** – [Docs.rs Reference](https://docs.rs/inquire/0.7.5/inquire/) – *Interactive prompts library documentation with examples of all prompt types.*
+* **Colored v3.0** – [Docs.rs Reference](https://docs.rs/colored/3.0.0/colored/) – *Terminal color API documentation (Colorize trait methods and usage).*
+* **Serde v1.0** – [Docs.rs Reference](https://docs.rs/serde/1.0.219/serde/) – *Serialization framework docs (derives, Serializer/Deserializer traits).*
+* **Serde JSON v1.0** – [Docs.rs Reference](https://docs.rs/serde_json/1.0.140/serde_json/) – *JSON specific serialization/deserialization docs.*
+* **Anyhow v1.0** – [Docs.rs Reference](https://docs.rs/anyhow/1.0.98/anyhow/) – *Error handling docs (Result, Context, macros usage).*
+* **sha1 v0.10** – [Docs.rs Reference](https://docs.rs/sha1/0.10.6/sha1/) – *SHA-1 hash function docs (Digest trait, usage examples, warnings).*
+* **Chrono v0.4** – [Docs.rs Reference](https://docs.rs/chrono/0.4.41/chrono/) – *Date/time library docs (DateTime, NaiveDate, formatting, etc.).*
+* **std-ext v0.3** – [Docs.rs Reference](https://docs.rs/std-ext/0.3.2/std_ext/) – *Std-ext crate docs (describes provided extension traits and types).*
+
+Each of the above links points to the latest stable documentation, which should be used after upgrading to understand any new methods or best practices. By following this audit’s recommendations — upgrading dependencies to their latest versions and refactoring the code with modern Rust idioms — the **Snap** CLI project will be more robust, secure, and maintainable, using up-to-date tools and patterns from the 2024/2025 Rust ecosystem.
+"
+
+Grok Deep Research:
+"
+### Rust Project Modernization Report for `snap`
+
+**Key Points:**
+- Most dependencies in the `snap` project can be updated with minimal or no code changes, as updates are within the same major version, except for `colored` and `std-ext`.
+- The `colored` crate’s update to version 3.0.0 requires Rust 1.80 or later, which should be compatible with the project’s Rust 2021 edition.
+- The `std-ext` crate’s update to version 0.3.2 lacks clear changelog information, so manual verification of API compatibility is recommended.
+- The codebase uses idiomatic Rust patterns, with no significant outdated practices identified for 2025 standards.
+- Documentation links for the latest versions of all dependencies are provided for reference.
+
+**Dependency Updates**
+The `snap` project’s dependencies, listed in `Cargo.toml`, have been analyzed for their latest stable versions as of June 2025. Most updates are minor or patch-level, suggesting compatibility with existing code. However, `colored` and `std-ext` require attention due to a major version change and limited changelog information, respectively.
+
+**Code Modernization**
+The Rust code in `src/main.rs`, `src/utils.rs`, and `src/commands/init.rs` aligns well with modern Rust practices. Error handling with `anyhow`, command execution with `std::process::Command`, and string/path handling are all idiomatic. No major refactoring is needed, though minor optimizations could be considered.
+
+**Next Steps**
+Update the `Cargo.toml` file with the latest dependency versions, verify compatibility for `colored` and `std-ext`, and test the application thoroughly. Refer to the provided documentation links for detailed API information.
+
+---
+
+
+
+# Rust Project Modernization Report for `snap`
+
+## 1. `Cargo.toml` Dependency Update Summary
+
+The following table summarizes the current and latest stable versions of dependencies used in the `snap` project, along with recommendations for updating. The analysis is based on information available as of June 2025.
+
+| Crate         | Current Version | Latest Stable Version | Update Recommendation                               |
+|---------------|-----------------|-----------------------|---------------------------------------------------|
+| `clap`        | 4.5.4           | 4.5.40                | Safe to update, likely no breaking changes         |
+| `inquire`     | 0.7.5           | 0.7.5                 | No update needed                                   |
+| `colored`     | 2.1.0           | 3.0.0                 | Major version update, check for breaking changes   |
+| `serde`       | 1.0.203         | 1.0.219               | Safe to update                                     |
+| `serde_json`  | 1.0.117         | 1.0.140               | Safe to update                                     |
+| `anyhow`      | 1.0.86          | 1.0.98                | Safe to update                                     |
+| `sha1`        | 0.10.6          | 0.10.6                | No update needed                                   |
+| `chrono`      | 0.4.38          | 0.4.41                | Safe to update                                     |
+| `std-ext`     | 0.1.2           | 0.3.2                 | Check documentation for potential breaking changes |
+
+## 2. Detailed Dependency Analysis
+
+### `clap` (CLI Parsing)
+- **Latest Version:** 4.5.40
+- **Breaking Changes:** The update from 4.5.4 to 4.5.40 is within the same minor version, indicating patch-level updates that typically include bug fixes and minor improvements without breaking changes. The `clap` derive API used in `src/cli.rs` remains stable across these versions.
+- **Recommendation:** Update to version 4.5.40 in `Cargo.toml`. No code changes are expected, as the derive macros and API patterns in `src/cli.rs` and `src/main.rs` should remain compatible. Verify with tests to ensure no subtle behavioral changes.
+
+### `inquire` (Interactive Prompts)
+- **Latest Version:** 0.7.5
+- **Breaking Changes:** The project is already using the latest version, 0.7.5, released on April 23, 2024. No updates are available as of June 2025, and no breaking changes apply.
+- **Recommendation:** No update needed. The usage of `inquire::Text`, `inquire::Select`, and `inquire::Confirm` in files like `src/commands/init.rs` and `src/commands/delete.rs` remains valid.
+
+### `colored` (Terminal Coloring)
+- **Latest Version:** 3.0.0
+- **Breaking Changes:** The update from 2.1.0 to 3.0.0 includes a breaking change: the Minimum Supported Rust Version (MSRV) was upgraded to 1.80, and the `lazy_static` dependency was removed ([colored GitHub](https://github.com/mackwic/colored)). The project uses Rust 2021 edition, which requires at least Rust 1.56, and given the 2025 timeframe, it likely uses a newer version compatible with 1.80. The removal of `lazy_static` should not impact the project unless it indirectly relied on it through `colored`.
+- **Recommendation:** Update to version 3.0.0 in `Cargo.toml`. Ensure the Rust toolchain is at least version 1.80. Review the usage of `colored` in files like `src/commands/delete.rs` and `src/utils.rs` to confirm no reliance on deprecated features. Run tests to verify terminal output behavior.
+
+### `serde` (Serialization/Deserialization)
+- **Latest Version:** 1.0.219
+- **Breaking Changes:** The update from 1.0.203 to 1.0.219 is within the same major version, indicating backward compatibility. `serde` is known for maintaining stability within the 1.0.x series, with updates typically including performance improvements or minor feature additions.
+- **Recommendation:** Update to version 1.0.219 in `Cargo.toml`. The derive macros used in `src/config.rs` should remain unaffected. No code changes are expected.
+
+### `serde_json` (JSON Serialization/Deserialization)
+- **Latest Version:** 1.0.140
+- **Breaking Changes:** The update from 1.0.117 to 1.0.140 is within the same major version, ensuring compatibility. Updates in this range typically involve optimizations or bug fixes without API changes.
+- **Recommendation:** Update to version 1.0.140 in `Cargo.toml`. The usage in `src/utils.rs` for JSON handling should remain compatible. Test JSON serialization/deserialization to confirm.
+
+### `anyhow` (Error Handling)
+- **Latest Version:** 1.0.98
+- **Breaking Changes:** The update from 1.0.86 to 1.0.98 is within the same major version, suggesting no breaking changes. `anyhow` maintains a stable API for error handling in applications.
+- **Recommendation:** Update to version 1.0.98 in `Cargo.toml`. The error handling pattern using `anyhow::Result` in files like `src/main.rs` and `src/utils.rs` remains idiomatic and unaffected.
+
+### `sha1` (SHA1 Hashing)
+- **Latest Version:** 0.10.6
+- **Breaking Changes:** The project is already using the latest version, 0.10.6. No updates are needed.
+- **Recommendation:** No update needed. The usage in `src/utils.rs` for generating project IDs remains valid.
+
+### `chrono` (Date and Time Formatting)
+- **Latest Version:** 0.4.41
+- **Breaking Changes:** The update from 0.4.38 to 0.4.41 is within the same minor version, indicating minor improvements or bug fixes without breaking changes. The `chrono` crate is stable, and the project’s usage for timestamp formatting is straightforward.
+- **Recommendation:** Update to version 0.4.41 in `Cargo.toml`. The timestamp formatting in `src/utils.rs` (e.g., `format_timestamp`) should remain compatible.
+
+### `std-ext` (Standard Library Extensions)
+- **Latest Version:** 0.3.2
+- **Breaking Changes:** Limited information is available about the `std-ext` crate’s changelog. The update from 0.1.2 to 0.3.2 spans multiple minor versions, which may include breaking changes. The project uses `std_ext::env::current_exe()` in `src/config.rs` to get the executable path.
+- **Recommendation:** Update to version 0.3.2 in `Cargo.toml`. Review the documentation at [std-ext Docs](https://docs.rs/std-ext/0.3.2/std_ext/) to verify that `std_ext::env::current_exe()` and any other used functions have not changed. If `std-ext` is only used for `current_exe()`, consider replacing it with `std::env::current_exe()` from the standard library, which provides the same functionality and eliminates the dependency.
+
+## 3. General Code & Idiom Modernization
+
+### Error Handling
+The project uses `anyhow::Result` for error handling across all command modules and `utils.rs`, which remains a recommended practice for Rust applications in 2025. The `anyhow` crate simplifies error propagation and is well-suited for CLI tools like `snap`. No changes are needed, as the pattern is idiomatic and aligns with current best practices.
+
+### Command Execution
+The `run_command` function in `src/utils.rs` uses `std::process::Command` to execute Git commands, handling input/output and errors robustly. This approach is still idiomatic in 2025. While libraries like `git2` could provide a programmatic interface to Git, the project’s design as a wrapper around `git.exe` makes direct command execution appropriate. No changes are recommended.
+
+### String and Path Handling
+The codebase uses `format!` for string formatting and `std::path::Path` for path manipulation, both of which are standard and efficient. For example, in `src/utils.rs`, the `get_project_id` function uses `to_string_lossy` and `format!` appropriately. The `replace` method for sanitizing paths and tag names is also idiomatic. No modernization is required.
+
+### File I/O
+File operations in `src/config.rs` use `std::fs::read_to_string` and `std::fs::write`, which are the recommended methods for simple file I/O in Rust. The JSON serialization/deserialization with `serde_json` in `src/utils.rs` is also standard. No changes are needed.
+
+### Other Notes
+- **Git Interaction:** The project relies on parsing Git command output (e.g., in `get_snapshots` in `src/utils.rs`). While this is functional, consider exploring the `git2` crate for more robust Git interactions in future enhancements, though this is optional given the project’s scope.
+- **Hashing:** The use of `sha1` for generating project IDs in `src/utils.rs` is acceptable for non-security-critical purposes. If security becomes a concern, consider switching to a stronger hash like SHA-256 via the `sha2` crate.
+- **String Padding:** The custom `PadStr` trait in `src/commands/list.rs` is unnecessary, as Rust’s formatting macros (e.g., `{:<width$}`) already handle padding, as used in the implementation. This trait could be removed to simplify the code, but it’s not a significant issue.
+
+## 4. Official Documentation Links (Latest Versions)
+
+- `clap`: [clap 4.5.40 Docs](https://docs.rs/clap/4.5.40/clap/)
+- `inquire`: [inquire 0.7.5 Docs](https://docs.rs/inquire/0.7.5/inquire/)
+- `colored`: [colored 3.0.0 Docs](https://docs.rs/colored/3.0.0/colored/)
+- `serde`: [serde 1.0.219 Docs](https://docs.rs/serde/1.0.219/serde/)
+- `serde_json`: [serde_json 1.0.140 Docs](https://docs.rs/serde_json/1.0.140/serde_json/)
+- `anyhow`: [anyhow 1.0.98 Docs](https://docs.rs/anyhow/1.0.98/anyhow/)
+- `sha1`: [sha1 0.10.6 Docs](https://docs.rs/sha1/0.10.6/sha1/)
+- `chrono`: [chrono 0.4.41 Docs](https://docs.rs/chrono/0.4.41/chrono/)
+- `std-ext`: [std-ext 0.3.2 Docs](https://docs.rs/std-ext/0.3.2/std_ext/)
+
+## Key Citations
+- [crates.io Rust Package Registry](https://crates.io/)
+- [docs.rs Rust Documentation](https://docs.rs/)
+- [GitHub - mackwic/colored: Colored terminal output for Rust](https://github.com/mackwic/colored)
+
+
+"
+ >>>]**
+
+---
+
+**Your Task:**
+
+Your final task is to act on this information. Using the original Node.js project as a feature reference, the current Rust code as a starting point, and the Modernization Report as your guide, please provide the **complete and final Rust source code** for the entire `snap` project.
+
+**Requirements for the Final Output:**
+
+1.  **Update `Cargo.toml`:** Modify the `[dependencies]` section to use the latest stable versions recommended in the research report.
+2.  **Apply Code Changes:** Refactor the Rust code in `src/**/*.rs` to be compatible with the new dependency versions. Address all breaking changes identified in the report.
+3.  **Incorporate Idiomatic Improvements:** Apply any suggestions for more modern or efficient Rust idioms that were mentioned in the report.
+4.  **Provide the Full Code:** Output the complete, final source code for every single file in the Rust project, including `Cargo.toml`, `main.rs`, `utils.rs`, `config.rs`, `cli.rs`, and all files under `src/commands/`.
+
+I will be ready to copy and paste your output directly into my project files to compile the final, modernized `snap.exe`.

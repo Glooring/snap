@@ -1,0 +1,50 @@
+**Objective:** You are a senior AI software engineer tasked with completing and modernizing a Rust command-line tool. I will provide you with the complete history, source code, and a research report. Your goal is to use all of this information to produce the final, fully updated, and polished Rust code.
+
+**Project Briefing:**
+
+The project is a CLI tool called `snap`, a user-friendly wrapper around Git for creating versioned snapshots of project folders.
+
+**Part 1: The Original Node.js Project**
+
+The project started as a Node.js application. While it was fully functional, its main drawback was a noticeable startup delay due to the Node.js runtime overhead. The goal was to achieve the instantaneous performance of a native binary like `git` itself.
+
+Here is the complete file hierarchy and source code for the original Node.js version. This establishes the feature set and user experience that the new Rust version must replicate.
+
+**[<<< PLACEHOLDER 1: Paste the COMPLETE HIERARCHY AND ALL FILE CONTENTS of the original Node.js `snap_bat` project here. >>>]**
+
+---
+
+**Part 2: The Port to Rust (Current State)**
+
+To solve the performance issue, the project was ported to Rust. The following code represents the complete, but partially outdated, Rust implementation. It successfully translates all the features from the Node.js version, including command-line parsing, interactive menus, and the external metadata system for hidden files.
+
+However, this Rust code was written using dependencies and knowledge from around mid-2023. It needs to be modernized.
+
+Here is the complete file hierarchy and source code for the current Rust project.
+
+**[<<< PLACEHOLDER 2: Paste the COMPLETE HIERARCHY AND ALL FILE CONTENTS of the current Rust `snap` project here. >>>]**
+
+---
+
+**Part 3: The Modernization Research Report**
+
+To bridge the knowledge gap between mid-2023 and the present (2025), I used an internet-connected AI to perform a detailed analysis. The report below contains a list of updated dependency versions, a summary of breaking changes in those dependencies, recommendations for idiomatic code improvements, and links to the latest documentation.
+
+This report is now your **"ground truth"** for the modernization task.
+
+**[<<< PLACEHOLDER 3: Paste the COMPLETE "Rust Project Modernization Report" you received from the other AI here. >>>]**
+
+---
+
+**Your Task:**
+
+Your final task is to act on this information. Using the original Node.js project as a feature reference, the current Rust code as a starting point, and the Modernization Report as your guide, please provide the **complete and final Rust source code** for the entire `snap` project.
+
+**Requirements for the Final Output:**
+
+1.  **Update `Cargo.toml`:** Modify the `[dependencies]` section to use the latest stable versions recommended in the research report.
+2.  **Apply Code Changes:** Refactor the Rust code in `src/**/*.rs` to be compatible with the new dependency versions. Address all breaking changes identified in the report.
+3.  **Incorporate Idiomatic Improvements:** Apply any suggestions for more modern or efficient Rust idioms that were mentioned in the report.
+4.  **Provide the Full Code:** Output the complete, final source code for every single file in the Rust project, including `Cargo.toml`, `main.rs`, `utils.rs`, `config.rs`, `cli.rs`, and all files under `src/commands/`.
+
+I will be ready to copy and paste your output directly into my project files to compile the final, modernized `snap.exe`.
