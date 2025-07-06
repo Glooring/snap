@@ -2,3 +2,5 @@
 lto = true
 codegen-units = 1
 strip = true
+[target.x86_64-pc-windows-msvc]
+rustflags = ["-Ctarget-feature=+crt-static"]

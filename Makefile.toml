@@ -1,0 +1,25 @@
+# Makefile.toml
+
+[tasks.build]
+description = "Compile Snap release binary"
+command     = "cargo"
+args        = ["build", "--release"]
+
+[tasks.wix]
+description = "Compile WiX MSI installer"
+cwd         = "."
+script = [
+  # clean out old artifacts
+  "if exist target\\wix rmdir /S /Q target\\wix",
+  # generate MSI (uses wix/main.wxs that cargo wix init produced)
+  "cargo wix"
+]
+
+[tasks.nsis]
+description = "Compile NSIS EXE installer"
+command     = "makensis"
+args        = ["snap.nsi"]
+
+[tasks.installers]
+description  = "Build both MSI and EXE installers"
+dependencies = ["build", "wix", "nsis"]
