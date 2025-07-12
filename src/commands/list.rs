@@ -6,7 +6,7 @@ use colored::*;
 use std::cmp::max;
 use std::env;
 
-pub fn execute(_args: ListArgs) -> Result<()> {
+pub fn execute(args: ListArgs) -> Result<()> {
     let config = load_config()?;
     let mut snapshots = get_snapshots()?;
     let active_commit = get_active_commit_full()?.unwrap_or_default();
@@ -27,6 +27,22 @@ pub fn execute(_args: ListArgs) -> Result<()> {
         println!("\n  {}", "No snapshots found. Use \"snap new <label>\" to create one.".yellow());
         return Ok(());
     }
+    // --- START: SNAPSHOT LIST LIMIT LOGIC ---
+    let total_snapshots = snapshots.len();
+    let mut truncated = false;
+
+    // Use limit from CLI arg if present, otherwise from config.
+    let limit_str = args.limit.as_deref().unwrap_or(&config.options.list_limit);
+
+    if !limit_str.eq_ignore_ascii_case("all") {
+        if let Ok(limit) = limit_str.parse::<usize>() {
+            if limit > 0 && snapshots.len() > limit {
+                snapshots.truncate(limit);
+                truncated = true;
+            }
+        }
+    }
+    // --- END: SNAPSHOT LIST LIMIT LOGIC ---
 
     // --- START: DYNAMIC COLUMN WIDTH CALCULATION ---
 
@@ -103,6 +119,12 @@ pub fn execute(_args: ListArgs) -> Result<()> {
             line.push_str(&format!("   {}", "(active)".green().bold()));
         }
         println!("{}", line);
+    }
+    if truncated {
+        println!(
+            "  {}",
+            format!("... and {} more. Use 'snap list all' to see all snapshots.", total_snapshots - snapshots.len()).dimmed()
+        );
     }
     
     Ok(())

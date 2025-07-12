@@ -2,7 +2,7 @@ use crate::cli::OptionsArgs;
 use crate::config::{load_config, save_config, SortOrder};
 use anyhow::Result;
 use colored::*;
-use inquire::{Confirm, Select};
+use inquire::{Confirm, Select, Text};
 
 pub fn execute(_args: OptionsArgs) -> Result<()> {
     let mut config = load_config()?;
@@ -13,6 +13,7 @@ pub fn execute(_args: OptionsArgs) -> Result<()> {
         ("orderBy", "Controls the sort order for 'snap list'"),
         // --- START: NEW OPTION IN MAP ---
         ("editUpdatesTimestamp", "Controls if editing a snapshot updates its timestamp"),
+        ("listLimit", "Sets how many snapshots to show with 'snap list' (e.g., 5, 10, all)"),
         // --- END: NEW OPTION IN MAP ---
     ];
 
@@ -25,6 +26,7 @@ pub fn execute(_args: OptionsArgs) -> Result<()> {
                 "orderBy" => format!("{:?}", config.options.order_by),
                 // --- START: DISPLAY LOGIC FOR NEW OPTION ---
                 "editUpdatesTimestamp" => config.options.edit_updates_timestamp.to_string(),
+                "listLimit" => config.options.list_limit.clone(),
                 // --- END: DISPLAY LOGIC FOR NEW OPTION ---
                 _ => "Unknown".to_string(),
             };
@@ -85,7 +87,28 @@ pub fn execute(_args: OptionsArgs) -> Result<()> {
                 config.options.edit_updates_timestamp = new;
                 changed = true;
             }
-        }
+        },
+         // --- END: UI LOGIC FOR NEW OPTION ---
+        "listLimit" => {
+            let current = &config.options.list_limit;
+            let validator = |input: &str| {
+                if input.eq_ignore_ascii_case("all") {
+                    return Ok(inquire::validator::Validation::Valid);
+                }
+                match input.parse::<usize>() {
+                    Ok(n) if n > 0 => Ok(inquire::validator::Validation::Valid),
+                    _ => Ok(inquire::validator::Validation::Invalid("Must be a positive number or 'all'".into())),
+                }
+            };
+            let new = Text::new("Set the default number of snapshots to list:")
+                .with_default(current)
+                .with_validator(validator)
+                .prompt()?;
+            if current != &new {
+                config.options.list_limit = new;
+                changed = true;
+            }
+        },
         // --- END: UI LOGIC FOR NEW OPTION ---
         _ => unreachable!(),
     };

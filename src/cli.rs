@@ -43,7 +43,10 @@ pub struct NewArgs {
 }
 
 #[derive(Args, Debug)]
-pub struct ListArgs {}
+pub struct ListArgs {
+    /// Number of snapshots to show, or "all". Overrides the configured default.
+    pub limit: Option<String>,
+}
 
 #[derive(Args, Debug)]
 pub struct RestoreArgs {

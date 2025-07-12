@@ -23,7 +23,7 @@ The desire for **instantaneous, native-level performance** led to a complete rew
 *   [Usage](#-usage)
     *   [`snap init`](#1-snap-init)
     *   [`snap new <label> [description...]`](#2-snap-new-label-description)
-    *   [`snap list`](#3-snap-list)
+    *   [`snap list [limit]`](#3-snap-list-limit)
     *   [`snap diff <snapshot-A> <snapshot-B>`](#4-snap-diff-snapshot-a-snapshot-b)
     *   [`snap restore [id_or_label]`](#5-snap-restore-id_or_label)
     *   [`snap delete [id_or_label]`](#6-snap-delete-id_or_label)
@@ -138,20 +138,21 @@ D:\Projects\my-app>snap new v1.0 "Initial release"
 [snap] New snapshot created: [a1b2c3d] v1.0
 ```
 
-### 3. `snap list`
+### 3. `snap list` [limit]
 Lists all available snapshots in a compact view, showing the active one.
 
 ```cmd
-D:\Projects\my-app>snap list
+D:\Projects\my-app>snap list 2
 
 [snap] Snapshots for "my-app":
 
   Label           Description                   Timestamp
   --------------  ----------------------------  ----------------
   v1.1            Second public release         2025-06-16 09:15   (active)
-  v1.0                                          2025-06-15 17:45
+  v1.0-hotfix     A quick fix for the release   2025-06-15 18:00
+  ... and 1 more. Use 'snap list all' to see all snapshots.
 ```
-*(Note: Snapshots created without a description, like `v1.0` above, will correctly show an empty description.)*
+If [limit] is omitted, it uses the default value from your configuration (changeable via snap options). Use snap list all to view all snapshots regardless of the configured limit.
 
 ### 4. `snap diff <snapshot-A> <snapshot-B>`
 Compares two snapshots and shows a list of changes.
@@ -229,6 +230,9 @@ D:\Projects\my-app>snap options
 ? Select option to change:
 > showIds            - Controls if IDs are shown in lists (current: false)
   confirm_command    - Asks for y/N on destructive actions (current: true)
+  orderBy            - Controls the sort order for 'snap list' (current: Timestamp)
+  editUpdatesTimestamp - Controls if editing a snapshot updates its timestamp (current: false)
+  listLimit          - Sets how many snapshots to show with 'snap list' (current: all)
 ```
 ---
 

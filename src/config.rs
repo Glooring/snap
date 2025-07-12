@@ -33,10 +33,15 @@ pub struct Options {
     #[serde(default = "default_bool_false")]
     pub edit_updates_timestamp: bool,
     // --- END: NEW TIMESTAMP OPTION ---
+
+    /// How many snapshots to show in `snap list`. Can be a number or "all".
+    #[serde(default = "default_list_limit")]
+    pub list_limit: String,
 }
 
 fn default_bool_false() -> bool { false }
 fn default_bool_true() -> bool { true }
+fn default_list_limit() -> String { "all".to_string() }
 
 impl Default for SnapConfig {
     fn default() -> Self {
@@ -48,6 +53,7 @@ impl Default for SnapConfig {
                 // --- START: SET DEFAULT FOR NEW OPTION ---
                 edit_updates_timestamp: false, // Default is NOT to update the timestamp
                 // --- END: SET DEFAULT FOR NEW OPTION ---
+                list_limit: default_list_limit(),
             },
         }
     }
