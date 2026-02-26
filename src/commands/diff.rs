@@ -102,5 +102,6 @@ pub fn execute(args: DiffArgs) -> Result<()> {
         println!("\n{} {}", "[snap] Summary:".cyan(), summary_parts.join(", "));
     }
 
+    println!();
     Ok(())
 }

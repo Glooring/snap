@@ -128,5 +128,6 @@ pub fn execute(args: RestoreArgs) -> Result<()> {
     }
 
     println!("\n{}", "[snap] Restore complete. Your project is now at the state of this snapshot.".green());
+    println!();
     Ok(())
 }

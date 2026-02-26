@@ -56,5 +56,6 @@ pub fn execute(args: DeleteArgs) -> Result<()> {
     run_command(&format!("git tag -d {}", snapshot_to_delete.tag), None)?;
 
     println!("{}", format!("[snap] Snapshot \"{}\" deleted successfully.", snapshot_to_delete.tag).green());
+    println!();
     Ok(())
 }

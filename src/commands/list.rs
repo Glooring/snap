@@ -127,5 +127,6 @@ pub fn execute(args: ListArgs) -> Result<()> {
         );
     }
     
+    println!();
     Ok(())
 }

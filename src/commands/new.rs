@@ -51,7 +51,7 @@ pub fn execute(args: NewArgs) -> Result<()> {
     if !git_has_changes && !metadata_has_changes {
         println!(
             "{}",
-            "[snap] No changes to commit. Working tree is clean.".yellow()
+            "[snap] No changes to commit. Working tree is clean.\n".yellow()
         );
         return Ok(());
     }
@@ -90,5 +90,6 @@ pub fn execute(args: NewArgs) -> Result<()> {
         tag_name.bold()
     );
 
+    println!();
     Ok(())
 }

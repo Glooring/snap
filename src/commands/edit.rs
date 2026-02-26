@@ -70,12 +70,12 @@ pub fn execute(args: EditArgs) -> Result<()> {
     let new_description_trimmed = new_description.trim();
 
     if new_tag_name == snapshot_to_edit.tag && new_description_trimmed == snapshot_to_edit.description {
-        println!("{}", "[snap] No changes detected. Edit cancelled.".yellow());
+        println!("{}", "[snap] No changes detected. Edit cancelled.\n".yellow());
         return Ok(());
     }
 
     if new_tag_name != snapshot_to_edit.tag && snapshots.iter().any(|s| s.tag == new_tag_name) {
-        return Err(anyhow!("A snapshot with the label \"{}\" already exists.", new_tag_name));
+        return Err(anyhow!("A snapshot with the label \"{}\" already exists.\n", new_tag_name));
     }
 
     println!("\n{}", "[snap] Applying changes... This will replace the old tag.".yellow());
@@ -103,5 +103,6 @@ pub fn execute(args: EditArgs) -> Result<()> {
 
     println!("\n{}", format!("[snap] Snapshot successfully updated to \"{}\".", new_tag_name).green());
 
+    println!();
     Ok(())
 }

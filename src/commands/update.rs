@@ -69,5 +69,6 @@ pub fn execute(_args: UpdateArgs) -> Result<()> {
 
     println!("\n{}", format!("[snap] Update complete. Snapshot \"{}\" now points to new commit [{}].", active_snapshot.tag, new_short_id).green());
 
+    println!();
     Ok(())
 }
