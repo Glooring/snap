@@ -97,7 +97,7 @@ pub fn execute(args: ListArgs) -> Result<()> {
     println!("\n{}", header.bold());
     println!("{}", separator.bold());
 
-    for snap in snapshots {
+    for snap in &snapshots { // Iterate by reference (&) to avoid moving the vector.
         let is_active = !active_commit.is_empty() && snap.full_id == active_commit;
         let mut line = "  ".to_string();
 
@@ -123,7 +123,7 @@ pub fn execute(args: ListArgs) -> Result<()> {
     if truncated {
         println!(
             "  {}",
-            format!("... and {} more. Use 'snap list all' to see all snapshots.", total_snapshots - snapshots.len()).dimmed()
+            format!("...").dimmed()
         );
     }
     
