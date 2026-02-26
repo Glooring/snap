@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::env;
 use std::io::{self, Write};
-use std::os::windows::fs::MetadataExt;
+
 use std::path::Path; // Corrected: Removed unused PathBuf
 use std::process::{Command, Stdio};
 use walkdir::{DirEntry, WalkDir};
@@ -193,15 +193,11 @@ pub fn gather_metadata() -> Result<SnapMetadata> {
             .to_string_lossy()
             .replace('\\', "/");
 
-        let attrs = metadata.file_attributes();
-        const FILE_ATTRIBUTE_READONLY: u32 = 0x1;
-        const FILE_ATTRIBUTE_HIDDEN: u32 = 0x2;
-
-        if (attrs & FILE_ATTRIBUTE_HIDDEN) != 0 {
+        if crate::os::is_hidden(&entry) {
             hidden_paths.push(relative_path.to_string());
         }
 
-        if (attrs & FILE_ATTRIBUTE_READONLY) != 0 {
+        if crate::os::is_readonly(&metadata) {
             readonly_paths.push(relative_path.to_string());
         }
     }

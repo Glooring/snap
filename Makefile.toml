@@ -23,3 +23,17 @@ args        = ["snap.nsi"]
 [tasks.installers]
 description  = "Build both MSI and EXE installers"
 dependencies = ["build", "wix", "nsis"]
+
+[tasks.linux-build]
+description = "Compile release binary for Linux (native or cross-compile)"
+command     = "cargo"
+args        = ["build", "--release"]
+
+[tasks.linux-package]
+description = "Package Linux binary into a .tar.gz archive"
+dependencies = ["linux-build"]
+script = [
+  "mkdir -p target/linux-dist",
+  "cp target/release/snap target/linux-dist/",
+  "tar -czf target/linux-dist/snap-linux-x86_64.tar.gz -C target/linux-dist snap",
+]

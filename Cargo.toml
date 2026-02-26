@@ -3,7 +3,7 @@ name = "snap"
 version = "7.2.0" # Version bump for the final fix
 authors = ["Your Name <you@example.com>"]   # ← Added for cargo-wix
 edition = "2021"
-description = "A blazing fast, Git-powered snapshot tool for Windows developers."
+description = "A blazing fast, Git-powered snapshot tool for developers."
 license = "MIT"                             # ← Recognized SPDX license to enable EULA dialog
 
 [dependencies]

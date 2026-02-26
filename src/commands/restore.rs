@@ -93,13 +93,13 @@ pub fn execute(args: RestoreArgs) -> Result<()> {
     for path_str in source_hidden.difference(&target_hidden) {
         let full_path = cwd.join(path_str);
         if full_path.exists() {
-            let _ = run_command(&format!("attrib -H \"{}\"", full_path.to_string_lossy()), None);
+            let _ = crate::os::set_hidden(&full_path, false);
         }
     }
     for path_str in target_hidden.difference(&source_hidden) {
         let full_path = cwd.join(path_str);
         if full_path.exists() {
-            let _ = run_command(&format!("attrib +H \"{}\"", full_path.to_string_lossy()), None);
+            let _ = crate::os::set_hidden(&full_path, true);
         }
     }
 
