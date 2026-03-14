@@ -1,6 +1,6 @@
 # 📦 Snap (The Rust Edition)
 
-**A truly native, blazing-fast, and portable snapshot tool for Windows developers. Create efficient, versioned backups of your project folders with full support for hidden file attributes.**
+**A truly native, blazing-fast, and portable snapshot tool for Windows & Linux developers. Create efficient, versioned backups of your project folders with full cross-platform compatibility.**
 
 `snap` is a command-line utility that provides a simple way to capture point-in-time states of your projects. It uses the power and reliability of Git for its core operations but provides a simplified, focused workflow. It's perfect for quick, local backups before a major refactor, for archiving project milestones, or for any situation where you need a reliable "undo" button for your entire directory.
 
@@ -40,14 +40,14 @@ The desire for **instantaneous, native-level performance** led to a complete rew
 ## ✨ Key Features
 
 *   **🚀 Truly Native Performance**: Rewritten in Rust for instantaneous startup and execution. Feels as fast and responsive as `git` itself.
-*   ** Fully Portable**: The entire snapshot history, including all metadata for hidden files and empty directories, is stored *inside* the project's `.git` directory. Cloning or zipping the project folder transfers everything.
-*   ** dependable Git Core**: Leverages the rock-solid foundation of `git.exe` for all file storage and versioning. Snapshots are lightweight, annotated Git tags.
+*   ** Fully Portable**: The entire snapshot history, including all metadata, is stored *inside* the project's `.git` directory. Paths are always stored with forward slashes (`/`) internally, making your metadata 100% portable between Windows and Linux/WSL2 setups!
+*   ** dependable Git Core**: Leverages the rock-solid foundation of `git` for all file storage and versioning. Snapshots are lightweight, annotated Git tags.
 *   **⚡️ Efficient Storage**: Benefits from Git's mature Content-Addressable Storage model. Identical files across hundreds of snapshots consume the space of just one file.
-*   **🎯 Smart Restores**: `snap restore` intelligently checks for uncommitted local changes and prompts you to prevent accidental data loss. It also restores your project files and synchronizes hidden file attributes and empty directories.
-*   **🪟 Windows Native**: Fully aware of Windows file attributes. It correctly preserves and restores the **Hidden** status of files and folders using its robust internal metadata system. It also tracks and restores empty directories, which Git normally ignores.
+*   **🎯 Smart Restores**: `snap restore` intelligently checks for uncommitted local changes and prompts you to prevent accidental data loss. It also restores your project files and synchronizes metadata attributes and empty directories.
+*   **🐧 Multi-Platform Support**: Fully supports Windows, Linux, and WSL2. It correctly preserves Windows **Hidden** status when on Windows, and uses POSIX-aware permissions on Unix, managing empty directories seamlessly across both.
 *   **✍️ Rich Metadata**: Snapshots are tagged with a simple `label` and a more detailed `description`, which are stored directly in Git's annotated tags.
-*   **💻 User-Friendly CLI**: Features an interactive, arrow-key menu, human-readable timestamps, a compact list view, and an **`(active)`** marker to show you exactly which version your project is on.
-*   **🚫 Zero Dependencies**: The compiled `snap.exe` is a single, standalone binary. No need for Node.js, Rust, or any other runtime on the user's machine.
+*   **💻 User-Friendly CLI**: Features an interactive menu, human-readable timestamps, a compact list view, and an **`(active)`** marker to show you exactly which version your project is on.
+*   **🚫 Zero Dependencies**: The compiled `snap` is a standalone binary. No need for Node.js, Rust, or any other runtime on the user's machine.
 
 ---
 
@@ -90,8 +90,9 @@ This elegant design keeps your project folder clean, standard, and **100% portab
 
 ## 🔧 Prerequisites
 
-*   Windows 10 or later.
-*   **Git for Windows** must be installed and accessible in your system's PATH. `snap` relies on `git.exe` for all core operations. You can get it from [git-scm.com](https://git-scm.com/download/win).
+*   **Windows:** Windows 10 or later
+*   **Linux/WSL2:** Any modern distribution (Ubuntu, Debian, etc.)
+*   **Git** must be installed and accessible in your system's PATH (`git` on Linux, `git.exe` on Windows). `snap` relies on it for all core operations.
 
 ---
 
