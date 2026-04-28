@@ -1,5 +1,6 @@
 use crate::cli::EditArgs;
 use crate::config::{load_config, SortOrder};
+use crate::git_health::ensure_git_healthy_for_write;
 use crate::utils::{
     create_tag_message, find_snapshot, format_snapshot_line, get_snapshots, run_command,
     run_command_with_env,
@@ -19,6 +20,8 @@ fn sanitize_tag_name(label: &str) -> String {
 }
 
 pub fn execute(args: EditArgs) -> Result<()> {
+    ensure_git_healthy_for_write(false)?;
+
     let config = load_config()?;
 
     let mut snapshots = get_snapshots()?;
@@ -61,7 +64,7 @@ pub fn execute(args: EditArgs) -> Result<()> {
         .with_initial_value(&snapshot_to_edit.tag)
         .with_validator(inquire::required!("Label cannot be empty."))
         .prompt()?;
-    
+
     let new_description = Text::new("Enter new description:")
         .with_initial_value(&snapshot_to_edit.description)
         .prompt()?;
@@ -79,7 +82,7 @@ pub fn execute(args: EditArgs) -> Result<()> {
     }
 
     println!("\n{}", "[snap] Applying changes... This will replace the old tag.".yellow());
-    
+
     let new_tag_message = create_tag_message(new_description_trimmed, metadata_blob_hash.as_deref());
     let tag_cmd = format!("git tag -a -f {} -F - {}", new_tag_name, snapshot_to_edit.full_id);
 
@@ -92,10 +95,10 @@ pub fn execute(args: EditArgs) -> Result<()> {
         // into a `&str`, which matches the HashMap's value type.
         env_vars.insert("GIT_COMMITTER_DATE", &snapshot_to_edit.timestamp);
     }
-    
+
     run_command_with_env(&tag_cmd, Some(&new_tag_message), &env_vars)?;
     // --- END: CORRECTED TIMESTAMP LOGIC ---
-    
+
     if new_tag_name != snapshot_to_edit.tag {
         // Use the simpler run_command here, as no special environment is needed.
         run_command(&format!("git tag -d {}", snapshot_to_edit.tag), None)?;

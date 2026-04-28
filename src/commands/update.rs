@@ -1,5 +1,6 @@
 use crate::cli::UpdateArgs;
 use crate::config::load_config;
+use crate::git_health::ensure_git_healthy_for_write;
 use crate::utils::{
     ask_yes_no, check_dirty, create_tag_message, find_snapshot, gather_metadata,
     get_active_commit_full, get_snapshots, hash_metadata_blob, load_metadata_for_snapshot,
@@ -9,6 +10,8 @@ use anyhow::{Context, Result};
 use colored::*;
 
 pub fn execute(_args: UpdateArgs) -> Result<()> {
+    ensure_git_healthy_for_write(false)?;
+
     let config = load_config()?;
     let all_snapshots = get_snapshots()?;
 
@@ -45,7 +48,7 @@ pub fn execute(_args: UpdateArgs) -> Result<()> {
             return Ok(());
         }
     }
-    
+
     println!("\n{}", "[snap] Step 1/3: Scanning for new metadata...".cyan());
     // --- START: CORRECTED LINE ---
     // Reuse the metadata we already gathered.
@@ -56,13 +59,13 @@ pub fn execute(_args: UpdateArgs) -> Result<()> {
     run_command("git add -A", None)?;
     // Use --allow-empty for robustness, though --amend usually implies it's not needed.
     run_command("git commit --amend --no-edit --allow-empty", None)?;
-    
+
     let new_commit_id = get_active_commit_full()?
         .context("Failed to get new commit ID after amend.")?;
     let new_short_id = &new_commit_id[..7];
 
     println!("{}", format!("[snap] Step 3/3: Moving tag \"{}\" to new commit {}...", active_snapshot.tag, new_short_id).cyan());
-    
+
     let new_tag_message = create_tag_message(&active_snapshot.description, new_metadata_blob_hash.as_deref());
     let tag_cmd = format!("git tag -a -f {} -F -", active_snapshot.tag);
     run_command(&tag_cmd, Some(&new_tag_message))?;

@@ -29,7 +29,8 @@ The desire for **instantaneous, native-level performance** led to a complete rew
     *   [`snap delete [id_or_label]`](#6-snap-delete-id_or_label)
     *   [`snap edit [id_or_label]`](#7-snap-edit-id_or_label)
     *   [`snap update`](#8-snap-update)
-    *   [`snap options`](#9-snap-options)
+    *   [`snap doctor`](#9-snap-doctor)
+    *   [`snap options`](#10-snap-options)
 *   [Building from Source](#-building-from-source)
 *   [Troubleshooting](#️-troubleshooting)
 *   [Contributing](#-contributing)
@@ -223,7 +224,25 @@ D:\Projects\my-app>snap update
 [snap] Update complete. Snapshot "v1.1" now points to new commit [b8c9d0e].
 ```
 
-### 9. `snap options`
+### 9. `snap doctor`
+Runs a read-only Git health check for the current project. It detects empty Git object/ref files, detached `HEAD`, invalid branch refs, and broken snapshot tags. It does not repair or delete anything.
+
+```cmd
+D:\Projects\my-app>snap doctor
+
+[snap] Git health report
+  OK Empty object/ref files: 0 found
+  OK git status
+  OK HEAD commit: a1b2c3d
+  OK Current branch: main
+  OK Snapshot tags: 12 checked, 0 invalid
+
+[snap] Git repository looks healthy.
+```
+
+If problems are found, follow `doc/REPAIR_GIT_ERRORS.md` for the manual repair flow.
+
+### 10. `snap options`
 Allows you to configure global UI settings. These are stored in a `.snapconfig` file next to the executable.
 
 ```cmd
@@ -260,6 +279,8 @@ If you want to modify the tool or build it yourself, you'll need the Rust toolch
 *   **`Error: Git is not installed or not in your system PATH.`**: `snap` requires `git.exe` to function. Install Git for Windows and ensure its `bin` and `cmd` directories are in your system's PATH.
 *   **`'snap' is not recognized...`**: This means the directory containing `snap.exe` was not correctly added to your PATH, or you haven't opened a new terminal window since adding it.
 *   **`Error: Not a snap repository...`**: You are trying to run a command (like `list` or `new`) inside a directory that has not been initialized. Run `snap init` first.
+*   **`Git repository has empty object/ref files`**: Run `snap doctor` to inspect the repository, then follow `doc/REPAIR_GIT_ERRORS.md`. `snap doctor` is read-only.
+*   **`Git HEAD is detached`**: Attach `HEAD` back to the real branch before running write commands. `snap restore` now keeps `HEAD` on the current branch by using `git reset --hard <snapshot_commit>` internally.
 
 ---
 

@@ -87,10 +87,8 @@ pub fn get_active_commit_full() -> Result<Option<String>> {
 
 pub fn get_snapshots() -> Result<Vec<Snapshot>> {
     let command = r#"git for-each-ref refs/tags --sort=-taggerdate --format="%(refname:short)	%(*objectname)	%(taggerdate:iso-strict)	%(contents)""#;
-    let output = match run_command(command, None) {
-        Ok(out) => out,
-        Err(_) => return Ok(vec![]),
-    };
+    let output = run_command(command, None)
+        .context("Failed to inspect snapshot tags. Run `snap doctor` for a read-only diagnosis")?;
     Ok(output
         .lines()
         .filter_map(|line| {

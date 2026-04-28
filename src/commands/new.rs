@@ -1,4 +1,5 @@
 use crate::cli::NewArgs;
+use crate::git_health::ensure_git_healthy_for_write;
 use crate::utils::{
     check_dirty, create_tag_message, find_snapshot, gather_metadata, get_active_commit_full,
     get_snapshots, hash_metadata_blob, load_metadata_for_snapshot, run_command,
@@ -16,6 +17,8 @@ fn sanitize_tag_name(label: &str) -> String {
 }
 
 pub fn execute(args: NewArgs) -> Result<()> {
+    ensure_git_healthy_for_write(true)?;
+
     let tag_name = sanitize_tag_name(&args.label);
     let all_snapshots = get_snapshots()?;
 
@@ -73,7 +76,7 @@ pub fn execute(args: NewArgs) -> Result<()> {
     run_command(&format!("git commit --allow-empty -m \"{}\"", commit_msg), None)?;
 
     let full_id = get_active_commit_full()?.context("Failed to get new commit ID")?;
-    
+
     println!(
         "{}",
         "[snap] Step 4/4: Creating the annotated snapshot tag...".cyan()

@@ -26,6 +26,8 @@ pub enum Commands {
     Update(UpdateArgs),
     /// Compare two snapshots and show a list of changes
     Diff(DiffArgs),
+    /// Diagnose Git repository health without making changes
+    Doctor(DoctorArgs),
     /// Configure global snap options
     Options(OptionsArgs),
 }
@@ -76,6 +78,9 @@ pub struct DiffArgs {
     /// The second snapshot (ID or label) to compare
     pub snapshot_b: String,
 }
+
+#[derive(Args, Debug)]
+pub struct DoctorArgs {}
 
 #[derive(Args, Debug)]
 pub struct OptionsArgs {}

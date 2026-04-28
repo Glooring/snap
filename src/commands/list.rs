@@ -28,7 +28,6 @@ pub fn execute(args: ListArgs) -> Result<()> {
         return Ok(());
     }
     // --- START: SNAPSHOT LIST LIMIT LOGIC ---
-    let total_snapshots = snapshots.len();
     let mut truncated = false;
 
     // Use limit from CLI arg if present, otherwise from config.
@@ -52,7 +51,7 @@ pub fn execute(args: ListArgs) -> Result<()> {
     const HEADER_TIME: &str = "Timestamp";
     const MAX_DESC_WIDTH: usize = 50;
     const COL_PADDING: usize = 2;
-    const FORMATTED_TIME_LEN: usize = 16; 
+    const FORMATTED_TIME_LEN: usize = 16;
     const SHORT_ID_LEN: usize = 7; // The length of the short commit hash
 
     let show_ids = config.options.show_ids;
@@ -87,13 +86,13 @@ pub fn execute(args: ListArgs) -> Result<()> {
     }
     header.push_str(&format!("{:<width$}", HEADER_LABEL, width = label_print_w));
     separator.push_str(&format!("{:<width$}", "-".repeat(label_w), width = label_print_w));
-    
+
     header.push_str(&format!("{:<width$}", HEADER_DESC, width = desc_print_w));
     separator.push_str(&format!("{:<width$}", "-".repeat(desc_w), width = desc_print_w));
 
     header.push_str(HEADER_TIME);
     separator.push_str(&"-".repeat(time_w));
-    
+
     println!("\n{}", header.bold());
     println!("{}", separator.bold());
 
@@ -105,7 +104,7 @@ pub fn execute(args: ListArgs) -> Result<()> {
             line.push_str(&format!("{:<width$}", snap.id, width = id_print_w));
         }
         line.push_str(&format!("{:<width$}", &snap.tag, width = label_print_w));
-        
+
         let desc_trunc = if snap.description.len() > desc_w {
             format!("{}..", &snap.description[..desc_w - 2])
         } else {
@@ -114,7 +113,7 @@ pub fn execute(args: ListArgs) -> Result<()> {
         line.push_str(&format!("{:<width$}", desc_trunc, width = desc_print_w));
 
         line.push_str(&format!("{:<width$}", format_timestamp(&snap.timestamp), width = time_print_w));
-        
+
         if is_active {
             line.push_str(&format!("   {}", "(active)".green().bold()));
         }
@@ -126,7 +125,7 @@ pub fn execute(args: ListArgs) -> Result<()> {
             format!("...").dimmed()
         );
     }
-    
+
     println!();
     Ok(())
 }

@@ -1,11 +1,14 @@
 use crate::cli::DeleteArgs;
 use crate::config::{load_config, SortOrder}; // Import SortOrder
+use crate::git_health::ensure_git_healthy_for_write;
 use crate::utils::{ask_yes_no, find_snapshot, format_snapshot_line, get_snapshots, run_command};
 use anyhow::{anyhow, Context, Result};
 use colored::*;
 use inquire::Select;
 
 pub fn execute(args: DeleteArgs) -> Result<()> {
+    ensure_git_healthy_for_write(false)?;
+
     let config = load_config()?;
 
     let mut snapshots = get_snapshots()?; // Make the list mutable

@@ -1,4 +1,4 @@
-# Repair Guide: `snap` / Git corruption (`empty object` + `bad object refs/heads/master`)
+# Repair Guide: `snap` / Git corruption (`empty object` + bad branch ref)
 
 Acest ghid documentează fix-ul corect pentru incidentul:
 
@@ -12,15 +12,18 @@ fatal: loose object XXYYYY... is corrupt
 
 ```bash
 fatal: bad object refs/heads/master
+# sau
+fatal: bad object refs/heads/main
 ```
 
 ## Ce s-a întâmplat
 
 - A existat un loose object gol (`.git/objects/...` de 0 bytes) sau un **tag gol** (`.git/refs/tags/...` de 0 bytes) care a stricat comenzi Git de bază.
 - Simptom: `fatal: bad object refs/tags/vXXX` sau `warning: ignoring broken ref`.
-- Ref-ul local `refs/heads/master` fie pointează la un SHA inexistent, fie **lipsește complet**.
-- `.git/HEAD` poate conține un SHA brut în loc de `ref: refs/heads/master`.
-- `snap restore` / `snap new` folosesc intern comenzi Git care depind de ref-uri valide; când un tag sau `master` e invalid, operația cade chiar dacă tag-ul dorit există.
+- Ref-ul local al branch-ului activ (`refs/heads/master`, `refs/heads/main`, etc.) fie pointează la un SHA inexistent, fie **lipsește complet**.
+- `.git/HEAD` poate conține un SHA brut în loc de `ref: refs/heads/<branch>`.
+- `snap restore` / `snap new` folosesc intern comenzi Git care depind de ref-uri valide; când un tag sau branch-ul activ e invalid, operația cade chiar dacă tag-ul dorit există.
+- Începând cu versiunea cu `snap doctor`, poți rula întâi `snap doctor` pentru diagnostic read-only. Nu repară automat.
 
 ## Reparare corectă (pas cu pas)
 
@@ -54,28 +57,34 @@ git show -s --oneline v43.789
 
 Dacă comanda de mai sus afișează commit-ul fără eroare, tag-ul e bun.
 
-### Pas 3 — Inspectează HEAD și master ref
+### Pas 3 — Inspectează HEAD și branch ref
 
 ```bash
 echo "=== HEAD ==="
 cat .git/HEAD
 
-echo "=== master ref ==="
-cat .git/refs/heads/master 2>/dev/null || echo "(LIPSEȘTE)"
+branch=$(git symbolic-ref --short HEAD 2>/dev/null || true)
+if [ -z "$branch" ]; then
+  branch="master" # fallback pentru incidente vechi; schimbă manual dacă proiectul folosește main
+fi
+echo "Branch verificat: $branch"
 
-echo "=== packed-refs master ==="
-grep "refs/heads/master" .git/packed-refs 2>/dev/null || echo "(nu e în packed-refs)"
+echo "=== branch ref ==="
+cat ".git/refs/heads/$branch" 2>/dev/null || echo "(LIPSEȘTE)"
+
+echo "=== packed-refs branch ==="
+grep "refs/heads/$branch" .git/packed-refs 2>/dev/null || echo "(nu e în packed-refs)"
 ```
 
 **Diagnosticul:**
 
-| HEAD conține | refs/heads/master | Situație |
+| HEAD conține | refs/heads/<branch> | Situație |
 |---|---|---|
-| `ref: refs/heads/master` | SHA valid (git cat-file -t returnează `commit`) | ✅ Sănătos |
-| `ref: refs/heads/master` | SHA invalid / lipsește | ⚠️ Repară master ref (Pas 4) |
-| SHA brut | orice | ⚠️ Repară master ref (Pas 4) + HEAD (Pas 5) |
+| `ref: refs/heads/<branch>` | SHA valid (git cat-file -t returnează `commit`) | ✅ Sănătos |
+| `ref: refs/heads/<branch>` | SHA invalid / lipsește | ⚠️ Repară branch ref (Pas 4) |
+| SHA brut | orice | ⚠️ Repară branch ref (Pas 4) + HEAD (Pas 5) |
 
-### Pas 4 — Repară master ref
+### Pas 4 — Repară branch ref
 
 Extrage commit-ul valid din ultimul tag bun și repară ref-ul:
 
@@ -83,25 +92,30 @@ Extrage commit-ul valid din ultimul tag bun și repară ref-ul:
 good_commit=$(git rev-parse v43.789^{commit})
 echo "Commit valid: $good_commit"
 
-# Repară ref-ul master
-git update-ref refs/heads/master "$good_commit"
+# Setează branch-ul real al proiectului: main, master, etc.
+branch=$(git symbolic-ref --short HEAD 2>/dev/null || echo master)
+echo "Branch reparat: $branch"
+
+# Repară ref-ul branch-ului
+git update-ref "refs/heads/$branch" "$good_commit"
 
 # Verificare
-git rev-parse --verify refs/heads/master
+git rev-parse --verify "refs/heads/$branch"
 ```
 
 > **IMPORTANT:** Înlocuiește `v43.789` cu tag-ul tău cel mai recent din `snap list`.
 
 ### Pas 5 — Normalizează HEAD
 
-HEAD trebuie să conțină `ref: refs/heads/master`, NU un SHA brut:
+HEAD trebuie să conțină `ref: refs/heads/<branch>`, NU un SHA brut:
 
 ```bash
-printf 'ref: refs/heads/master\n' > .git/HEAD
+branch=${branch:-master}
+printf 'ref: refs/heads/%s\n' "$branch" > .git/HEAD
 
 # Verificare
 cat .git/HEAD
-# Trebuie să afișeze: ref: refs/heads/master
+# Trebuie să afișeze: ref: refs/heads/<branch>
 ```
 
 ### Pas 6 — Reconstruiește indexul
@@ -116,7 +130,7 @@ git reset --mixed HEAD
 ```bash
 # Toate trebuie să ruleze fără eroare
 git status --short | head -5
-git rev-parse --verify refs/heads/master
+git rev-parse --verify "refs/heads/$branch"
 git show -s --oneline HEAD
 ```
 
@@ -136,9 +150,9 @@ git status --porcelain eșuează?
 │
 ├─ cat .git/HEAD
 │   ├─ conține SHA brut → Pas 4 + Pas 5
-│   └─ conține "ref: refs/heads/master" → ok, verifică master ref
+│   └─ conține "ref: refs/heads/<branch>" → ok, verifică branch ref
 │
-├─ cat .git/refs/heads/master
+├─ cat .git/refs/heads/<branch>
 │   ├─ lipsește (No such file) → Pas 4
 │   ├─ SHA invalid (git cat-file -t eșuează) → Pas 4
 │   └─ SHA valid → ref-ul e ok
@@ -148,22 +162,23 @@ git status --porcelain eșuează?
 
 ## Ce să NU faci
 
-- **Nu** scrie `main` în `.git/HEAD` dacă branch-ul real este `master`.
+- **Nu** scrie `main` în `.git/HEAD` dacă branch-ul real este `master`, și invers.
 - **Nu** scrie un hash brut arbitrar în `.git/HEAD`.
 - **Nu** rula `git reset --mixed HEAD` înainte ca `HEAD` + branch ref să pointeze la commit valid.
 - **Nu** interpreta `dangling blob/tag` din `git fsck` ca eroare critică imediată; ele sunt frecvent non-fatale.
-- **Nu** încerca `cat .git/refs/heads/master > /tmp/...` dacă fișierul nu există — va da eroare; folosește `2>/dev/null` sau `|| true`.
+- **Nu** încerca `cat .git/refs/heads/<branch> > /tmp/...` dacă fișierul nu există — va da eroare; folosește `2>/dev/null` sau `|| true`.
 
 ## Diagnostic rapid util
 
 ```bash
 git rev-parse --is-inside-work-tree
-git show-ref --verify refs/heads/master
-git rev-parse --verify refs/heads/master
+branch=$(git symbolic-ref --short HEAD 2>/dev/null || echo master)
+git show-ref --verify "refs/heads/$branch"
+git rev-parse --verify "refs/heads/$branch"
 git show -s --oneline HEAD
 cat .git/HEAD
-cat .git/refs/heads/master 2>/dev/null || echo "LIPSEȘTE"
-git cat-file -t "$(cat .git/refs/heads/master 2>/dev/null)" 2>/dev/null || echo "INVALID"
+cat ".git/refs/heads/$branch" 2>/dev/null || echo "LIPSEȘTE"
+git cat-file -t "$(cat ".git/refs/heads/$branch" 2>/dev/null)" 2>/dev/null || echo "INVALID"
 ```
 
 ## Incident recap
@@ -187,25 +202,25 @@ git cat-file -t "$(cat .git/refs/heads/master 2>/dev/null)" 2>/dev/null || echo 
 - Tag-ul `v46.637` era un fișier de 0 bytes pe disc.
 - Fix: `find .git/refs -type f -size 0 -delete`. După ștergere, Git a putut procesa corect restul tag-urilor și a permis checkout-ul.
 
-## Sugestii pentru aplicația `snap` (Rust) ca prevenție
+## Prevenție în aplicația `snap` (Rust)
 
-Adaugă un preflight de sănătate Git înainte de `new/restore/edit/diff`:
+Implementat parțial:
 
 1. Verifică ref-uri critice:
-- rulează `git rev-parse --verify refs/heads/master`
-- dacă eșuează, oprește operația cu mesaj clar și pași de recovery automatizați.
+- rulează verificări pentru `HEAD` și branch-ul activ detectat, nu hardcoded `master`.
+- dacă eșuează, oprește operația cu mesaj clar și recomandă `snap doctor`.
 
 2. Verifică obiecte goale:
 - scan rapid `.git/objects` pentru fișiere de 0 bytes;
-- dacă există, oprește fluxul normal și oferă `snap doctor --repair`.
+- dacă există, oprește fluxul normal și oferă `snap doctor`.
 
 3. Nu depinde de branch implicit fragil:
-- pentru `restore`, checkout direct după commit-ul snapshot-ului (`tag^{commit}`), apoi opțional repoziționare branch;
-- nu bloca restore pe `master` dacă tag-ul țintă este valid.
+- pentru `restore`, rezolvă snapshot-ul la commit (`tag^{commit}`) și folosește `git reset --hard <commit>` pe branch-ul activ;
+- nu bloca restore pe `master` dacă proiectul folosește `main` sau alt branch.
 
 4. Adaugă comandă dedicată:
-- `snap doctor` (read-only checks),
-- `snap doctor --repair` (safe repair flow: delete empty objects, repair invalid branch ref to chosen snapshot commit, reset index).
+- `snap doctor` (read-only checks).
+- `snap doctor --repair` nu este implementat încă.
 
 5. Mesaje de eroare orientate pe acțiune:
 - include detectarea exactă: `invalid ref`, `empty loose object`, `bad HEAD`.

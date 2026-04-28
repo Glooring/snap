@@ -1,6 +1,7 @@
 mod cli;
 mod commands;
 mod config;
+mod git_health;
 mod os;
 mod utils;
 
@@ -25,8 +26,8 @@ fn main() -> Result<()> {
     
     let cli = Cli::parse();
 
-    // The init and options commands can run anywhere. Other commands require a repo.
-    if !matches!(cli.command, Commands::Init(_) | Commands::Options(_)) {
+    // The init, doctor and options commands can run anywhere. Other commands require a repo.
+    if !matches!(cli.command, Commands::Init(_) | Commands::Doctor(_) | Commands::Options(_)) {
         if let Err(e) = config::ensure_repo_exists() {
              eprintln!("\n{} {}", "[snap] Error:".red().bold(), e);
              std::process::exit(1);
@@ -42,6 +43,7 @@ fn main() -> Result<()> {
         Commands::Edit(args) => commands::edit::execute(args),
         Commands::Update(args) => commands::update::execute(args),
         Commands::Diff(args) => commands::diff::execute(args),
+        Commands::Doctor(args) => commands::doctor::execute(args),
         Commands::Options(args) => commands::options::execute(args),
     };
 
