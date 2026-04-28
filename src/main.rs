@@ -12,25 +12,37 @@ use colored::Colorize;
 
 fn main() -> Result<()> {
     std::panic::set_hook(Box::new(|panic_info| {
-        eprintln!("\n{}", "[snap] A critical error occurred and the program had to stop.".red().bold());
+        eprintln!(
+            "\n{}",
+            "[snap] A critical error occurred and the program had to stop."
+                .red()
+                .bold()
+        );
         if let Some(s) = panic_info.payload().downcast_ref::<&str>() {
             eprintln!("Error details: {}", s);
         } else {
             eprintln!("An unknown error occurred.");
         }
         if let Some(location) = panic_info.location() {
-            eprintln!("Occurred in file '{}' at line {}", location.file(), location.line());
+            eprintln!(
+                "Occurred in file '{}' at line {}",
+                location.file(),
+                location.line()
+            );
         }
         eprintln!("{}", "Please report this issue if it persists.".yellow());
     }));
-    
+
     let cli = Cli::parse();
 
     // The init, doctor and options commands can run anywhere. Other commands require a repo.
-    if !matches!(cli.command, Commands::Init(_) | Commands::Doctor(_) | Commands::Options(_)) {
+    if !matches!(
+        cli.command,
+        Commands::Init(_) | Commands::Doctor(_) | Commands::Options(_)
+    ) {
         if let Err(e) = config::ensure_repo_exists() {
-             eprintln!("\n{} {}", "[snap] Error:".red().bold(), e);
-             std::process::exit(1);
+            eprintln!("\n{} {}", "[snap] Error:".red().bold(), e);
+            std::process::exit(1);
         }
     }
 
@@ -56,6 +68,6 @@ fn main() -> Result<()> {
         }
         std::process::exit(1);
     }
-    
+
     Ok(())
 }

@@ -33,15 +33,20 @@ pub struct Options {
     #[serde(default = "default_bool_false")]
     pub edit_updates_timestamp: bool,
     // --- END: NEW TIMESTAMP OPTION ---
-
     /// How many snapshots to show in `snap list`. Can be a number or "all".
     #[serde(default = "default_list_limit")]
     pub list_limit: String,
 }
 
-fn default_bool_false() -> bool { false }
-fn default_bool_true() -> bool { true }
-fn default_list_limit() -> String { "all".to_string() }
+fn default_bool_false() -> bool {
+    false
+}
+fn default_bool_true() -> bool {
+    true
+}
+fn default_list_limit() -> String {
+    "all".to_string()
+}
 
 impl Default for SnapConfig {
     fn default() -> Self {
@@ -79,8 +84,8 @@ pub fn load_config() -> Result<SnapConfig> {
 
 pub fn save_config(config: &SnapConfig) -> Result<()> {
     let config_path = get_config_path()?;
-    let content = serde_json::to_string_pretty(config)
-        .context("Failed to serialize config to JSON")?;
+    let content =
+        serde_json::to_string_pretty(config).context("Failed to serialize config to JSON")?;
     fs::write(&config_path, content)
         .with_context(|| format!("Failed to write config file to {:?}", config_path))
 }

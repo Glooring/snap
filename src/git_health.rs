@@ -1,4 +1,6 @@
 use anyhow::{anyhow, Context, Result};
+use chrono::Local;
+use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use walkdir::WalkDir;
@@ -29,6 +31,24 @@ pub struct GitHealthReport {
     pub branch_error: Option<String>,
     pub snapshots_error: Option<String>,
     pub snapshots: Vec<SnapshotCheck>,
+}
+
+#[derive(Debug, Clone)]
+pub struct RepairPlan {
+    pub empty_git_files: Vec<PathBuf>,
+    pub target_branch: Option<String>,
+    pub target_commit: Option<String>,
+    pub needs_head_repair: bool,
+    pub needs_branch_repair: bool,
+}
+
+#[derive(Debug, Clone)]
+pub struct RepairOutcome {
+    pub backup_path: PathBuf,
+    pub deleted_empty_files: Vec<PathBuf>,
+    pub repaired_branch: Option<String>,
+    pub repaired_head: bool,
+    pub reset_index: bool,
 }
 
 impl GitHealthReport {
@@ -163,70 +183,155 @@ pub fn collect_health_report() -> Result<GitHealthReport> {
     })
 }
 
-pub fn ensure_git_healthy_for_write(allow_unborn_head: bool) -> Result<()> {
-    let report = collect_health_report()?;
-
-    if !report.is_git_repo {
+pub fn ensure_git_fast_preflight_for_write(allow_unborn_head: bool) -> Result<()> {
+    if !Path::new(".git").is_dir() {
         return Err(anyhow!("Not a Git repository. Run `snap init` first."));
     }
 
-    if !report.empty_git_files.is_empty() {
-        return Err(health_error(
-            "Git repository has empty object/ref files.",
-            &report,
+    let empty_refs = find_empty_files_under(Path::new(".git/refs"))?;
+    if !empty_refs.is_empty() {
+        return Err(fast_health_error(
+            "Git repository has empty ref files.",
+            Some(&format!("First empty ref: {}", empty_refs[0].display())),
         ));
     }
 
-    if let Some(error) = report.status_error.as_deref() {
-        return Err(health_error(
-            &format!("Git status failed: {}", first_line(error)),
-            &report,
+    let status = run_git(&["status", "--porcelain"], None)?;
+    if !status.success {
+        return Err(fast_health_error(
+            &format!("Git status failed: {}", first_line(&status.stderr)),
+            None,
         ));
     }
 
-    if report.detached_head {
-        return Err(health_error(
-            "Git HEAD is detached. `snap` will not write a new snapshot until HEAD is attached to a branch.",
-            &report,
-        ));
-    }
-
-    if report.head_error.is_some() && !(allow_unborn_head && report.head_commit.is_none()) {
-        return Err(health_error(
+    let head = run_git(&["rev-parse", "--verify", "HEAD^{commit}"], None)?;
+    let head_exists = head.success;
+    if !head_exists && !(allow_unborn_head && is_unborn_head_error(&head.stderr)) {
+        return Err(fast_health_error(
             "Git HEAD does not point to a valid commit.",
-            &report,
+            Some(first_line(&head.stderr).as_str()),
         ));
     }
 
-    if let Some(error) = report.branch_error.as_deref() {
-        return Err(health_error(
-            &format!("Current branch is invalid: {}", first_line(error)),
-            &report,
+    let branch = run_git(&["symbolic-ref", "--short", "HEAD"], None)?;
+    if !branch.success && head_exists {
+        return Err(fast_health_error(
+            "Git HEAD is detached. `snap` will not write a new snapshot until HEAD is attached to a branch.",
+            Some("Run `snap doctor` or `snap doctor --repair` for diagnosis."),
         ));
     }
 
-    if let Some(error) = report.snapshots_error.as_deref() {
-        return Err(health_error(
-            &format!("Could not inspect snapshot tags: {}", first_line(error)),
-            &report,
-        ));
-    }
-
-    if let Some(broken) = report
-        .snapshots
-        .iter()
-        .find(|snapshot| snapshot.error.is_some())
-    {
-        return Err(health_error(
-            &format!(
-                "Snapshot tag \"{}\" does not point to a valid commit.",
-                broken.tag
-            ),
-            &report,
-        ));
+    if branch.success {
+        let branch_name = branch.stdout.trim();
+        let ref_name = format!("refs/heads/{}", branch_name);
+        let branch_check = run_git(
+            &["rev-parse", "--verify", &format!("{}^{{commit}}", ref_name)],
+            None,
+        )?;
+        if !branch_check.success
+            && !(allow_unborn_head && is_unborn_head_error(&branch_check.stderr))
+        {
+            return Err(fast_health_error(
+                &format!(
+                    "Current branch is invalid: {}",
+                    first_line(&branch_check.stderr)
+                ),
+                None,
+            ));
+        }
     }
 
     Ok(())
+}
+
+pub fn ensure_git_healthy_for_write(allow_unborn_head: bool) -> Result<()> {
+    ensure_git_fast_preflight_for_write(allow_unborn_head)
+}
+
+pub fn create_repair_plan(report: &GitHealthReport) -> Result<RepairPlan> {
+    if !report.is_git_repo {
+        return Err(anyhow!("No .git directory found. Run `snap init` first."));
+    }
+
+    let target_branch = infer_target_branch(report)?;
+    let needs_head_repair = report.detached_head || report.head_error.is_some();
+    let needs_branch_repair = report.branch_error.is_some()
+        || (report.status_error.is_some() && report.current_branch.is_some());
+    let needs_ref_repair = needs_head_repair || needs_branch_repair;
+    let target_commit = if needs_ref_repair {
+        Some(
+            report
+                .latest_valid_snapshot()
+                .and_then(|snapshot| snapshot.commit.clone())
+                .ok_or_else(|| {
+                    anyhow!("Cannot repair refs because no valid snapshot commit was found.")
+                })?,
+        )
+    } else {
+        None
+    };
+
+    if needs_ref_repair && target_branch.is_none() {
+        return Err(anyhow!(
+            "Cannot determine the target branch safely. Attach HEAD manually or repair using doc/REPAIR_GIT_ERRORS.md."
+        ));
+    }
+
+    Ok(RepairPlan {
+        empty_git_files: report.empty_git_files.clone(),
+        target_branch,
+        target_commit,
+        needs_head_repair,
+        needs_branch_repair,
+    })
+}
+
+pub fn repair_git_repository(plan: &RepairPlan) -> Result<RepairOutcome> {
+    if !Path::new(".git").is_dir() {
+        return Err(anyhow!("No .git directory found."));
+    }
+
+    let backup_path = backup_git_dir()?;
+
+    let mut deleted_empty_files = Vec::new();
+    for path in &plan.empty_git_files {
+        if path.is_file() && fs::metadata(path).map(|m| m.len() == 0).unwrap_or(false) {
+            fs::remove_file(path)
+                .with_context(|| format!("Failed to delete empty Git file {}", path.display()))?;
+            deleted_empty_files.push(path.clone());
+        }
+    }
+
+    let mut repaired_branch = None;
+    let mut repaired_head = false;
+    if let (Some(branch), Some(commit)) =
+        (plan.target_branch.as_deref(), plan.target_commit.as_deref())
+    {
+        if plan.needs_branch_repair || plan.needs_head_repair {
+            let ref_name = format!("refs/heads/{}", branch);
+            run_git_success(&["update-ref", &ref_name, commit], None)?;
+            repaired_branch = Some(branch.to_string());
+        }
+
+        if plan.needs_head_repair {
+            fs::write(".git/HEAD", format!("ref: refs/heads/{}\n", branch))
+                .context("Failed to normalize .git/HEAD")?;
+            repaired_head = true;
+        }
+    }
+
+    let reset_index = repaired_branch.is_some() || repaired_head || !deleted_empty_files.is_empty();
+    if reset_index {
+        run_git_success(&["reset", "--mixed", "HEAD"], None)?;
+    }
+
+    Ok(RepairOutcome {
+        backup_path,
+        deleted_empty_files,
+        repaired_branch,
+        repaired_head,
+        reset_index,
+    })
 }
 
 pub fn resolve_snapshot_commit(tag: &str) -> Result<String> {
@@ -285,33 +390,141 @@ fn collect_snapshot_checks() -> Result<(Vec<SnapshotCheck>, Option<String>)> {
 fn find_empty_git_files() -> Result<Vec<PathBuf>> {
     let mut files = Vec::new();
     for root in [Path::new(".git/objects"), Path::new(".git/refs")] {
-        if !root.exists() {
-            continue;
-        }
-
-        for entry in WalkDir::new(root).into_iter().filter_map(Result::ok) {
-            if !entry.file_type().is_file() {
-                continue;
-            }
-
-            if entry.metadata().map(|m| m.len() == 0).unwrap_or(false) {
-                files.push(entry.path().to_path_buf());
-            }
-        }
+        files.extend(find_empty_files_under(root)?);
     }
     files.sort();
     Ok(files)
 }
 
-fn health_error(message: &str, report: &GitHealthReport) -> anyhow::Error {
+fn find_empty_files_under(root: &Path) -> Result<Vec<PathBuf>> {
+    let mut files = Vec::new();
+    if !root.exists() {
+        return Ok(files);
+    }
+
+    for entry in WalkDir::new(root).into_iter().filter_map(Result::ok) {
+        if !entry.file_type().is_file() {
+            continue;
+        }
+
+        if entry.metadata().map(|m| m.len() == 0).unwrap_or(false) {
+            files.push(entry.path().to_path_buf());
+        }
+    }
+
+    files.sort();
+    Ok(files)
+}
+
+fn infer_target_branch(report: &GitHealthReport) -> Result<Option<String>> {
+    if let Some(branch) = report
+        .current_branch
+        .as_deref()
+        .filter(|branch| !branch.is_empty())
+    {
+        return Ok(Some(branch.to_string()));
+    }
+
+    if let Some(branch) = parse_head_branch()? {
+        return Ok(Some(branch));
+    }
+
+    let branches = list_local_branches()?;
+    if branches.len() == 1 {
+        return Ok(branches.into_iter().next());
+    }
+
+    Ok(None)
+}
+
+fn parse_head_branch() -> Result<Option<String>> {
+    let head = match fs::read_to_string(".git/HEAD") {
+        Ok(head) => head,
+        Err(_) => return Ok(None),
+    };
+    let head = head.trim();
+    let Some(rest) = head.strip_prefix("ref: refs/heads/") else {
+        return Ok(None);
+    };
+    if rest.is_empty() {
+        Ok(None)
+    } else {
+        Ok(Some(rest.to_string()))
+    }
+}
+
+fn list_local_branches() -> Result<Vec<String>> {
+    let refs = run_git(
+        &["for-each-ref", "refs/heads", "--format=%(refname:short)"],
+        None,
+    )?;
+    if !refs.success {
+        return Ok(Vec::new());
+    }
+
+    let mut branches: Vec<_> = refs
+        .stdout
+        .lines()
+        .map(str::trim)
+        .filter(|branch| !branch.is_empty())
+        .map(ToString::to_string)
+        .collect();
+    branches.sort();
+    branches.dedup();
+    Ok(branches)
+}
+
+fn backup_git_dir() -> Result<PathBuf> {
+    let stamp = Local::now().format("%Y%m%d-%H%M%S").to_string();
+    let mut backup_path = PathBuf::from(format!(".git.backup.{}", stamp));
+    let mut counter = 1;
+    while backup_path.exists() {
+        backup_path = PathBuf::from(format!(".git.backup.{}-{}", stamp, counter));
+        counter += 1;
+    }
+    copy_dir_recursive(Path::new(".git"), &backup_path)?;
+    Ok(backup_path)
+}
+
+fn copy_dir_recursive(source: &Path, destination: &Path) -> Result<()> {
+    fs::create_dir_all(destination).with_context(|| {
+        format!(
+            "Failed to create backup directory {}",
+            destination.display()
+        )
+    })?;
+
+    for entry in WalkDir::new(source).into_iter().filter_map(Result::ok) {
+        let relative = entry.path().strip_prefix(source)?;
+        let target = destination.join(relative);
+        if entry.file_type().is_dir() {
+            fs::create_dir_all(&target)?;
+        } else if entry.file_type().is_file() {
+            if let Some(parent) = target.parent() {
+                fs::create_dir_all(parent)?;
+            }
+            fs::copy(entry.path(), &target).with_context(|| {
+                format!(
+                    "Failed to copy {} to {}",
+                    entry.path().display(),
+                    target.display()
+                )
+            })?;
+        }
+    }
+
+    Ok(())
+}
+
+fn fast_health_error(message: &str, detail: Option<&str>) -> anyhow::Error {
     let mut details = vec![
         message.to_string(),
-        "Run `snap doctor` for a read-only diagnosis.".to_string(),
-        "See `doc/REPAIR_GIT_ERRORS.md` for the manual repair flow.".to_string(),
+        "Run `snap doctor` for a full diagnosis.".to_string(),
+        "Run `snap doctor --repair` to repair safe cases with a backup.".to_string(),
     ];
 
-    if let Some(snapshot) = report.latest_valid_snapshot() {
-        details.push(format!("Latest valid snapshot found: {}", snapshot.tag));
+    if let Some(detail) = detail {
+        details.push(detail.to_string());
     }
 
     anyhow!("{}", details.join("\n"))

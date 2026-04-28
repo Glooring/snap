@@ -61,7 +61,10 @@ pub fn execute(args: NewArgs) -> Result<()> {
 
     let description = args.description.join(" ");
 
-    println!("\n{}", "[snap] Step 1/4: Scanning for metadata (hidden files, empty dirs)...".cyan());
+    println!(
+        "\n{}",
+        "[snap] Step 1/4: Scanning for metadata (hidden files, empty dirs)...".cyan()
+    );
     // --- START: CORRECTED LINE ---
     // Reuse the metadata we already gathered.
     let metadata_blob_hash = hash_metadata_blob(&current_metadata)?;
@@ -73,7 +76,10 @@ pub fn execute(args: NewArgs) -> Result<()> {
     println!("{}", "[snap] Step 3/4: Creating the commit...".cyan());
     let commit_msg = format!("Snapshot: {}", tag_name);
     // Use --allow-empty to create a commit even if only metadata changed.
-    run_command(&format!("git commit --allow-empty -m \"{}\"", commit_msg), None)?;
+    run_command(
+        &format!("git commit --allow-empty -m \"{}\"", commit_msg),
+        None,
+    )?;
 
     let full_id = get_active_commit_full()?.context("Failed to get new commit ID")?;
 

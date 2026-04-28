@@ -225,7 +225,9 @@ D:\Projects\my-app>snap update
 ```
 
 ### 9. `snap doctor`
-Runs a read-only Git health check for the current project. It detects empty Git object/ref files, detached `HEAD`, invalid branch refs, and broken snapshot tags. It does not repair or delete anything.
+Runs a full Git health check for the current project. It detects empty Git object/ref files, detached `HEAD`, invalid branch refs, and broken snapshot tags.
+
+`snap doctor` is read-only. To repair safe cases automatically, use `snap doctor --repair`; it creates a full `.git.backup.YYYYMMDD-HHMMSS` backup and asks for confirmation before changing anything.
 
 ```cmd
 D:\Projects\my-app>snap doctor
@@ -241,6 +243,15 @@ D:\Projects\my-app>snap doctor
 ```
 
 If problems are found, follow `doc/REPAIR_GIT_ERRORS.md` for the manual repair flow.
+
+```cmd
+D:\Projects\my-app>snap doctor --repair
+
+[snap] Repair plan:
+  - Delete 1 empty Git object/ref file(s).
+  - Create a full .git backup before modifying anything.
+? [snap] Create a .git backup and apply this repair plan? [y/N]
+```
 
 ### 10. `snap options`
 Allows you to configure global UI settings. These are stored in a `.snapconfig` file next to the executable.
@@ -279,8 +290,9 @@ If you want to modify the tool or build it yourself, you'll need the Rust toolch
 *   **`Error: Git is not installed or not in your system PATH.`**: `snap` requires `git.exe` to function. Install Git for Windows and ensure its `bin` and `cmd` directories are in your system's PATH.
 *   **`'snap' is not recognized...`**: This means the directory containing `snap.exe` was not correctly added to your PATH, or you haven't opened a new terminal window since adding it.
 *   **`Error: Not a snap repository...`**: You are trying to run a command (like `list` or `new`) inside a directory that has not been initialized. Run `snap init` first.
-*   **`Git repository has empty object/ref files`**: Run `snap doctor` to inspect the repository, then follow `doc/REPAIR_GIT_ERRORS.md`. `snap doctor` is read-only.
-*   **`Git HEAD is detached`**: Attach `HEAD` back to the real branch before running write commands. `snap restore` now keeps `HEAD` on the current branch by using `git reset --hard <snapshot_commit>` internally.
+*   **`Git repository has empty ref files`**: Normal commands use a fast preflight and stop immediately when `.git/refs` contains zero-byte refs. Run `snap doctor`, then `snap doctor --repair` if the repair plan looks correct.
+*   **`Git repository has empty object/ref files`**: `snap doctor` found corruption during the full scan. Use `snap doctor --repair` for safe automatic cleanup with backup, or follow `doc/REPAIR_GIT_ERRORS.md`.
+*   **`Git HEAD is detached`**: Normal write commands stop. Run `snap doctor`; if it can determine the branch safely, `snap doctor --repair` can normalize `HEAD`. `snap restore` now keeps `HEAD` on the current branch by using `git reset --hard <snapshot_commit>` internally.
 
 ---
 

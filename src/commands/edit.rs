@@ -5,10 +5,10 @@ use crate::utils::{
     create_tag_message, find_snapshot, format_snapshot_line, get_snapshots, run_command,
     run_command_with_env,
 };
-use std::collections::HashMap; // Keep HashMap import
 use anyhow::{anyhow, Context, Result};
 use colored::*;
 use inquire::{Select, Text};
+use std::collections::HashMap; // Keep HashMap import
 
 fn sanitize_tag_name(label: &str) -> String {
     label
@@ -51,10 +51,15 @@ pub fn execute(args: EditArgs) -> Result<()> {
         }
     }?;
 
-    println!("\n{} \"{}\":", "[snap] Editing snapshot".cyan(), snapshot_to_edit.tag);
+    println!(
+        "\n{} \"{}\":",
+        "[snap] Editing snapshot".cyan(),
+        snapshot_to_edit.tag
+    );
 
     let blob_hash_key = "Snap-Metadata-Ref:";
-    let metadata_blob_hash = snapshot_to_edit.raw_tag_message
+    let metadata_blob_hash = snapshot_to_edit
+        .raw_tag_message
         .lines()
         .find(|line| line.starts_with(blob_hash_key))
         .and_then(|line| line.split(':').nth(1))
@@ -72,19 +77,34 @@ pub fn execute(args: EditArgs) -> Result<()> {
     let new_tag_name = sanitize_tag_name(&new_label);
     let new_description_trimmed = new_description.trim();
 
-    if new_tag_name == snapshot_to_edit.tag && new_description_trimmed == snapshot_to_edit.description {
-        println!("{}", "[snap] No changes detected. Edit cancelled.\n".yellow());
+    if new_tag_name == snapshot_to_edit.tag
+        && new_description_trimmed == snapshot_to_edit.description
+    {
+        println!(
+            "{}",
+            "[snap] No changes detected. Edit cancelled.\n".yellow()
+        );
         return Ok(());
     }
 
     if new_tag_name != snapshot_to_edit.tag && snapshots.iter().any(|s| s.tag == new_tag_name) {
-        return Err(anyhow!("A snapshot with the label \"{}\" already exists.\n", new_tag_name));
+        return Err(anyhow!(
+            "A snapshot with the label \"{}\" already exists.\n",
+            new_tag_name
+        ));
     }
 
-    println!("\n{}", "[snap] Applying changes... This will replace the old tag.".yellow());
+    println!(
+        "\n{}",
+        "[snap] Applying changes... This will replace the old tag.".yellow()
+    );
 
-    let new_tag_message = create_tag_message(new_description_trimmed, metadata_blob_hash.as_deref());
-    let tag_cmd = format!("git tag -a -f {} -F - {}", new_tag_name, snapshot_to_edit.full_id);
+    let new_tag_message =
+        create_tag_message(new_description_trimmed, metadata_blob_hash.as_deref());
+    let tag_cmd = format!(
+        "git tag -a -f {} -F - {}",
+        new_tag_name, snapshot_to_edit.full_id
+    );
 
     // --- START: CORRECTED TIMESTAMP LOGIC ---
     // Explicitly declare the HashMap's type to match the function signature.
@@ -104,7 +124,14 @@ pub fn execute(args: EditArgs) -> Result<()> {
         run_command(&format!("git tag -d {}", snapshot_to_edit.tag), None)?;
     }
 
-    println!("\n{}", format!("[snap] Snapshot successfully updated to \"{}\".", new_tag_name).green());
+    println!(
+        "\n{}",
+        format!(
+            "[snap] Snapshot successfully updated to \"{}\".",
+            new_tag_name
+        )
+        .green()
+    );
 
     println!();
     Ok(())

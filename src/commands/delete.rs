@@ -55,10 +55,20 @@ pub fn execute(args: DeleteArgs) -> Result<()> {
         }
     }
 
-    println!("{}", format!("[snap] Deleting tag \"{}\"...", snapshot_to_delete.tag).cyan());
+    println!(
+        "{}",
+        format!("[snap] Deleting tag \"{}\"...", snapshot_to_delete.tag).cyan()
+    );
     run_command(&format!("git tag -d {}", snapshot_to_delete.tag), None)?;
 
-    println!("{}", format!("[snap] Snapshot \"{}\" deleted successfully.", snapshot_to_delete.tag).green());
+    println!(
+        "{}",
+        format!(
+            "[snap] Snapshot \"{}\" deleted successfully.",
+            snapshot_to_delete.tag
+        )
+        .green()
+    );
     println!();
     Ok(())
 }

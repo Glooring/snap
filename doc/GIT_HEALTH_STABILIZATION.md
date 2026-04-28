@@ -23,9 +23,9 @@ The existing manual repair flow remains documented in `doc/REPAIR_GIT_ERRORS.md`
 
 ## What changed
 
-### New `snap doctor` command
+### `snap doctor` and `snap doctor --repair`
 
-Added a read-only diagnostic command:
+Added a full diagnostic command:
 
 ```bash
 snap doctor
@@ -42,11 +42,30 @@ It checks:
 - whether snapshot tags resolve to valid commits;
 - the latest valid snapshot tag.
 
-`snap doctor` does not delete files, repair refs, reset the index, or change project state. If it finds a problem, it points the user to `doc/REPAIR_GIT_ERRORS.md`.
+`snap doctor` without flags is read-only. It does not delete files, repair refs, reset the index, or change project state.
 
-### Shared Git health preflight
+For safe automatic repair, use:
 
-Write operations now run a health preflight before doing any Git mutation:
+```bash
+snap doctor --repair
+```
+
+The repair mode:
+
+- runs the full diagnostic first;
+- prints the repair plan;
+- creates a full `.git.backup.YYYYMMDD-HHMMSS` backup;
+- asks for confirmation before changing anything;
+- deletes only zero-byte files under `.git/objects` and `.git/refs`;
+- repairs the active branch ref and normalizes `.git/HEAD` only when the branch and target commit can be determined safely;
+- rebuilds the Git index with `git reset --mixed HEAD`;
+- runs a final health check after the repair.
+
+If the branch cannot be determined safely, repair mode stops and points the user to `doc/REPAIR_GIT_ERRORS.md`.
+
+### Fast Git health preflight
+
+Write operations now run a minimal fast preflight before doing any Git mutation:
 
 - `snap new`
 - `snap restore`
@@ -56,12 +75,14 @@ Write operations now run a health preflight before doing any Git mutation:
 
 The preflight blocks writes when it detects:
 
-- empty Git object/ref files;
+- missing `.git`;
+- empty ref files under `.git/refs`;
 - `git status` failure;
 - detached `HEAD`;
 - invalid `HEAD`;
-- invalid current branch ref;
-- invalid snapshot tags.
+- invalid current branch ref.
+
+The fast preflight intentionally does not scan `.git/objects` and does not validate every snapshot tag. Those checks belong to `snap doctor`, because scanning all objects/tags can take seconds on large WSL projects.
 
 `snap new` allows an unborn `HEAD` so the first snapshot in a newly initialized repo still works.
 
@@ -103,7 +124,7 @@ Failed to inspect snapshot tags. Run `snap doctor` for a read-only diagnosis
 Core implementation:
 
 - `src/git_health.rs` - shared Git health checks and Git command helpers.
-- `src/commands/doctor.rs` - `snap doctor` CLI output.
+- `src/commands/doctor.rs` - `snap doctor` and `snap doctor --repair` CLI output.
 - `src/commands/restore.rs` - restore now resolves tag to commit and uses `git reset --hard`.
 - `src/utils.rs` - `get_snapshots()` now reports Git ref errors instead of hiding them.
 - command modules for write operations now call the preflight before mutating Git state.
@@ -127,7 +148,11 @@ The integration tests cover:
 - `snap list` reporting Git ref errors instead of showing an empty snapshot list;
 - `snap restore` keeping `HEAD` attached to the branch;
 - `snap restore` moving the branch to the target snapshot commit;
-- `snap new` stopping before writing when the health preflight fails.
+- `snap new` stopping before writing when the fast health preflight fails;
+- `snap doctor --repair` creating a `.git.backup.*` backup;
+- `snap doctor --repair` deleting empty Git object/ref files;
+- `snap doctor --repair` repairing an invalid branch ref to the latest valid snapshot;
+- `snap doctor --repair` normalizing raw/detached `HEAD` when a single branch gives a safe target.
 
 Verification commands used:
 
@@ -139,7 +164,7 @@ cargo test
 Expected result:
 
 ```text
-7 passed
+10 passed
 ```
 
 ## WSL notes
@@ -169,7 +194,8 @@ If `which snap` points to a Windows path such as `/mnt/c/.../snap.exe`, WSL is s
 
 ## Current limitations
 
-- `snap doctor --repair` is not implemented.
-- `snap doctor` is intentionally read-only.
-- If `HEAD` is already detached, write commands stop and ask the user to inspect the repo with `snap doctor` and repair manually.
+- `snap doctor --repair` has no `--yes` mode; it always asks for confirmation.
+- `snap doctor` without `--repair` remains intentionally read-only.
+- If the branch cannot be determined safely, `snap doctor --repair` stops instead of guessing between `main`, `master`, or another branch.
+- Normal write commands use the fast preflight. Run `snap doctor` for a full `.git/objects` scan and full snapshot tag validation.
 - The snapshot storage format is unchanged: snapshots remain annotated Git tags with optional metadata blob references.

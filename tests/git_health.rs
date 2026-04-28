@@ -28,6 +28,16 @@ fn git(dir: &Path, args: &[&str]) -> String {
     String::from_utf8(output.stdout).expect("utf8 stdout")
 }
 
+fn git_success(dir: &Path, args: &[&str]) -> bool {
+    StdCommand::new("git")
+        .args(args)
+        .current_dir(dir)
+        .output()
+        .expect("git command")
+        .status
+        .success()
+}
+
 fn init_snap_repo(dir: &Path) {
     snap_cmd(dir).arg("init").assert().success();
     git(dir, &["config", "user.email", "snap-test@example.com"]);
@@ -157,22 +167,114 @@ fn new_stops_before_writing_when_health_check_fails() {
     init_snap_repo(temp.path());
     create_snapshot(temp.path(), "v1", "file.txt", "one");
 
-    let object_dir = temp.path().join(".git").join("objects").join("bb");
-    fs::create_dir_all(&object_dir).expect("object dir");
-    fs::write(
-        object_dir.join("22222222222222222222222222222222222222"),
-        "",
-    )
-    .expect("empty object");
+    let tags_dir = temp.path().join(".git").join("refs").join("tags");
+    fs::write(tags_dir.join("broken"), "").expect("empty tag ref");
 
     snap_cmd(temp.path())
         .args(["new", "v2", "should fail"])
         .assert()
         .failure()
         .stderr(predicate::str::contains(
-            "Git repository has empty object/ref files",
+            "Git repository has empty ref files",
         ));
 
     let tags = git(temp.path(), &["tag", "--list"]);
     assert!(!tags.lines().any(|tag| tag == "v2"));
+}
+
+#[test]
+fn doctor_repair_deletes_empty_git_files_and_creates_backup() {
+    let temp = assert_fs::TempDir::new().expect("tempdir");
+    init_snap_repo(temp.path());
+    create_snapshot(temp.path(), "v1", "file.txt", "one");
+
+    let object_dir = temp.path().join(".git").join("objects").join("cc");
+    fs::create_dir_all(&object_dir).expect("object dir");
+    let empty_object = object_dir.join("33333333333333333333333333333333333333");
+    fs::write(&empty_object, "").expect("empty object");
+
+    let empty_tag = temp
+        .path()
+        .join(".git")
+        .join("refs")
+        .join("tags")
+        .join("broken");
+    fs::write(&empty_tag, "").expect("empty tag");
+
+    snap_cmd(temp.path())
+        .args(["doctor", "--repair"])
+        .write_stdin("y\n")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Repair applied"))
+        .stdout(predicate::str::contains("Backup:"));
+
+    assert!(!empty_object.exists());
+    assert!(!empty_tag.exists());
+
+    let has_backup = fs::read_dir(temp.path())
+        .expect("read temp")
+        .filter_map(Result::ok)
+        .any(|entry| {
+            entry
+                .file_name()
+                .to_string_lossy()
+                .starts_with(".git.backup.")
+        });
+    assert!(has_backup);
+}
+
+#[test]
+fn doctor_repair_repairs_invalid_branch_to_latest_snapshot() {
+    let temp = assert_fs::TempDir::new().expect("tempdir");
+    init_snap_repo(temp.path());
+    create_snapshot(temp.path(), "v1", "file.txt", "one");
+    create_snapshot(temp.path(), "v2", "file.txt", "two");
+
+    let branch = git(temp.path(), &["symbolic-ref", "--short", "HEAD"])
+        .trim()
+        .to_string();
+    fs::write(
+        temp.path()
+            .join(".git")
+            .join("refs")
+            .join("heads")
+            .join(&branch),
+        "1111111111111111111111111111111111111111\n",
+    )
+    .expect("invalid branch ref");
+
+    assert!(!git_success(temp.path(), &["status", "--porcelain"]));
+
+    snap_cmd(temp.path())
+        .args(["doctor", "--repair"])
+        .write_stdin("y\n")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Repair applied"))
+        .stdout(predicate::str::contains("Repaired branch ref"));
+
+    assert!(git_success(temp.path(), &["status", "--porcelain"]));
+    let head = git(temp.path(), &["rev-parse", "HEAD"]);
+    let v2 = git(temp.path(), &["rev-parse", "v2^{commit}"]);
+    assert_eq!(head, v2);
+}
+
+#[test]
+fn doctor_repair_normalizes_detached_head_when_single_branch_exists() {
+    let temp = assert_fs::TempDir::new().expect("tempdir");
+    init_snap_repo(temp.path());
+    create_snapshot(temp.path(), "v1", "file.txt", "one");
+    let head = git(temp.path(), &["rev-parse", "HEAD"]);
+    fs::write(temp.path().join(".git").join("HEAD"), head).expect("raw head");
+
+    snap_cmd(temp.path())
+        .args(["doctor", "--repair"])
+        .write_stdin("y\n")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Normalized .git/HEAD"));
+
+    let branch = git(temp.path(), &["symbolic-ref", "--short", "HEAD"]);
+    assert!(!branch.trim().is_empty());
 }

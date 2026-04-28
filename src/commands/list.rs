@@ -24,7 +24,10 @@ pub fn execute(args: ListArgs) -> Result<()> {
     println!("\n{} \"{}\":", "[snap] Snapshots for".cyan(), project_name);
 
     if snapshots.is_empty() {
-        println!("\n  {}", "No snapshots found. Use \"snap new <label>\" to create one.".yellow());
+        println!(
+            "\n  {}",
+            "No snapshots found. Use \"snap new <label>\" to create one.".yellow()
+        );
         return Ok(());
     }
     // --- START: SNAPSHOT LIST LIMIT LOGIC ---
@@ -58,11 +61,19 @@ pub fn execute(args: ListArgs) -> Result<()> {
 
     // 1. Find the maximum length of the data in each column.
     let max_label_len = snapshots.iter().map(|s| s.tag.len()).max().unwrap_or(0);
-    let max_desc_len = snapshots.iter().map(|s| s.description.len()).max().unwrap_or(0);
+    let max_desc_len = snapshots
+        .iter()
+        .map(|s| s.description.len())
+        .max()
+        .unwrap_or(0);
 
     // 2. Determine the actual column width (the data width without padding).
     // --- FIX: Apply dynamic sizing to the ID column as well. ---
-    let id_w = if show_ids { max(HEADER_ID.len(), SHORT_ID_LEN) } else { 0 };
+    let id_w = if show_ids {
+        max(HEADER_ID.len(), SHORT_ID_LEN)
+    } else {
+        0
+    };
     let label_w = max(HEADER_LABEL.len(), max_label_len);
     let desc_w = max(HEADER_DESC.len(), max_desc_len).min(MAX_DESC_WIDTH);
     let time_w = max(HEADER_TIME.len(), FORMATTED_TIME_LEN);
@@ -75,7 +86,6 @@ pub fn execute(args: ListArgs) -> Result<()> {
 
     // --- END: DYNAMIC COLUMN WIDTH CALCULATION ---
 
-
     // Build the header string using the new dynamic widths.
     let mut header = "  ".to_string();
     let mut separator = "  ".to_string();
@@ -85,10 +95,18 @@ pub fn execute(args: ListArgs) -> Result<()> {
         separator.push_str(&format!("{:<width$}", "-".repeat(id_w), width = id_print_w));
     }
     header.push_str(&format!("{:<width$}", HEADER_LABEL, width = label_print_w));
-    separator.push_str(&format!("{:<width$}", "-".repeat(label_w), width = label_print_w));
+    separator.push_str(&format!(
+        "{:<width$}",
+        "-".repeat(label_w),
+        width = label_print_w
+    ));
 
     header.push_str(&format!("{:<width$}", HEADER_DESC, width = desc_print_w));
-    separator.push_str(&format!("{:<width$}", "-".repeat(desc_w), width = desc_print_w));
+    separator.push_str(&format!(
+        "{:<width$}",
+        "-".repeat(desc_w),
+        width = desc_print_w
+    ));
 
     header.push_str(HEADER_TIME);
     separator.push_str(&"-".repeat(time_w));
@@ -96,7 +114,8 @@ pub fn execute(args: ListArgs) -> Result<()> {
     println!("\n{}", header.bold());
     println!("{}", separator.bold());
 
-    for snap in &snapshots { // Iterate by reference (&) to avoid moving the vector.
+    for snap in &snapshots {
+        // Iterate by reference (&) to avoid moving the vector.
         let is_active = !active_commit.is_empty() && snap.full_id == active_commit;
         let mut line = "  ".to_string();
 
@@ -112,7 +131,11 @@ pub fn execute(args: ListArgs) -> Result<()> {
         };
         line.push_str(&format!("{:<width$}", desc_trunc, width = desc_print_w));
 
-        line.push_str(&format!("{:<width$}", format_timestamp(&snap.timestamp), width = time_print_w));
+        line.push_str(&format!(
+            "{:<width$}",
+            format_timestamp(&snap.timestamp),
+            width = time_print_w
+        ));
 
         if is_active {
             line.push_str(&format!("   {}", "(active)".green().bold()));
@@ -120,10 +143,7 @@ pub fn execute(args: ListArgs) -> Result<()> {
         println!("{}", line);
     }
     if truncated {
-        println!(
-            "  {}",
-            format!("...").dimmed()
-        );
+        println!("  {}", format!("...").dimmed());
     }
 
     println!();

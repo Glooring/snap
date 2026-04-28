@@ -22,16 +22,19 @@ pub fn execute(args: DiffArgs) -> Result<()> {
 
     let metadata_a = load_metadata_for_snapshot(snapshot_a)?;
     let metadata_b = load_metadata_for_snapshot(snapshot_b)?;
-    
+
     let hidden_a: HashSet<_> = metadata_a.hidden_paths.into_iter().collect();
     let readonly_a: HashSet<_> = metadata_a.readonly_paths.into_iter().collect();
     let hidden_b: HashSet<_> = metadata_b.hidden_paths.into_iter().collect();
     let readonly_b: HashSet<_> = metadata_b.readonly_paths.into_iter().collect();
     let empty_a: HashSet<_> = metadata_a.empty_dirs.into_iter().collect();
     let empty_b: HashSet<_> = metadata_b.empty_dirs.into_iter().collect();
-    
+
     let diff_output = crate::utils::run_command(
-        &format!("git diff --name-status {} {}", snapshot_a.full_id, snapshot_b.full_id),
+        &format!(
+            "git diff --name-status {} {}",
+            snapshot_a.full_id, snapshot_b.full_id
+        ),
         None,
     )?;
 
@@ -42,7 +45,7 @@ pub fn execute(args: DiffArgs) -> Result<()> {
         let parts: Vec<&str> = line.split('\t').collect();
         let status = parts[0].chars().next().unwrap_or('?');
         let file_path = parts.get(1).copied().unwrap_or("");
-        
+
         let (prefix, color, label) = match status {
             'A' => ("+", "green", "added"),
             'D' => ("-", "red", "deleted"),
@@ -63,7 +66,9 @@ pub fn execute(args: DiffArgs) -> Result<()> {
     for path in &all_attr_paths {
         // --- START: THE FIX ---
         // We pass `path` (which is a &String) directly, not `&path` (which is a &&String).
-        if files_in_diff.contains(path) { continue; }
+        if files_in_diff.contains(path) {
+            continue;
+        }
         // --- END: THE FIX ---
 
         let hidden_changed = hidden_a.contains(path) != hidden_b.contains(path);
@@ -77,7 +82,10 @@ pub fn execute(args: DiffArgs) -> Result<()> {
             if readonly_changed {
                 attr_changes.push("read-only");
             }
-            println!("  {}", format!("! {} ({} changed)", path, attr_changes.join(", ")).magenta());
+            println!(
+                "  {}",
+                format!("! {} ({} changed)", path, attr_changes.join(", ")).magenta()
+            );
             *changes.entry("attribute change").or_insert(0) += 1;
         }
     }
@@ -91,15 +99,23 @@ pub fn execute(args: DiffArgs) -> Result<()> {
         *changes.entry("empty dir removed").or_insert(0) += 1;
     }
 
-    let summary_parts: Vec<String> = changes.iter()
+    let summary_parts: Vec<String> = changes
+        .iter()
         .filter(|(_, &count)| count > 0)
         .map(|(&label, &count)| format!("{} {}", count, label))
         .collect();
 
     if summary_parts.is_empty() {
-        println!("\n{}", "[snap] The two snapshots are identical. No differences found.".green());
+        println!(
+            "\n{}",
+            "[snap] The two snapshots are identical. No differences found.".green()
+        );
     } else {
-        println!("\n{} {}", "[snap] Summary:".cyan(), summary_parts.join(", "));
+        println!(
+            "\n{} {}",
+            "[snap] Summary:".cyan(),
+            summary_parts.join(", ")
+        );
     }
 
     println!();

@@ -1,18 +1,30 @@
 use crate::cli::DoctorArgs;
-use crate::git_health::collect_health_report;
+use crate::git_health::{
+    collect_health_report, create_repair_plan, repair_git_repository, GitHealthReport, RepairPlan,
+};
 use anyhow::Result;
 use colored::*;
+use std::io::{self, Write};
 
-pub fn execute(_args: DoctorArgs) -> Result<()> {
+pub fn execute(args: DoctorArgs) -> Result<()> {
     let report = collect_health_report()?;
+    print_report(&report);
 
+    if args.repair {
+        repair(report)?;
+    }
+
+    Ok(())
+}
+
+fn print_report(report: &GitHealthReport) {
     println!("\n{}", "[snap] Git health report".cyan().bold());
 
     if !report.is_git_repo {
         println!("  {} No .git directory found.", "ERR".red().bold());
         println!("  Run `snap init` to initialize this project.");
         println!();
-        return Ok(());
+        return;
     }
 
     print_status(
@@ -101,7 +113,7 @@ pub fn execute(_args: DoctorArgs) -> Result<()> {
 
     if report.has_errors() {
         println!("\n{}", "[snap] Problems were found.".yellow().bold());
-        println!("  This command is read-only and did not repair anything.");
+        println!("  Run `snap doctor --repair` to repair safe cases with a backup.");
         println!("  See `doc/REPAIR_GIT_ERRORS.md` for the manual repair flow.");
     } else {
         println!(
@@ -111,7 +123,106 @@ pub fn execute(_args: DoctorArgs) -> Result<()> {
     }
 
     println!();
+}
+
+fn repair(report: GitHealthReport) -> Result<()> {
+    if !report.has_errors() {
+        println!("{}", "[snap] No repair needed.".green());
+        return Ok(());
+    }
+
+    let plan = create_repair_plan(&report)?;
+    print_repair_plan(&plan);
+
+    if !has_repair_actions(&plan) {
+        println!(
+            "{}",
+            "[snap] No safe automatic repair is available for the detected problem.".yellow()
+        );
+        println!("  See `doc/REPAIR_GIT_ERRORS.md` for the manual repair flow.");
+        return Ok(());
+    }
+
+    if !confirm_repair("[snap] Create a .git backup and apply this repair plan?")? {
+        println!("{}", "[snap] Repair cancelled.".yellow());
+        return Ok(());
+    }
+
+    let outcome = repair_git_repository(&plan)?;
+    println!("\n{}", "[snap] Repair applied.".green().bold());
+    println!("  Backup: {}", outcome.backup_path.display());
+    println!(
+        "  Deleted empty Git files: {}",
+        outcome.deleted_empty_files.len()
+    );
+    if let Some(branch) = outcome.repaired_branch.as_deref() {
+        println!("  Repaired branch ref: {}", branch);
+    }
+    if outcome.repaired_head {
+        println!("  Normalized .git/HEAD");
+    }
+    if outcome.reset_index {
+        println!("  Rebuilt Git index");
+    }
+
+    println!("\n{}", "[snap] Rechecking repository...".cyan());
+    let final_report = collect_health_report()?;
+    print_report(&final_report);
+
     Ok(())
+}
+
+fn print_repair_plan(plan: &RepairPlan) {
+    println!("{}", "[snap] Repair plan:".cyan().bold());
+
+    if plan.empty_git_files.is_empty() {
+        println!("  - No empty Git object/ref files to delete.");
+    } else {
+        println!(
+            "  - Delete {} empty Git object/ref file(s).",
+            plan.empty_git_files.len()
+        );
+        for path in plan.empty_git_files.iter().take(10) {
+            println!("    - {}", path.display());
+        }
+        if plan.empty_git_files.len() > 10 {
+            println!("    ... and {} more", plan.empty_git_files.len() - 10);
+        }
+    }
+
+    if let (Some(branch), Some(commit)) =
+        (plan.target_branch.as_deref(), plan.target_commit.as_deref())
+    {
+        println!(
+            "  - Repair branch '{}' to commit {}.",
+            branch,
+            short_hash(commit)
+        );
+    }
+
+    if plan.needs_head_repair {
+        if let Some(branch) = plan.target_branch.as_deref() {
+            println!("  - Normalize .git/HEAD to refs/heads/{}.", branch);
+        }
+    }
+
+    if has_repair_actions(plan) {
+        println!("  - Create a full .git backup before modifying anything.");
+        println!("  - Rebuild the Git index with `git reset --mixed HEAD`.");
+    }
+}
+
+fn has_repair_actions(plan: &RepairPlan) -> bool {
+    !plan.empty_git_files.is_empty() || plan.needs_branch_repair || plan.needs_head_repair
+}
+
+fn confirm_repair(question: &str) -> Result<bool> {
+    print!("{} [y/N] ", question.yellow());
+    io::stdout().flush()?;
+
+    let mut answer = String::new();
+    io::stdin().read_line(&mut answer)?;
+    Ok(answer.trim().to_lowercase().starts_with('y'))
 }
 
 fn print_status(label: &str, ok: bool, detail: &str) {

@@ -23,7 +23,40 @@ fatal: bad object refs/heads/main
 - Ref-ul local al branch-ului activ (`refs/heads/master`, `refs/heads/main`, etc.) fie pointează la un SHA inexistent, fie **lipsește complet**.
 - `.git/HEAD` poate conține un SHA brut în loc de `ref: refs/heads/<branch>`.
 - `snap restore` / `snap new` folosesc intern comenzi Git care depind de ref-uri valide; când un tag sau branch-ul activ e invalid, operația cade chiar dacă tag-ul dorit există.
-- Începând cu versiunea cu `snap doctor`, poți rula întâi `snap doctor` pentru diagnostic read-only. Nu repară automat.
+- Poți rula întâi `snap doctor` pentru diagnostic read-only.
+- Pentru cazurile sigure, poți rula `snap doctor --repair`; creează backup complet `.git.backup.YYYYMMDD-HHMMSS`, cere confirmare și apoi repară automat.
+
+## Reparare automată recomandată
+
+Începe cu diagnosticul:
+
+```bash
+snap doctor
+```
+
+Dacă raportul arată probleme de tip fișier gol în `.git/objects` / `.git/refs`, branch ref invalid sau `HEAD` brut/detached care poate fi asociat sigur cu un branch, rulează:
+
+```bash
+snap doctor --repair
+```
+
+Ce face:
+
+- creează backup complet al directorului `.git`;
+- șterge doar fișiere Git de 0 bytes din `.git/objects` și `.git/refs`;
+- repară branch-ul activ către ultimul snapshot valid când poate determina branch-ul sigur;
+- normalizează `.git/HEAD` la `ref: refs/heads/<branch>` când poate determina branch-ul sigur;
+- reconstruiește indexul cu `git reset --mixed HEAD`;
+- rulează verificare finală.
+
+Ce nu face:
+
+- nu rulează fără confirmare;
+- nu ghicește între `main`, `master` sau alt branch dacă nu are un indiciu concret;
+- nu șterge fișiere Git non-goale;
+- nu schimbă formatul snapshot-urilor.
+
+Dacă repair-ul automat spune că nu poate determina branch-ul în siguranță, folosește pașii manuali de mai jos.
 
 ## Reparare corectă (pas cu pas)
 
@@ -204,24 +237,29 @@ git cat-file -t "$(cat ".git/refs/heads/$branch" 2>/dev/null)" 2>/dev/null || ec
 
 ## Prevenție în aplicația `snap` (Rust)
 
-Implementat parțial:
+Implementat:
 
 1. Verifică ref-uri critice:
 - rulează verificări pentru `HEAD` și branch-ul activ detectat, nu hardcoded `master`.
 - dacă eșuează, oprește operația cu mesaj clar și recomandă `snap doctor`.
 
-2. Verifică obiecte goale:
-- scan rapid `.git/objects` pentru fișiere de 0 bytes;
-- dacă există, oprește fluxul normal și oferă `snap doctor`.
+2. Preflight rapid pentru comenzile normale:
+- `snap new`, `restore`, `update`, `edit`, `delete` rulează un preflight sub-secundă în mod normal;
+- verifică `.git`, `git status --porcelain`, `HEAD`, branch-ul activ și fișiere goale doar în `.git/refs`;
+- nu scanează `.git/objects` și nu validează toate tag-urile, ca să nu încetinească proiectele mari în WSL.
 
-3. Nu depinde de branch implicit fragil:
+3. Diagnostic complet separat:
+- `snap doctor` scanează `.git/objects`, `.git/refs`, `HEAD`, branch-ul activ și snapshot tag-urile;
+- poate dura mai mult, dar este comandă explicită de diagnostic.
+
+4. Nu depinde de branch implicit fragil:
 - pentru `restore`, rezolvă snapshot-ul la commit (`tag^{commit}`) și folosește `git reset --hard <commit>` pe branch-ul activ;
 - nu bloca restore pe `master` dacă proiectul folosește `main` sau alt branch.
 
-4. Adaugă comandă dedicată:
-- `snap doctor` (read-only checks).
-- `snap doctor --repair` nu este implementat încă.
+5. Reparare controlată:
+- `snap doctor` este read-only;
+- `snap doctor --repair` creează backup, cere confirmare și repară doar cazurile sigure.
 
-5. Mesaje de eroare orientate pe acțiune:
+6. Mesaje de eroare orientate pe acțiune:
 - include detectarea exactă: `invalid ref`, `empty loose object`, `bad HEAD`.
 - arată comenzi exacte de fix (copy-paste ready).

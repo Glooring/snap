@@ -80,7 +80,11 @@ pub struct DiffArgs {
 }
 
 #[derive(Args, Debug)]
-pub struct DoctorArgs {}
+pub struct DoctorArgs {
+    /// Repair safe Git corruption cases after creating a .git backup
+    #[arg(long)]
+    pub repair: bool,
+}
 
 #[derive(Args, Debug)]
 pub struct OptionsArgs {}

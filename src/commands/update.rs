@@ -29,11 +29,18 @@ pub fn execute(_args: UpdateArgs) -> Result<()> {
     let metadata_has_changes = current_metadata != old_metadata;
 
     if !git_has_changes && !metadata_has_changes {
-        println!("{}", "[snap] No changes to update. Working tree is clean.".yellow());
+        println!(
+            "{}",
+            "[snap] No changes to update. Working tree is clean.".yellow()
+        );
         return Ok(());
     }
 
-    println!("\n{}", "[snap] This command will replace the active snapshot with the current project state.".cyan());
+    println!(
+        "\n{}",
+        "[snap] This command will replace the active snapshot with the current project state."
+            .cyan()
+    );
     println!("{}", "  Target Snapshot:".yellow());
     println!("    Label:       {}", active_snapshot.tag);
     println!("    Description: {}", active_snapshot.description);
@@ -49,28 +56,51 @@ pub fn execute(_args: UpdateArgs) -> Result<()> {
         }
     }
 
-    println!("\n{}", "[snap] Step 1/3: Scanning for new metadata...".cyan());
+    println!(
+        "\n{}",
+        "[snap] Step 1/3: Scanning for new metadata...".cyan()
+    );
     // --- START: CORRECTED LINE ---
     // Reuse the metadata we already gathered.
     let new_metadata_blob_hash = hash_metadata_blob(&current_metadata)?;
     // --- END: CORRECTED LINE ---
 
-    println!("{}", "[snap] Step 2/3: Staging changes and amending commit...".cyan());
+    println!(
+        "{}",
+        "[snap] Step 2/3: Staging changes and amending commit...".cyan()
+    );
     run_command("git add -A", None)?;
     // Use --allow-empty for robustness, though --amend usually implies it's not needed.
     run_command("git commit --amend --no-edit --allow-empty", None)?;
 
-    let new_commit_id = get_active_commit_full()?
-        .context("Failed to get new commit ID after amend.")?;
+    let new_commit_id =
+        get_active_commit_full()?.context("Failed to get new commit ID after amend.")?;
     let new_short_id = &new_commit_id[..7];
 
-    println!("{}", format!("[snap] Step 3/3: Moving tag \"{}\" to new commit {}...", active_snapshot.tag, new_short_id).cyan());
+    println!(
+        "{}",
+        format!(
+            "[snap] Step 3/3: Moving tag \"{}\" to new commit {}...",
+            active_snapshot.tag, new_short_id
+        )
+        .cyan()
+    );
 
-    let new_tag_message = create_tag_message(&active_snapshot.description, new_metadata_blob_hash.as_deref());
+    let new_tag_message = create_tag_message(
+        &active_snapshot.description,
+        new_metadata_blob_hash.as_deref(),
+    );
     let tag_cmd = format!("git tag -a -f {} -F -", active_snapshot.tag);
     run_command(&tag_cmd, Some(&new_tag_message))?;
 
-    println!("\n{}", format!("[snap] Update complete. Snapshot \"{}\" now points to new commit [{}].", active_snapshot.tag, new_short_id).green());
+    println!(
+        "\n{}",
+        format!(
+            "[snap] Update complete. Snapshot \"{}\" now points to new commit [{}].",
+            active_snapshot.tag, new_short_id
+        )
+        .green()
+    );
 
     println!();
     Ok(())

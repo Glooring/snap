@@ -42,22 +42,39 @@ pub fn execute(args: RestoreArgs) -> Result<()> {
                 .context("Could not find selected snapshot.")
         }
     }?;
-    let snapshot_commit = resolve_snapshot_commit(&snapshot_to_restore.tag)
-        .with_context(|| format!("Snapshot \"{}\" does not point to a valid commit.", snapshot_to_restore.tag))?;
+    let snapshot_commit = resolve_snapshot_commit(&snapshot_to_restore.tag).with_context(|| {
+        format!(
+            "Snapshot \"{}\" does not point to a valid commit.",
+            snapshot_to_restore.tag
+        )
+    })?;
 
     if check_dirty()? {
-        println!("\n{}", "[snap] WARNING: Your project has uncommitted changes.".yellow());
-        if !ask_yes_no("To restore a snapshot, all local changes must be discarded. Continue?", false)? {
+        println!(
+            "\n{}",
+            "[snap] WARNING: Your project has uncommitted changes.".yellow()
+        );
+        if !ask_yes_no(
+            "To restore a snapshot, all local changes must be discarded. Continue?",
+            false,
+        )? {
             println!("{}", "[snap] Restore cancelled.".yellow());
             return Ok(());
         }
         println!("{}", "[snap] Discarding all local changes...".cyan());
         run_command("git reset --hard HEAD", None)?;
         run_command("git clean -fd", None)?;
-        println!("{}\n", "[snap] Workspace is now clean. Proceeding with restore.".green());
+        println!(
+            "{}\n",
+            "[snap] Workspace is now clean. Proceeding with restore.".green()
+        );
     }
 
-    println!("\n{} \"{}\"...", "[snap] Restoring project files for snapshot".cyan(), snapshot_to_restore.tag);
+    println!(
+        "\n{} \"{}\"...",
+        "[snap] Restoring project files for snapshot".cyan(),
+        snapshot_to_restore.tag
+    );
     run_command(&format!("git reset --hard {}", snapshot_commit), None)?;
 
     println!("{}", "[snap] Synchronizing metadata...".cyan());
@@ -124,7 +141,10 @@ pub fn execute(args: RestoreArgs) -> Result<()> {
         }
     }
 
-    println!("\n{}", "[snap] Restore complete. Your project is now at the state of this snapshot.".green());
+    println!(
+        "\n{}",
+        "[snap] Restore complete. Your project is now at the state of this snapshot.".green()
+    );
     println!();
     Ok(())
 }

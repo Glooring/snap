@@ -53,7 +53,9 @@ pub fn run_command_with_env(
     }
     cmd.stdout(Stdio::piped()).stderr(Stdio::piped());
 
-    let mut child = cmd.spawn().with_context(|| format!("Failed to spawn command: {}", cmd_str))?;
+    let mut child = cmd
+        .spawn()
+        .with_context(|| format!("Failed to spawn command: {}", cmd_str))?;
 
     if let (Some(stdin), Some(input_data)) = (child.stdin.as_mut(), input) {
         stdin.write_all(input_data.as_bytes())?;
@@ -295,7 +297,10 @@ pub fn ask_yes_no(question: &str, default: bool) -> Result<bool> {
 
 pub fn format_timestamp(iso_str: &str) -> String {
     match DateTime::parse_from_rfc3339(iso_str) {
-        Ok(dt) => dt.with_timezone(&Local).format("%Y-%m-%d %H:%M").to_string(),
+        Ok(dt) => dt
+            .with_timezone(&Local)
+            .format("%Y-%m-%d %H:%M")
+            .to_string(),
         Err(_) => iso_str.to_string(),
     }
 }
