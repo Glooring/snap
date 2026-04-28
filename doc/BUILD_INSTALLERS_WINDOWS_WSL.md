@@ -61,6 +61,52 @@ snap 7.2.0
 
 ## 2. Which Windows installer to use
 
+Keep only one Windows installation of `snap` in PATH. If `where snap` prints more than one path, Windows uses the first one and ignores the others unless the first path is removed.
+
+Example:
+
+```powershell
+where snap
+```
+
+Possible output:
+
+```text
+D:\Apps\snap\bin\snap.exe
+C:\Program Files\snap\bin\snap.exe
+```
+
+In this case Windows runs `D:\Apps\snap\bin\snap.exe`. Keeping both paths can make upgrades confusing, because one copy may be updated while the other remains old.
+
+Recommended local setup for this machine:
+
+```text
+D:\Apps\snap\bin\snap.exe
+```
+
+Manual update:
+
+```powershell
+cd D:\Projects\snap
+copy /Y target\release\snap.exe D:\Apps\snap\bin\snap.exe
+```
+
+Then open a new terminal and verify:
+
+```powershell
+where snap
+snap --version
+snap doctor
+```
+
+Ideal `where snap` output for this setup:
+
+```text
+D:\Apps\snap\bin\snap.exe
+```
+
+If `C:\Program Files\snap\bin\snap.exe` also appears and you do not want to use it, uninstall that Snap installation from Windows Apps/Programs or remove `C:\Program Files\snap\bin` from PATH. Delete the folder only after uninstalling/removing the PATH entry.
+
 ### MSI
 
 Use:
@@ -85,6 +131,8 @@ snap --version
 snap doctor
 ```
 
+Use the MSI when you want a normal Windows installer and Program Files installation. If you prefer the custom `D:\Apps\snap\bin` setup, do not install the MSI on your own machine unless you also remove the `D:\Apps\snap\bin` PATH entry or intentionally switch to Program Files.
+
 ### NSIS EXE
 
 Use:
@@ -94,6 +142,8 @@ snap-setup.exe
 ```
 
 This installer is produced by `snap.nsi`. It installs the executable and creates uninstall/start-menu entries. If PATH is not updated in a new terminal after using the EXE installer, prefer the MSI or add the install directory to PATH manually.
+
+You can use `snap-setup.exe`, but it is mainly useful for distribution. On this machine it may recreate or update the `C:\Program Files\snap` installation, which can conflict with the preferred `D:\Apps\snap\bin` copy if both are in PATH.
 
 ## 3. Build and install for WSL / Ubuntu
 
@@ -190,6 +240,22 @@ cargo make installers
 ```
 
 Then install/test Windows:
+
+For the preferred local `D:\Apps\snap\bin` setup:
+
+```powershell
+copy /Y target\release\snap.exe D:\Apps\snap\bin\snap.exe
+```
+
+Open a new terminal:
+
+```powershell
+where snap
+snap --version
+snap doctor
+```
+
+For a Program Files installer test instead:
 
 ```powershell
 msiexec /i target\wix\snap-7.2.0-x86_64.msi
