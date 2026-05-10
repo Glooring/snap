@@ -22,6 +22,7 @@ pub struct GitCommandResult {
 pub struct SnapshotCheck {
     pub tag: String,
     pub commit: Option<String>,
+    pub timestamp: Option<String>,
     pub error: Option<String>,
 }
 
@@ -441,7 +442,7 @@ fn collect_snapshot_checks() -> Result<(Vec<SnapshotCheck>, Option<String>)> {
             "for-each-ref",
             "refs/tags",
             "--sort=-taggerdate",
-            "--format=%(refname:short)",
+            "--format=%(refname:short)\t%(taggerdate:iso-strict)",
         ],
         None,
     )?;
@@ -450,13 +451,28 @@ fn collect_snapshot_checks() -> Result<(Vec<SnapshotCheck>, Option<String>)> {
         return Ok((Vec::new(), Some(tags.stderr.trim().to_string())));
     }
 
-    let mut snapshots = Vec::new();
-    for tag in tags
+    let tag_lines: Vec<_> = tags
         .stdout
         .lines()
         .map(str::trim)
-        .filter(|tag| !tag.is_empty())
-    {
+        .filter(|line| !line.is_empty())
+        .collect();
+    if tag_lines.len() >= 100 {
+        eprintln!("[snap] Checking {} snapshot tag(s)...", tag_lines.len());
+    }
+
+    let mut snapshots = Vec::new();
+    for line in tag_lines {
+        let mut parts = line.splitn(2, '\t');
+        let tag = parts.next().unwrap_or("").trim();
+        let timestamp = parts
+            .next()
+            .map(str::trim)
+            .filter(|value| !value.is_empty());
+        if tag.is_empty() {
+            continue;
+        }
+
         let commit = run_git(
             &["rev-parse", "--verify", &format!("{}^{{commit}}", tag)],
             None,
@@ -465,18 +481,69 @@ fn collect_snapshot_checks() -> Result<(Vec<SnapshotCheck>, Option<String>)> {
             snapshots.push(SnapshotCheck {
                 tag: tag.to_string(),
                 commit: Some(commit.stdout.trim().to_string()),
+                timestamp: timestamp.map(ToString::to_string),
                 error: None,
             });
         } else {
             snapshots.push(SnapshotCheck {
                 tag: tag.to_string(),
                 commit: None,
+                timestamp: timestamp.map(ToString::to_string),
                 error: Some(commit.stderr.trim().to_string()),
             });
         }
     }
 
+    sort_snapshot_checks_by_best_repair_target(&mut snapshots)?;
     Ok((snapshots, None))
+}
+
+fn sort_snapshot_checks_by_best_repair_target(snapshots: &mut [SnapshotCheck]) -> Result<()> {
+    let valid_commits: Vec<String> = snapshots
+        .iter()
+        .filter_map(|snapshot| snapshot.commit.clone())
+        .collect();
+    let independent_commits: HashSet<String> = if valid_commits.len() > 1 {
+        let mut args = Vec::with_capacity(valid_commits.len() + 2);
+        args.push("merge-base");
+        args.push("--independent");
+        args.extend(valid_commits.iter().map(String::as_str));
+
+        let result = run_git(&args, None)?;
+        if result.success {
+            result
+                .stdout
+                .lines()
+                .map(str::trim)
+                .filter(|commit| !commit.is_empty())
+                .map(ToString::to_string)
+                .collect()
+        } else {
+            valid_commits.iter().cloned().collect()
+        }
+    } else {
+        valid_commits.iter().cloned().collect()
+    };
+
+    snapshots.sort_by(|a, b| {
+        let a_is_tip = a
+            .commit
+            .as_ref()
+            .map(|commit| independent_commits.contains(commit))
+            .unwrap_or(false);
+        let b_is_tip = b
+            .commit
+            .as_ref()
+            .map(|commit| independent_commits.contains(commit))
+            .unwrap_or(false);
+
+        b_is_tip
+            .cmp(&a_is_tip)
+            .then_with(|| b.timestamp.cmp(&a.timestamp))
+            .then_with(|| b.tag.cmp(&a.tag))
+    });
+
+    Ok(())
 }
 
 fn collect_metadata_checks() -> Result<(Vec<MetadataBlobCheck>, Vec<String>, Option<String>)> {
@@ -486,20 +553,40 @@ fn collect_metadata_checks() -> Result<(Vec<MetadataBlobCheck>, Vec<String>, Opt
     };
 
     let mut used_hashes = HashSet::new();
+    let metadata_ref_targets = collect_metadata_ref_targets()?;
+    let metadata_count = snapshots
+        .iter()
+        .filter(|snapshot| metadata_blob_hash_for_snapshot(snapshot).is_some())
+        .count();
+    if metadata_count >= 100 {
+        eprintln!(
+            "[snap] Checking {} snapshot metadata blob(s)...",
+            metadata_count
+        );
+    }
+
     let mut checks = Vec::new();
     for snapshot in &snapshots {
         let Some(blob_hash) = metadata_blob_hash_for_snapshot(snapshot) else {
             continue;
         };
         used_hashes.insert(blob_hash.clone());
+        if metadata_count >= 100 && checks.len() > 0 && checks.len() % 100 == 0 {
+            eprintln!(
+                "[snap] Checked {}/{} snapshot metadata blob(s)...",
+                checks.len(),
+                metadata_count
+            );
+        }
         checks.push(check_metadata_blob(
             snapshot.tag.as_str(),
             Some(snapshot.full_id.clone()),
             &blob_hash,
+            &metadata_ref_targets,
         )?);
     }
 
-    let unused_refs = collect_unused_metadata_refs(&used_hashes)?;
+    let unused_refs = collect_unused_metadata_refs(&used_hashes, &metadata_ref_targets);
     Ok((checks, unused_refs, None))
 }
 
@@ -507,57 +594,52 @@ fn check_metadata_blob(
     snapshot_tag: &str,
     snapshot_commit: Option<String>,
     blob_hash: &str,
+    metadata_ref_targets: &HashMap<String, String>,
 ) -> Result<MetadataBlobCheck> {
-    let object_type = run_git(&["cat-file", "-t", blob_hash], None)?;
-    let (exists, object_type_value, valid_json, error) = if object_type.success {
-        let object_type_value = object_type.stdout.trim().to_string();
-        if object_type_value == "blob" {
-            let blob = run_git(&["cat-file", "blob", blob_hash], None)?;
-            if blob.success {
-                match serde_json::from_str::<SnapMetadata>(&blob.stdout) {
-                    Ok(_) => (true, Some(object_type_value), true, None),
-                    Err(error) => (
-                        true,
-                        Some(object_type_value),
-                        false,
-                        Some(format!("Invalid snap metadata JSON: {}", error)),
-                    ),
-                }
-            } else {
+    let blob = run_git(&["cat-file", "blob", blob_hash], None)?;
+    let (exists, object_type_value, valid_json, error) = if blob.success {
+        match serde_json::from_str::<SnapMetadata>(&blob.stdout) {
+            Ok(_) => (true, Some("blob".to_string()), true, None),
+            Err(error) => (
+                true,
+                Some("blob".to_string()),
+                false,
+                Some(format!("Invalid snap metadata JSON: {}", error)),
+            ),
+        }
+    } else {
+        let object_type = run_git(&["cat-file", "-t", blob_hash], None)?;
+        if object_type.success {
+            let object_type_value = object_type.stdout.trim().to_string();
+            if object_type_value == "blob" {
                 (
                     true,
                     Some(object_type_value),
                     false,
                     Some(first_line(&blob.stderr)),
                 )
+            } else {
+                (
+                    true,
+                    Some(object_type_value.clone()),
+                    false,
+                    Some(format!("Expected blob object, found {}", object_type_value)),
+                )
             }
         } else {
             (
-                true,
-                Some(object_type_value.clone()),
                 false,
-                Some(format!("Expected blob object, found {}", object_type_value)),
+                None,
+                false,
+                Some(format!(
+                    "Missing metadata blob: {}",
+                    first_line(&object_type.stderr)
+                )),
             )
         }
-    } else {
-        (
-            false,
-            None,
-            false,
-            Some(format!(
-                "Missing metadata blob: {}",
-                first_line(&object_type.stderr)
-            )),
-        )
     };
 
-    let ref_name = metadata_ref_name(blob_hash);
-    let pin = run_git(&["show-ref", "--hash", "--verify", &ref_name], None)?;
-    let pin_target = if pin.success {
-        Some(pin.stdout.trim().to_string())
-    } else {
-        None
-    };
+    let pin_target = metadata_ref_targets.get(blob_hash).cloned();
     let pinned = pin_target.as_deref() == Some(blob_hash);
 
     Ok(MetadataBlobCheck {
@@ -573,35 +655,49 @@ fn check_metadata_blob(
     })
 }
 
-fn collect_unused_metadata_refs(used_hashes: &HashSet<String>) -> Result<Vec<String>> {
+fn collect_metadata_ref_targets() -> Result<HashMap<String, String>> {
     let refs = run_git(
         &[
             "for-each-ref",
             METADATA_REF_NAMESPACE,
-            "--format=%(refname)",
+            "--format=%(refname)%00%(objectname)%00",
         ],
         None,
     )?;
     if !refs.success {
-        return Ok(Vec::new());
+        return Ok(HashMap::new());
     }
 
-    let mut unused = Vec::new();
-    for ref_name in refs
-        .stdout
-        .lines()
-        .map(str::trim)
-        .filter(|line| !line.is_empty())
-    {
+    let mut targets = HashMap::new();
+    let fields: Vec<_> = refs.stdout.split('\0').collect();
+    let mut index = 0;
+    while index + 1 < fields.len() {
+        let ref_name = fields[index].trim_start_matches('\n').trim();
+        let target = fields[index + 1].trim();
+        index += 2;
+        if ref_name.is_empty() || target.is_empty() {
+            continue;
+        }
+
         let hash = ref_name
             .strip_prefix(&format!("{}/", METADATA_REF_NAMESPACE))
             .unwrap_or(ref_name);
-        if !used_hashes.contains(hash) {
-            unused.push(ref_name.to_string());
-        }
+        targets.insert(hash.to_string(), target.to_string());
     }
+    Ok(targets)
+}
+
+fn collect_unused_metadata_refs(
+    used_hashes: &HashSet<String>,
+    metadata_ref_targets: &HashMap<String, String>,
+) -> Vec<String> {
+    let mut unused: Vec<_> = metadata_ref_targets
+        .keys()
+        .filter(|hash| !used_hashes.contains(*hash))
+        .map(|hash| metadata_ref_name(hash))
+        .collect();
     unused.sort();
-    Ok(unused)
+    unused
 }
 
 fn repair_active_snapshot_metadata(tag: &str) -> Result<()> {
