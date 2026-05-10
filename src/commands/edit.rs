@@ -2,13 +2,14 @@ use crate::cli::EditArgs;
 use crate::config::{load_config, SortOrder};
 use crate::git_health::ensure_git_healthy_for_write;
 use crate::utils::{
-    create_tag_message, find_snapshot, format_snapshot_line, get_snapshots, run_command,
-    run_command_with_env,
+    create_tag_message, find_snapshot, format_snapshot_line, get_snapshots,
+    load_metadata_for_snapshot, pin_metadata_blob, run_command, run_command_with_env,
 };
 use anyhow::{anyhow, Context, Result};
 use colored::*;
-use inquire::{Select, Text};
+use inquire::Select;
 use std::collections::HashMap; // Keep HashMap import
+use std::io::{self, Write};
 
 fn sanitize_tag_name(label: &str) -> String {
     label
@@ -64,15 +65,18 @@ pub fn execute(args: EditArgs) -> Result<()> {
         .find(|line| line.starts_with(blob_hash_key))
         .and_then(|line| line.split(':').nth(1))
         .map(|hash| hash.trim().to_string());
+    if let Some(hash) = metadata_blob_hash.as_deref() {
+        load_metadata_for_snapshot(&snapshot_to_edit)?;
+        pin_metadata_blob(hash)?;
+    }
 
-    let new_label = Text::new("Enter new label (tag name):")
-        .with_initial_value(&snapshot_to_edit.tag)
-        .with_validator(inquire::required!("Label cannot be empty."))
-        .prompt()?;
+    let new_label = prompt_text_with_default("Enter new label (tag name)", &snapshot_to_edit.tag)?;
+    if new_label.trim().is_empty() {
+        return Err(anyhow!("Label cannot be empty."));
+    }
 
-    let new_description = Text::new("Enter new description:")
-        .with_initial_value(&snapshot_to_edit.description)
-        .prompt()?;
+    let new_description =
+        prompt_text_with_default("Enter new description", &snapshot_to_edit.description)?;
 
     let new_tag_name = sanitize_tag_name(&new_label);
     let new_description_trimmed = new_description.trim();
@@ -135,4 +139,18 @@ pub fn execute(args: EditArgs) -> Result<()> {
 
     println!();
     Ok(())
+}
+
+fn prompt_text_with_default(prompt: &str, default: &str) -> Result<String> {
+    print!("{} [{}]: ", prompt, default);
+    io::stdout().flush()?;
+
+    let mut answer = String::new();
+    io::stdin().read_line(&mut answer)?;
+    let answer = answer.trim_end_matches(&['\r', '\n'][..]);
+    if answer.is_empty() {
+        Ok(default.to_string())
+    } else {
+        Ok(answer.to_string())
+    }
 }

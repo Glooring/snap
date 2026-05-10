@@ -4,7 +4,7 @@ use crate::git_health::ensure_git_healthy_for_write;
 use crate::utils::{
     ask_yes_no, check_dirty, create_tag_message, find_snapshot, gather_metadata,
     get_active_commit_full, get_snapshots, hash_metadata_blob, load_metadata_for_snapshot,
-    run_command,
+    pin_metadata_blob, pin_snapshot_metadata, run_command,
 };
 use anyhow::{Context, Result};
 use colored::*;
@@ -26,6 +26,7 @@ pub fn execute(_args: UpdateArgs) -> Result<()> {
     let git_has_changes = check_dirty()?;
     let current_metadata = gather_metadata()?;
     let old_metadata = load_metadata_for_snapshot(&active_snapshot)?;
+    pin_snapshot_metadata(&active_snapshot)?;
     let metadata_has_changes = current_metadata != old_metadata;
 
     if !git_has_changes && !metadata_has_changes {
@@ -63,6 +64,9 @@ pub fn execute(_args: UpdateArgs) -> Result<()> {
     // --- START: CORRECTED LINE ---
     // Reuse the metadata we already gathered.
     let new_metadata_blob_hash = hash_metadata_blob(&current_metadata)?;
+    if let Some(hash) = new_metadata_blob_hash.as_deref() {
+        pin_metadata_blob(hash)?;
+    }
     // --- END: CORRECTED LINE ---
 
     println!(

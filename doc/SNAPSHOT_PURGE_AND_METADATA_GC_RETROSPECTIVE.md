@@ -910,9 +910,9 @@ Suggested tests:
    - run `snap delete active --purge`;
    - assert refusal without `--force-active`.
 
-## Operational playbook until the tool is fixed
+## Legacy manual playbook
 
-If a huge accidental snapshot is created and it is not active:
+Before `snap delete --purge` existed, the safe manual flow for a huge accidental snapshot was:
 
 1. Check active state:
 
@@ -960,7 +960,7 @@ If a huge accidental snapshot is created and it is not active:
    snap new <next_label>
    ```
 
-This manual playbook is intentionally cautious. Once `snap delete --purge` exists, the tool should own these steps.
+This manual playbook is intentionally cautious. Current versions should use `snap delete <snapshot> --purge` instead.
 
 ## Summary
 
@@ -977,3 +977,14 @@ The main product fixes are:
 - make purge pin remaining metadata before running any prune/GC.
 
 With those changes, a user can safely recover from an accidental multi-gigabyte snapshot without breaking future `snap new` commands.
+
+## Implemented behavior
+
+The tool now implements the short-term design from this retrospective:
+
+- `snap new`, `snap update`, and `snap edit` pin metadata blobs under `refs/snap-metadata/<hash>`.
+- `snap doctor` validates `Snap-Metadata-Ref` blobs, JSON shape, pin refs, wrong pin targets, and unused metadata refs.
+- `snap doctor --repair` creates a full `.git.backup.*`, pins existing valid metadata blobs, fixes wrong metadata refs, and regenerates missing metadata only for the active snapshot.
+- `snap delete` remains tag-only by default and explains that disk space was not reclaimed.
+- `snap delete --purge` pins remaining metadata, creates a targeted bundle backup by default, deletes the tag, expires unreachable reflogs, runs `git gc --prune=now`, and performs a final health check.
+- `snap delete --purge --no-backup` skips the bundle backup only after a stronger confirmation.

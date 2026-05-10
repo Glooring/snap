@@ -11,7 +11,8 @@ use std::path::Path; // Corrected: Removed unused PathBuf
 use std::process::{Command, Stdio};
 use walkdir::{DirEntry, WalkDir};
 
-const METADATA_REF_KEY: &str = "Snap-Metadata-Ref";
+pub const METADATA_REF_KEY: &str = "Snap-Metadata-Ref";
+pub const METADATA_REF_NAMESPACE: &str = "refs/snap-metadata";
 
 #[derive(Debug, Clone)]
 pub struct Snapshot {
@@ -88,39 +89,48 @@ pub fn get_active_commit_full() -> Result<Option<String>> {
 }
 
 pub fn get_snapshots() -> Result<Vec<Snapshot>> {
-    let command = r#"git for-each-ref refs/tags --sort=-taggerdate --format="%(refname:short)	%(*objectname)	%(taggerdate:iso-strict)	%(contents)""#;
+    let command = r#"git for-each-ref refs/tags --sort=-taggerdate --format=%(refname:short)%00%(*objectname)%00%(taggerdate:iso-strict)%00%(contents)%00"#;
     let output = run_command(command, None)
         .context("Failed to inspect snapshot tags. Run `snap doctor` for a read-only diagnosis")?;
-    Ok(output
-        .lines()
-        .filter_map(|line| {
-            let parts: Vec<&str> = line.split('\t').collect();
-            if parts.len() < 4 {
-                return None;
-            }
-            let full_id = parts[1].to_string();
-            let raw_message = parts[3].to_string();
+    Ok(parse_snapshot_records(&output))
+}
 
-            let metadata_key_with_colon = format!("{}:", METADATA_REF_KEY);
+fn parse_snapshot_records(output: &str) -> Vec<Snapshot> {
+    let metadata_key_with_colon = format!("{}:", METADATA_REF_KEY);
+    let fields: Vec<&str> = output.split('\0').collect();
+    let mut snapshots = Vec::new();
+    let mut index = 0;
 
-            let description = raw_message
-                .lines()
-                .take_while(|line| !line.starts_with(&metadata_key_with_colon))
-                .collect::<Vec<_>>()
-                .join("\n")
-                .trim()
-                .to_string();
+    while index + 3 < fields.len() {
+        let tag = fields[index].trim_start_matches('\n').trim();
+        let full_id = fields[index + 1].trim();
+        let timestamp = fields[index + 2].trim();
+        let raw_message = fields[index + 3].trim_end_matches('\n').to_string();
+        index += 4;
 
-            Some(Snapshot {
-                id: full_id.chars().take(7).collect(),
-                full_id,
-                tag: parts[0].to_string(),
-                timestamp: parts[2].to_string(),
-                description,
-                raw_tag_message: raw_message,
-            })
-        })
-        .collect())
+        if tag.is_empty() || full_id.is_empty() {
+            continue;
+        }
+
+        let description = raw_message
+            .lines()
+            .take_while(|line| !line.starts_with(&metadata_key_with_colon))
+            .collect::<Vec<_>>()
+            .join("\n")
+            .trim()
+            .to_string();
+
+        snapshots.push(Snapshot {
+            id: full_id.chars().take(7).collect(),
+            full_id: full_id.to_string(),
+            tag: tag.to_string(),
+            timestamp: timestamp.to_string(),
+            description,
+            raw_tag_message: raw_message,
+        });
+    }
+
+    snapshots
 }
 
 pub fn find_snapshot<'a>(snaps: &'a [Snapshot], key: &str) -> Option<&'a Snapshot> {
@@ -237,6 +247,19 @@ pub fn hash_metadata_blob(metadata: &SnapMetadata) -> Result<Option<String>> {
     Ok(Some(blob_hash.trim().to_string()))
 }
 
+pub fn metadata_ref_name(hash: &str) -> String {
+    format!("{}/{}", METADATA_REF_NAMESPACE, hash)
+}
+
+pub fn pin_metadata_blob(hash: &str) -> Result<()> {
+    run_command(
+        &format!("git update-ref {} {}", metadata_ref_name(hash), hash),
+        None,
+    )
+    .with_context(|| format!("Failed to pin metadata blob '{}'", hash))?;
+    Ok(())
+}
+
 pub fn create_tag_message(description: &str, blob_hash: Option<&str>) -> String {
     let desc = description.trim();
     let Some(hash) = blob_hash else {
@@ -252,7 +275,7 @@ pub fn create_tag_message(description: &str, blob_hash: Option<&str>) -> String 
     }
 }
 
-fn get_blob_hash_from_message(raw_message: &str) -> Option<String> {
+pub fn get_blob_hash_from_message(raw_message: &str) -> Option<String> {
     raw_message
         .lines()
         .find(|line| line.starts_with(METADATA_REF_KEY))
@@ -260,22 +283,48 @@ fn get_blob_hash_from_message(raw_message: &str) -> Option<String> {
         .map(|hash| hash.trim().to_string())
 }
 
+pub fn metadata_blob_hash_for_snapshot(snapshot: &Snapshot) -> Option<String> {
+    get_blob_hash_from_message(&snapshot.raw_tag_message)
+}
+
+pub fn pin_snapshot_metadata(snapshot: &Snapshot) -> Result<()> {
+    if let Some(blob_hash) = metadata_blob_hash_for_snapshot(snapshot) {
+        pin_metadata_blob(&blob_hash)?;
+    }
+    Ok(())
+}
+
 pub fn load_metadata_for_snapshot(snapshot: &Snapshot) -> Result<SnapMetadata> {
-    let Some(blob_hash) = get_blob_hash_from_message(&snapshot.raw_tag_message) else {
+    let Some(blob_hash) = metadata_blob_hash_for_snapshot(snapshot) else {
         return Ok(SnapMetadata::default());
     };
 
-    let json_content = run_command(&format!("git cat-file blob {}", blob_hash), None)
-        .with_context(|| format!("Failed to read metadata blob object '{}'", blob_hash))?;
+    let json_content =
+        run_command(&format!("git cat-file blob {}", blob_hash), None).with_context(|| {
+            format!(
+                "Snapshot \"{}\" references metadata blob '{}', but snap could not read it.\nThis usually happens after manual Git prune/GC removed an unpinned snap metadata blob.\nRun `snap doctor --repair` to repair safe cases.",
+                snapshot.tag, blob_hash
+            )
+        })?;
 
-    serde_json::from_str(&json_content).with_context(|| "Failed to deserialize metadata from blob")
+    serde_json::from_str(&json_content).with_context(|| {
+        format!(
+            "Snapshot \"{}\" metadata blob '{}' is not valid snap metadata.\nRun `snap doctor` for a full diagnosis.",
+            snapshot.tag, blob_hash
+        )
+    })
 }
 
 fn is_ignored(entry: &DirEntry) -> bool {
     entry
         .file_name()
         .to_str()
-        .map(|s| s == ".git" || s.starts_with("target") || s.starts_with("node_modules"))
+        .map(|s| {
+            s == ".git"
+                || s.starts_with(".git.backup")
+                || s.starts_with("target")
+                || s.starts_with("node_modules")
+        })
         .unwrap_or(false)
 }
 
@@ -285,13 +334,15 @@ fn is_dir_empty(path: &Path) -> Result<bool> {
 
 pub fn ask_yes_no(question: &str, default: bool) -> Result<bool> {
     let prompt = if default { "[Y/n]" } else { "[y/N]" };
-    let answer = inquire::Text::new(&format!("{} {}", question.yellow(), prompt))
-        .with_help_message("Press Enter to accept the default")
-        .prompt_skippable()?
-        .map(|s| s.trim().to_lowercase());
-    Ok(match answer.as_deref() {
-        Some("") | None => default,
-        Some(s) => s.starts_with('y'),
+    print!("{} {} ", question.yellow(), prompt);
+    io::stdout().flush()?;
+
+    let mut answer = String::new();
+    io::stdin().read_line(&mut answer)?;
+    let answer = answer.trim().to_lowercase();
+    Ok(match answer.as_str() {
+        "" => default,
+        s => s.starts_with('y'),
     })
 }
 

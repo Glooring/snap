@@ -2,7 +2,8 @@ use crate::cli::NewArgs;
 use crate::git_health::ensure_git_healthy_for_write;
 use crate::utils::{
     check_dirty, create_tag_message, find_snapshot, gather_metadata, get_active_commit_full,
-    get_snapshots, hash_metadata_blob, load_metadata_for_snapshot, run_command,
+    get_snapshots, hash_metadata_blob, load_metadata_for_snapshot, pin_metadata_blob,
+    pin_snapshot_metadata, run_command,
 };
 use anyhow::{anyhow, Context, Result};
 use colored::*;
@@ -36,7 +37,9 @@ pub fn execute(args: NewArgs) -> Result<()> {
     let old_metadata = match get_active_commit_full()? {
         Some(id) => {
             if let Some(active_snapshot) = find_snapshot(&all_snapshots, &id) {
-                load_metadata_for_snapshot(active_snapshot)?
+                let metadata = load_metadata_for_snapshot(active_snapshot)?;
+                pin_snapshot_metadata(active_snapshot)?;
+                metadata
             } else {
                 // Not a snapshot commit, so treat as having no prior metadata for comparison.
                 Default::default()
@@ -68,6 +71,9 @@ pub fn execute(args: NewArgs) -> Result<()> {
     // --- START: CORRECTED LINE ---
     // Reuse the metadata we already gathered.
     let metadata_blob_hash = hash_metadata_blob(&current_metadata)?;
+    if let Some(hash) = metadata_blob_hash.as_deref() {
+        pin_metadata_blob(hash)?;
+    }
     // --- END: CORRECTED LINE ---
 
     println!("{}", "[snap] Step 2/4: Staging all files...".cyan());

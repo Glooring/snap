@@ -111,10 +111,15 @@ fn print_report(report: &GitHealthReport) {
         );
     }
 
+    print_metadata_report(report);
+
     if report.has_errors() {
         println!("\n{}", "[snap] Problems were found.".yellow().bold());
         println!("  Run `snap doctor --repair` to repair safe cases with a backup.");
         println!("  See `doc/REPAIR_GIT_ERRORS.md` for the manual repair flow.");
+    } else if report.has_warnings() {
+        println!("\n{}", "[snap] Warnings were found.".yellow().bold());
+        println!("  Run `snap doctor --repair` to repair safe metadata pinning cases.");
     } else {
         println!(
             "\n{}",
@@ -126,7 +131,7 @@ fn print_report(report: &GitHealthReport) {
 }
 
 fn repair(report: GitHealthReport) -> Result<()> {
-    if !report.has_errors() {
+    if !report.has_problems() {
         println!("{}", "[snap] No repair needed.".green());
         return Ok(());
     }
@@ -163,6 +168,15 @@ fn repair(report: GitHealthReport) -> Result<()> {
     }
     if outcome.reset_index {
         println!("  Rebuilt Git index");
+    }
+    if !outcome.pinned_metadata_refs.is_empty() {
+        println!(
+            "  Pinned metadata refs: {}",
+            outcome.pinned_metadata_refs.len()
+        );
+    }
+    for tag in &outcome.repaired_active_metadata_tags {
+        println!("  Repaired active snapshot metadata: {}", tag);
     }
 
     println!("\n{}", "[snap] Rechecking repository...".cyan());
@@ -206,14 +220,34 @@ fn print_repair_plan(plan: &RepairPlan) {
         }
     }
 
+    if !plan.metadata_refs_to_pin.is_empty() {
+        println!(
+            "  - Pin {} existing snapshot metadata blob(s).",
+            plan.metadata_refs_to_pin.len()
+        );
+    }
+
+    for tag in &plan.active_metadata_repairs {
+        println!(
+            "  - Regenerate missing metadata for active snapshot '{}'.",
+            tag
+        );
+    }
+
     if has_repair_actions(plan) {
         println!("  - Create a full .git backup before modifying anything.");
-        println!("  - Rebuild the Git index with `git reset --mixed HEAD`.");
+        if !plan.empty_git_files.is_empty() || plan.needs_branch_repair || plan.needs_head_repair {
+            println!("  - Rebuild the Git index with `git reset --mixed HEAD`.");
+        }
     }
 }
 
 fn has_repair_actions(plan: &RepairPlan) -> bool {
-    !plan.empty_git_files.is_empty() || plan.needs_branch_repair || plan.needs_head_repair
+    !plan.empty_git_files.is_empty()
+        || plan.needs_branch_repair
+        || plan.needs_head_repair
+        || !plan.metadata_refs_to_pin.is_empty()
+        || !plan.active_metadata_repairs.is_empty()
 }
 
 fn confirm_repair(question: &str) -> Result<bool> {
@@ -232,6 +266,92 @@ fn print_status(label: &str, ok: bool, detail: &str) {
         "ERR".red().bold()
     };
     println!("  {} {}: {}", status, label, detail);
+}
+
+fn print_metadata_report(report: &GitHealthReport) {
+    print_optional_error("snapshot metadata scan", report.metadata_error.as_deref());
+    if report.metadata_error.is_some() {
+        return;
+    }
+
+    let invalid_metadata: Vec<_> = report
+        .metadata_blobs
+        .iter()
+        .filter(|metadata| metadata.error.is_some())
+        .collect();
+    let unpinned_metadata: Vec<_> = report
+        .metadata_blobs
+        .iter()
+        .filter(|metadata| metadata.error.is_none() && !metadata.pinned)
+        .collect();
+
+    let status = if !invalid_metadata.is_empty() {
+        "ERR".red().bold()
+    } else if !unpinned_metadata.is_empty() || !report.unused_metadata_refs.is_empty() {
+        "WARN".yellow().bold()
+    } else {
+        "OK".green().bold()
+    };
+
+    println!(
+        "  {} Snapshot metadata: {} checked, {} invalid, {} unpinned",
+        status,
+        report.metadata_blobs.len(),
+        invalid_metadata.len(),
+        unpinned_metadata.len()
+    );
+
+    for metadata in invalid_metadata.iter().take(10) {
+        println!(
+            "    - {}: {} [{}] ({})",
+            metadata.snapshot_tag,
+            short_hash(&metadata.blob_hash),
+            metadata.object_type.as_deref().unwrap_or("missing"),
+            metadata.error.as_deref().unwrap_or("invalid metadata")
+        );
+    }
+    if invalid_metadata.len() > 10 {
+        println!("    ... and {} more", invalid_metadata.len() - 10);
+    }
+
+    for metadata in unpinned_metadata.iter().take(10) {
+        match metadata.pin_target.as_deref() {
+            Some(target) => println!(
+                "    - {}: metadata ref points to {}, expected {}",
+                metadata.snapshot_tag,
+                short_hash(target),
+                short_hash(&metadata.blob_hash)
+            ),
+            None => println!(
+                "    - {}: metadata blob {} is not protected from git gc",
+                metadata.snapshot_tag,
+                short_hash(&metadata.blob_hash)
+            ),
+        }
+    }
+    if unpinned_metadata.len() > 10 {
+        println!(
+            "    ... and {} more unpinned metadata blobs",
+            unpinned_metadata.len() - 10
+        );
+    }
+
+    if !report.unused_metadata_refs.is_empty() {
+        println!(
+            "  {} Unused metadata refs: {}",
+            "WARN".yellow().bold(),
+            report.unused_metadata_refs.len()
+        );
+        for ref_name in report.unused_metadata_refs.iter().take(10) {
+            println!("    - {}", ref_name);
+        }
+        if report.unused_metadata_refs.len() > 10 {
+            println!(
+                "    ... and {} more",
+                report.unused_metadata_refs.len() - 10
+            );
+        }
+    }
 }
 
 fn print_optional_error(label: &str, error: Option<&str>) {

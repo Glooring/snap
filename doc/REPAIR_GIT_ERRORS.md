@@ -46,6 +46,9 @@ Ce face:
 - șterge doar fișiere Git de 0 bytes din `.git/objects` și `.git/refs`;
 - repară branch-ul activ către ultimul snapshot valid când poate determina branch-ul sigur;
 - normalizează `.git/HEAD` la `ref: refs/heads/<branch>` când poate determina branch-ul sigur;
+- verifică metadata snap din tag-uri (`Snap-Metadata-Ref`);
+- pin-uiește blob-urile metadata valide sub `refs/snap-metadata/<hash>`, ca să nu fie șterse de `git gc`;
+- dacă metadata lipsește pentru snapshot-ul activ, o regenerează din worktree-ul curent și retag-uiește snapshot-ul activ pe același commit;
 - reconstruiește indexul cu `git reset --mixed HEAD`;
 - rulează verificare finală.
 
@@ -54,9 +57,37 @@ Ce nu face:
 - nu rulează fără confirmare;
 - nu ghicește între `main`, `master` sau alt branch dacă nu are un indiciu concret;
 - nu șterge fișiere Git non-goale;
+- nu inventează metadata pentru snapshot-uri istorice non-active, pentru că empty dirs și atributele hidden/read-only nu pot fi reconstruite mereu din commit;
 - nu schimbă formatul snapshot-urilor.
 
 Dacă repair-ul automat spune că nu poate determina branch-ul în siguranță, folosește pașii manuali de mai jos.
+
+## Metadata blob lipsă după `git gc`
+
+Simptom:
+
+```bash
+[snap] Error: Snapshot "v91.83" references metadata blob 'd84e...', but snap could not read it.
+Run `snap doctor --repair` to repair safe cases.
+```
+
+Cauza: snapshot tag-ul conține `Snap-Metadata-Ref: <hash>`, dar hash-ul era doar text în mesajul tag-ului. Dacă blob-ul metadata nu era pin-uit printr-un ref real, `git gc --prune=now` îl putea șterge.
+
+Flux recomandat:
+
+```bash
+snap doctor
+snap doctor --repair
+```
+
+Repair-ul automat:
+
+- detectează metadata lipsă, invalidă sau nepinuită;
+- creează backup `.git.backup.YYYYMMDD-HHMMSS`;
+- pin-uiește blob-urile metadata care încă există;
+- regenerează metadata lipsă numai pentru snapshot-ul activ, folosind starea curentă a worktree-ului.
+
+Pentru snapshot-uri vechi non-active, `snap doctor --repair` raportează problema, dar nu ghicește metadata. Folosește manual un snapshot apropiat sau restore într-un worktree separat doar dacă știi exact ce metadata vrei să păstrezi.
 
 ## Reparare corectă (pas cu pas)
 

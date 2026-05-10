@@ -1,5 +1,11 @@
+use crate::utils::{
+    create_tag_message, gather_metadata, get_snapshots, hash_metadata_blob,
+    metadata_blob_hash_for_snapshot, metadata_ref_name, pin_metadata_blob, run_command_with_env,
+    SnapMetadata, METADATA_REF_NAMESPACE,
+};
 use anyhow::{anyhow, Context, Result};
 use chrono::Local;
+use std::collections::{HashMap, HashSet};
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
@@ -20,6 +26,19 @@ pub struct SnapshotCheck {
 }
 
 #[derive(Debug, Clone)]
+pub struct MetadataBlobCheck {
+    pub snapshot_tag: String,
+    pub snapshot_commit: Option<String>,
+    pub blob_hash: String,
+    pub exists: bool,
+    pub object_type: Option<String>,
+    pub valid_json: bool,
+    pub pinned: bool,
+    pub pin_target: Option<String>,
+    pub error: Option<String>,
+}
+
+#[derive(Debug, Clone)]
 pub struct GitHealthReport {
     pub is_git_repo: bool,
     pub empty_git_files: Vec<PathBuf>,
@@ -31,6 +50,9 @@ pub struct GitHealthReport {
     pub branch_error: Option<String>,
     pub snapshots_error: Option<String>,
     pub snapshots: Vec<SnapshotCheck>,
+    pub metadata_error: Option<String>,
+    pub metadata_blobs: Vec<MetadataBlobCheck>,
+    pub unused_metadata_refs: Vec<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -40,6 +62,8 @@ pub struct RepairPlan {
     pub target_commit: Option<String>,
     pub needs_head_repair: bool,
     pub needs_branch_repair: bool,
+    pub metadata_refs_to_pin: Vec<String>,
+    pub active_metadata_repairs: Vec<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -49,6 +73,8 @@ pub struct RepairOutcome {
     pub repaired_branch: Option<String>,
     pub repaired_head: bool,
     pub reset_index: bool,
+    pub pinned_metadata_refs: Vec<String>,
+    pub repaired_active_metadata_tags: Vec<String>,
 }
 
 impl GitHealthReport {
@@ -61,6 +87,19 @@ impl GitHealthReport {
             || self.branch_error.is_some()
             || self.snapshots_error.is_some()
             || self.snapshots.iter().any(|s| s.error.is_some())
+            || self.metadata_error.is_some()
+            || self.metadata_blobs.iter().any(|m| m.error.is_some())
+    }
+
+    pub fn has_warnings(&self) -> bool {
+        self.metadata_blobs
+            .iter()
+            .any(|m| m.error.is_none() && !m.pinned)
+            || !self.unused_metadata_refs.is_empty()
+    }
+
+    pub fn has_problems(&self) -> bool {
+        self.has_errors() || self.has_warnings()
     }
 
     pub fn latest_valid_snapshot(&self) -> Option<&SnapshotCheck> {
@@ -122,6 +161,9 @@ pub fn collect_health_report() -> Result<GitHealthReport> {
             branch_error: None,
             snapshots_error: None,
             snapshots: Vec::new(),
+            metadata_error: None,
+            metadata_blobs: Vec::new(),
+            unused_metadata_refs: Vec::new(),
         });
     }
 
@@ -168,6 +210,11 @@ pub fn collect_health_report() -> Result<GitHealthReport> {
     };
 
     let (snapshots, snapshots_error) = collect_snapshot_checks()?;
+    let (metadata_blobs, unused_metadata_refs, metadata_error) = if snapshots_error.is_none() {
+        collect_metadata_checks()?
+    } else {
+        (Vec::new(), Vec::new(), None)
+    };
 
     Ok(GitHealthReport {
         is_git_repo,
@@ -180,6 +227,9 @@ pub fn collect_health_report() -> Result<GitHealthReport> {
         branch_error,
         snapshots_error,
         snapshots,
+        metadata_error,
+        metadata_blobs,
+        unused_metadata_refs,
     })
 }
 
@@ -277,12 +327,40 @@ pub fn create_repair_plan(report: &GitHealthReport) -> Result<RepairPlan> {
         ));
     }
 
+    let mut metadata_refs_to_pin: Vec<_> = report
+        .metadata_blobs
+        .iter()
+        .filter(|check| {
+            check.error.is_none()
+                && check.exists
+                && check.valid_json
+                && check.pin_target.as_deref() != Some(check.blob_hash.as_str())
+        })
+        .map(|check| check.blob_hash.clone())
+        .collect();
+    metadata_refs_to_pin.sort();
+    metadata_refs_to_pin.dedup();
+
+    let mut active_metadata_repairs = Vec::new();
+    if let Some(head_commit) = report.head_commit.as_deref() {
+        active_metadata_repairs = report
+            .metadata_blobs
+            .iter()
+            .filter(|check| !check.exists && check.snapshot_commit.as_deref() == Some(head_commit))
+            .map(|check| check.snapshot_tag.clone())
+            .collect();
+        active_metadata_repairs.sort();
+        active_metadata_repairs.dedup();
+    }
+
     Ok(RepairPlan {
         empty_git_files: report.empty_git_files.clone(),
         target_branch,
         target_commit,
         needs_head_repair,
         needs_branch_repair,
+        metadata_refs_to_pin,
+        active_metadata_repairs,
     })
 }
 
@@ -304,6 +382,18 @@ pub fn repair_git_repository(plan: &RepairPlan) -> Result<RepairOutcome> {
 
     let mut repaired_branch = None;
     let mut repaired_head = false;
+    let mut pinned_metadata_refs = Vec::new();
+    for hash in &plan.metadata_refs_to_pin {
+        pin_metadata_blob(hash)?;
+        pinned_metadata_refs.push(metadata_ref_name(hash));
+    }
+
+    let mut repaired_active_metadata_tags = Vec::new();
+    for tag in &plan.active_metadata_repairs {
+        repair_active_snapshot_metadata(tag)?;
+        repaired_active_metadata_tags.push(tag.clone());
+    }
+
     if let (Some(branch), Some(commit)) =
         (plan.target_branch.as_deref(), plan.target_commit.as_deref())
     {
@@ -331,6 +421,8 @@ pub fn repair_git_repository(plan: &RepairPlan) -> Result<RepairOutcome> {
         repaired_branch,
         repaired_head,
         reset_index,
+        pinned_metadata_refs,
+        repaired_active_metadata_tags,
     })
 }
 
@@ -385,6 +477,160 @@ fn collect_snapshot_checks() -> Result<(Vec<SnapshotCheck>, Option<String>)> {
     }
 
     Ok((snapshots, None))
+}
+
+fn collect_metadata_checks() -> Result<(Vec<MetadataBlobCheck>, Vec<String>, Option<String>)> {
+    let snapshots = match get_snapshots() {
+        Ok(snapshots) => snapshots,
+        Err(error) => return Ok((Vec::new(), Vec::new(), Some(error.to_string()))),
+    };
+
+    let mut used_hashes = HashSet::new();
+    let mut checks = Vec::new();
+    for snapshot in &snapshots {
+        let Some(blob_hash) = metadata_blob_hash_for_snapshot(snapshot) else {
+            continue;
+        };
+        used_hashes.insert(blob_hash.clone());
+        checks.push(check_metadata_blob(
+            snapshot.tag.as_str(),
+            Some(snapshot.full_id.clone()),
+            &blob_hash,
+        )?);
+    }
+
+    let unused_refs = collect_unused_metadata_refs(&used_hashes)?;
+    Ok((checks, unused_refs, None))
+}
+
+fn check_metadata_blob(
+    snapshot_tag: &str,
+    snapshot_commit: Option<String>,
+    blob_hash: &str,
+) -> Result<MetadataBlobCheck> {
+    let object_type = run_git(&["cat-file", "-t", blob_hash], None)?;
+    let (exists, object_type_value, valid_json, error) = if object_type.success {
+        let object_type_value = object_type.stdout.trim().to_string();
+        if object_type_value == "blob" {
+            let blob = run_git(&["cat-file", "blob", blob_hash], None)?;
+            if blob.success {
+                match serde_json::from_str::<SnapMetadata>(&blob.stdout) {
+                    Ok(_) => (true, Some(object_type_value), true, None),
+                    Err(error) => (
+                        true,
+                        Some(object_type_value),
+                        false,
+                        Some(format!("Invalid snap metadata JSON: {}", error)),
+                    ),
+                }
+            } else {
+                (
+                    true,
+                    Some(object_type_value),
+                    false,
+                    Some(first_line(&blob.stderr)),
+                )
+            }
+        } else {
+            (
+                true,
+                Some(object_type_value.clone()),
+                false,
+                Some(format!("Expected blob object, found {}", object_type_value)),
+            )
+        }
+    } else {
+        (
+            false,
+            None,
+            false,
+            Some(format!(
+                "Missing metadata blob: {}",
+                first_line(&object_type.stderr)
+            )),
+        )
+    };
+
+    let ref_name = metadata_ref_name(blob_hash);
+    let pin = run_git(&["show-ref", "--hash", "--verify", &ref_name], None)?;
+    let pin_target = if pin.success {
+        Some(pin.stdout.trim().to_string())
+    } else {
+        None
+    };
+    let pinned = pin_target.as_deref() == Some(blob_hash);
+
+    Ok(MetadataBlobCheck {
+        snapshot_tag: snapshot_tag.to_string(),
+        snapshot_commit,
+        blob_hash: blob_hash.to_string(),
+        exists,
+        object_type: object_type_value,
+        valid_json,
+        pinned,
+        pin_target,
+        error,
+    })
+}
+
+fn collect_unused_metadata_refs(used_hashes: &HashSet<String>) -> Result<Vec<String>> {
+    let refs = run_git(
+        &[
+            "for-each-ref",
+            METADATA_REF_NAMESPACE,
+            "--format=%(refname)",
+        ],
+        None,
+    )?;
+    if !refs.success {
+        return Ok(Vec::new());
+    }
+
+    let mut unused = Vec::new();
+    for ref_name in refs
+        .stdout
+        .lines()
+        .map(str::trim)
+        .filter(|line| !line.is_empty())
+    {
+        let hash = ref_name
+            .strip_prefix(&format!("{}/", METADATA_REF_NAMESPACE))
+            .unwrap_or(ref_name);
+        if !used_hashes.contains(hash) {
+            unused.push(ref_name.to_string());
+        }
+    }
+    unused.sort();
+    Ok(unused)
+}
+
+fn repair_active_snapshot_metadata(tag: &str) -> Result<()> {
+    let snapshots = get_snapshots()?;
+    let snapshot = snapshots
+        .into_iter()
+        .find(|snapshot| snapshot.tag == tag)
+        .ok_or_else(|| anyhow!("Cannot repair metadata for missing snapshot '{}'.", tag))?;
+
+    let metadata = gather_metadata()?;
+    let blob_hash = hash_metadata_blob(&metadata)?;
+    if let Some(hash) = blob_hash.as_deref() {
+        pin_metadata_blob(hash)?;
+    }
+
+    let tag_message = create_tag_message(&snapshot.description, blob_hash.as_deref());
+    let mut env_vars: HashMap<&str, &str> = HashMap::new();
+    if !snapshot.timestamp.is_empty() {
+        env_vars.insert("GIT_COMMITTER_DATE", snapshot.timestamp.as_str());
+    }
+
+    run_command_with_env(
+        &format!("git tag -a -f {} -F - {}", snapshot.tag, snapshot.full_id),
+        Some(&tag_message),
+        &env_vars,
+    )
+    .with_context(|| format!("Failed to repair metadata tag '{}'", snapshot.tag))?;
+
+    Ok(())
 }
 
 fn find_empty_git_files() -> Result<Vec<PathBuf>> {

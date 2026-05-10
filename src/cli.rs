@@ -60,6 +60,12 @@ pub struct RestoreArgs {
 pub struct DeleteArgs {
     /// The ID or label of the snapshot to delete. Shows a menu if omitted.
     pub id_or_label: Option<String>,
+    /// Also prune Git objects reachable only from this snapshot
+    #[arg(long)]
+    pub purge: bool,
+    /// Skip the default purge bundle backup
+    #[arg(long)]
+    pub no_backup: bool,
 }
 
 #[derive(Args, Debug)]

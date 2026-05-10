@@ -185,7 +185,7 @@ D:\Projects\my-app>snap restore v1.0
 ```
 
 ### 6. `snap delete [id_or_label]`
-Permanently deletes a snapshot. The associated metadata blob is automatically cleaned up by Git's garbage collection later.
+Deletes a snapshot tag. By default this is conservative: it removes the visible snapshot label, but it does not run Git garbage collection or promise disk-space recovery.
 
 ```cmd
 D:\Projects\my-app>snap delete v1.1-hotfix
@@ -195,7 +195,25 @@ D:\Projects\my-app>snap delete v1.1-hotfix
 ? [snap] WARNING: This will permanently delete the snapshot tag. Continue? [y/N] y
 [snap] Deleting tag "v1.1-hotfix"...
 [snap] Snapshot "v1.1-hotfix" deleted successfully.
+[snap] Disk space was not reclaimed. To remove objects reachable only from this snapshot, run with `--purge`.
 ```
+
+To remove Git objects that were reachable only from the deleted snapshot, use explicit purge mode:
+
+```cmd
+D:\Projects\my-app>snap delete v1.1-hotfix --purge
+
+[snap] Purge will:
+  - delete snapshot tag 'v1.1-hotfix'
+  - pin metadata used by remaining snapshots
+  - create a targeted Git bundle backup
+  - expire unreachable reflog entries
+  - run `git gc --prune=now`
+? [snap] WARNING: This will permanently delete the snapshot tag and prune unreachable Git objects. Continue? [y/N] y
+[snap] Purge complete. Git storage: 1.6 GB -> 1.1 GB.
+```
+
+`snap delete --purge` creates `.git/snap-backups/snap-purge-<tag>-<timestamp>.bundle` by default. Use `snap delete <id> --purge --no-backup` to skip that backup; snap will ask for a stronger confirmation before pruning.
 
 ### 7. `snap edit [id_or_label]`
 Edits the label and description of an existing snapshot.
@@ -225,7 +243,7 @@ D:\Projects\my-app>snap update
 ```
 
 ### 9. `snap doctor`
-Runs a full Git health check for the current project. It detects empty Git object/ref files, detached `HEAD`, invalid branch refs, and broken snapshot tags.
+Runs a full Git and snap metadata health check for the current project. It detects empty Git object/ref files, detached `HEAD`, invalid branch refs, broken snapshot tags, missing/invalid snapshot metadata blobs, unpinned metadata blobs, and unused metadata refs.
 
 `snap doctor` is read-only. To repair safe cases automatically, use `snap doctor --repair`; it creates a full `.git.backup.YYYYMMDD-HHMMSS` backup and asks for confirmation before changing anything.
 
@@ -238,6 +256,8 @@ D:\Projects\my-app>snap doctor
   OK HEAD commit: a1b2c3d
   OK Current branch: main
   OK Snapshot tags: 12 checked, 0 invalid
+  OK snapshot metadata scan
+  OK Snapshot metadata: 12 checked, 0 invalid, 0 unpinned
 
 [snap] Git repository looks healthy.
 ```
@@ -249,6 +269,7 @@ D:\Projects\my-app>snap doctor --repair
 
 [snap] Repair plan:
   - Delete 1 empty Git object/ref file(s).
+  - Pin 2 existing snapshot metadata blob(s).
   - Create a full .git backup before modifying anything.
 ? [snap] Create a .git backup and apply this repair plan? [y/N]
 ```
@@ -293,6 +314,8 @@ If you want to modify the tool or build it yourself, you'll need the Rust toolch
 *   **`Git repository has empty ref files`**: Normal commands use a fast preflight and stop immediately when `.git/refs` contains zero-byte refs. Run `snap doctor`, then `snap doctor --repair` if the repair plan looks correct.
 *   **`Git repository has empty object/ref files`**: `snap doctor` found corruption during the full scan. Use `snap doctor --repair` for safe automatic cleanup with backup, or follow `doc/REPAIR_GIT_ERRORS.md`.
 *   **`Git HEAD is detached`**: Normal write commands stop. Run `snap doctor`; if it can determine the branch safely, `snap doctor --repair` can normalize `HEAD`. `snap restore` now keeps `HEAD` on the current branch by using `git reset --hard <snapshot_commit>` internally.
+*   **`Snapshot metadata blob ... could not read it`**: A manual Git prune/GC may have removed an old unpinned snap metadata blob. Run `snap doctor`; if the missing metadata belongs to the active snapshot, `snap doctor --repair` can regenerate it from the current worktree.
+*   **Need to reclaim disk space after a bad snapshot**: Plain `snap delete` removes only the tag. Use `snap delete <id> --purge` to pin remaining metadata, optionally create a bundle backup, expire unreachable reflogs, and run `git gc --prune=now`.
 
 ---
 
