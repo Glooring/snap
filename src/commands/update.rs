@@ -9,7 +9,7 @@ use crate::utils::{
 use anyhow::{Context, Result};
 use colored::*;
 
-pub fn execute(_args: UpdateArgs) -> Result<()> {
+pub fn execute(args: UpdateArgs) -> Result<()> {
     ensure_git_healthy_for_write(false)?;
 
     let config = load_config()?;
@@ -28,12 +28,18 @@ pub fn execute(_args: UpdateArgs) -> Result<()> {
     let old_metadata = load_metadata_for_snapshot(&active_snapshot)?;
     pin_snapshot_metadata(&active_snapshot)?;
     let metadata_has_changes = current_metadata != old_metadata;
+    let should_track_metadata_only =
+        config.options.track_metadata_only_changes || args.include_metadata_only;
 
     if !git_has_changes && !metadata_has_changes {
         println!(
             "{}",
             "[snap] No changes to update. Working tree is clean.".yellow()
         );
+        return Ok(());
+    }
+    if !git_has_changes && metadata_has_changes && !should_track_metadata_only {
+        print_metadata_only_ignored("updates");
         return Ok(());
     }
 
@@ -108,4 +114,20 @@ pub fn execute(_args: UpdateArgs) -> Result<()> {
 
     println!();
     Ok(())
+}
+
+fn print_metadata_only_ignored(noun: &str) {
+    println!(
+        "{}",
+        "[snap] Only snap metadata changed (empty dirs / hidden / read-only attributes).".yellow()
+    );
+    println!(
+        "{}",
+        format!(
+            "[snap] Metadata-only {} are disabled. Enable `trackMetadataOnlyChanges` in `snap options` or rerun with `--include-metadata-only`.",
+            noun
+        )
+        .yellow()
+    );
+    println!();
 }

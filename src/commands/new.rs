@@ -1,4 +1,5 @@
 use crate::cli::NewArgs;
+use crate::config::load_config;
 use crate::git_health::ensure_git_healthy_for_write;
 use crate::utils::{
     check_dirty, create_tag_message, find_snapshot, gather_metadata, get_active_commit_full,
@@ -21,6 +22,8 @@ pub fn execute(args: NewArgs) -> Result<()> {
     ensure_git_healthy_for_write(true)?;
 
     let tag_name = sanitize_tag_name(&args.label);
+    let include_metadata_only = args.include_metadata_only;
+    let config = load_config()?;
     let all_snapshots = get_snapshots()?;
 
     if all_snapshots.iter().any(|s| s.tag == tag_name) {
@@ -52,6 +55,8 @@ pub fn execute(args: NewArgs) -> Result<()> {
     };
 
     let metadata_has_changes = current_metadata != old_metadata;
+    let should_track_metadata_only =
+        config.options.track_metadata_only_changes || include_metadata_only;
 
     // Only exit if there are absolutely no changes.
     if !git_has_changes && !metadata_has_changes {
@@ -59,6 +64,10 @@ pub fn execute(args: NewArgs) -> Result<()> {
             "{}",
             "[snap] No changes to commit. Working tree is clean.\n".yellow()
         );
+        return Ok(());
+    }
+    if !git_has_changes && metadata_has_changes && !should_track_metadata_only {
+        print_metadata_only_ignored("snapshots");
         return Ok(());
     }
 
@@ -107,4 +116,20 @@ pub fn execute(args: NewArgs) -> Result<()> {
 
     println!();
     Ok(())
+}
+
+fn print_metadata_only_ignored(noun: &str) {
+    println!(
+        "{}",
+        "[snap] Only snap metadata changed (empty dirs / hidden / read-only attributes).".yellow()
+    );
+    println!(
+        "{}",
+        format!(
+            "[snap] Metadata-only {} are disabled. Enable `trackMetadataOnlyChanges` in `snap options` or rerun with `--include-metadata-only`.",
+            noun
+        )
+        .yellow()
+    );
+    println!();
 }

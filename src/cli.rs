@@ -39,6 +39,9 @@ pub struct InitArgs {}
 pub struct NewArgs {
     /// The short, memorable name for the snapshot (e.g., "v1.0")
     pub label: String,
+    /// Create a snapshot even when only snap metadata changed
+    #[arg(long)]
+    pub include_metadata_only: bool,
     /// A longer description of the changes in this snapshot
     #[arg(trailing_var_arg = true, allow_hyphen_values = true)]
     pub description: Vec<String>,
@@ -75,7 +78,11 @@ pub struct EditArgs {
 }
 
 #[derive(Args, Debug)]
-pub struct UpdateArgs {}
+pub struct UpdateArgs {
+    /// Update the active snapshot even when only snap metadata changed
+    #[arg(long)]
+    pub include_metadata_only: bool,
+}
 
 #[derive(Args, Debug)]
 pub struct DiffArgs {

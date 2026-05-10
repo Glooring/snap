@@ -7,6 +7,7 @@ use std::process::Command as StdCommand;
 fn snap_cmd(dir: &Path) -> Command {
     let mut cmd = Command::cargo_bin("snap").expect("snap binary");
     cmd.current_dir(dir);
+    cmd.env("SNAP_CONFIG_PATH", dir.join(".snapconfig"));
     cmd
 }
 
@@ -72,6 +73,52 @@ fn metadata_hash_for_tag(dir: &Path, tag: &str) -> String {
         .unwrap_or_else(|| panic!("metadata hash for tag {}", tag))
 }
 
+fn metadata_hash_for_tag_optional(dir: &Path, tag: &str) -> Option<String> {
+    let ref_name = format!("refs/tags/{}", tag);
+    let contents = git(dir, &["for-each-ref", "--format=%(contents)", &ref_name]);
+    contents
+        .lines()
+        .find_map(|line| line.strip_prefix("Snap-Metadata-Ref:"))
+        .map(str::trim)
+        .map(ToString::to_string)
+}
+
+fn write_snap_config(dir: &Path, track_metadata_only_changes: bool) {
+    fs::write(
+        dir.join(".snapconfig"),
+        format!(
+            r#"{{
+  "options": {{
+    "show_ids": false,
+    "confirm_command": true,
+    "order_by": "Timestamp",
+    "edit_updates_timestamp": false,
+    "track_metadata_only_changes": {},
+    "list_limit": "all"
+  }}
+}}"#,
+            track_metadata_only_changes
+        ),
+    )
+    .expect("write snap config");
+}
+
+fn write_legacy_snap_config_without_metadata_only_option(dir: &Path) {
+    fs::write(
+        dir.join(".snapconfig"),
+        r#"{
+  "options": {
+    "show_ids": false,
+    "confirm_command": true,
+    "order_by": "Timestamp",
+    "edit_updates_timestamp": false,
+    "list_limit": "all"
+  }
+}"#,
+    )
+    .expect("write legacy snap config");
+}
+
 fn metadata_ref_exists(dir: &Path, hash: &str) -> bool {
     let ref_name = format!("refs/snap-metadata/{}", hash);
     git_success(dir, &["show-ref", "--verify", &ref_name])
@@ -119,6 +166,97 @@ fn new_pins_metadata_blob() {
 }
 
 #[test]
+fn new_ignores_metadata_only_changes_by_default() {
+    let temp = assert_fs::TempDir::new().expect("tempdir");
+    init_snap_repo(temp.path());
+    create_snapshot(temp.path(), "v1", "file.txt", "one");
+    fs::create_dir_all(temp.path().join("empty-dir")).expect("empty dir");
+
+    snap_cmd(temp.path())
+        .args(["new", "v2", "metadata only"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Only snap metadata changed"))
+        .stdout(predicate::str::contains(
+            "Metadata-only snapshots are disabled",
+        ));
+
+    assert!(!git_success(temp.path(), &["rev-parse", "--verify", "v2"]));
+}
+
+#[test]
+fn new_include_metadata_only_flag_creates_metadata_only_snapshot() {
+    let temp = assert_fs::TempDir::new().expect("tempdir");
+    init_snap_repo(temp.path());
+    create_snapshot(temp.path(), "v1", "file.txt", "one");
+    fs::create_dir_all(temp.path().join("empty-dir")).expect("empty dir");
+
+    snap_cmd(temp.path())
+        .args(["new", "v2", "--include-metadata-only", "metadata only"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("New snapshot created"));
+
+    let hash = metadata_hash_for_tag(temp.path(), "v2");
+    assert!(metadata_ref_exists(temp.path(), &hash));
+}
+
+#[test]
+fn new_tracks_metadata_only_changes_when_config_enabled() {
+    let temp = assert_fs::TempDir::new().expect("tempdir");
+    init_snap_repo(temp.path());
+    write_snap_config(temp.path(), true);
+    create_snapshot(temp.path(), "v1", "file.txt", "one");
+    fs::create_dir_all(temp.path().join("empty-dir")).expect("empty dir");
+
+    snap_cmd(temp.path())
+        .args(["new", "v2", "metadata only"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("New snapshot created"));
+
+    let hash = metadata_hash_for_tag(temp.path(), "v2");
+    assert!(metadata_ref_exists(temp.path(), &hash));
+}
+
+#[test]
+fn legacy_config_without_metadata_only_option_defaults_to_ignoring_metadata_only_changes() {
+    let temp = assert_fs::TempDir::new().expect("tempdir");
+    init_snap_repo(temp.path());
+    write_legacy_snap_config_without_metadata_only_option(temp.path());
+    create_snapshot(temp.path(), "v1", "file.txt", "one");
+    fs::create_dir_all(temp.path().join("empty-dir")).expect("empty dir");
+
+    snap_cmd(temp.path())
+        .args(["new", "v2", "metadata only"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains(
+            "Metadata-only snapshots are disabled",
+        ));
+
+    assert!(!git_success(temp.path(), &["rev-parse", "--verify", "v2"]));
+}
+
+#[test]
+fn file_changes_still_create_snapshot_and_record_current_metadata() {
+    let temp = assert_fs::TempDir::new().expect("tempdir");
+    init_snap_repo(temp.path());
+    create_snapshot(temp.path(), "v1", "file.txt", "one");
+    fs::create_dir_all(temp.path().join("empty-dir")).expect("empty dir");
+    fs::write(temp.path().join("file.txt"), "two").expect("modify file");
+
+    snap_cmd(temp.path())
+        .args(["new", "v2", "file and metadata"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("New snapshot created"));
+
+    let hash = metadata_hash_for_tag(temp.path(), "v2");
+    assert!(metadata_ref_exists(temp.path(), &hash));
+}
+
+#[test]
 fn update_pins_replacement_metadata_blob() {
     let temp = assert_fs::TempDir::new().expect("tempdir");
     init_snap_repo(temp.path());
@@ -135,6 +273,46 @@ fn update_pins_replacement_metadata_blob() {
 
     let hash = metadata_hash_for_tag(temp.path(), "v1");
     assert!(metadata_blob_exists(temp.path(), &hash));
+    assert!(metadata_ref_exists(temp.path(), &hash));
+}
+
+#[test]
+fn update_ignores_metadata_only_changes_by_default() {
+    let temp = assert_fs::TempDir::new().expect("tempdir");
+    init_snap_repo(temp.path());
+    create_snapshot(temp.path(), "v1", "file.txt", "one");
+    let tag_before = git(temp.path(), &["rev-parse", "v1^{tag}"]);
+    fs::create_dir_all(temp.path().join("empty-dir")).expect("empty dir");
+
+    snap_cmd(temp.path())
+        .arg("update")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Only snap metadata changed"))
+        .stdout(predicate::str::contains(
+            "Metadata-only updates are disabled",
+        ));
+
+    let tag_after = git(temp.path(), &["rev-parse", "v1^{tag}"]);
+    assert_eq!(tag_before, tag_after);
+    assert!(metadata_hash_for_tag_optional(temp.path(), "v1").is_none());
+}
+
+#[test]
+fn update_include_metadata_only_flag_amends_metadata_only_changes() {
+    let temp = assert_fs::TempDir::new().expect("tempdir");
+    init_snap_repo(temp.path());
+    create_snapshot(temp.path(), "v1", "file.txt", "one");
+    fs::create_dir_all(temp.path().join("empty-dir")).expect("empty dir");
+
+    snap_cmd(temp.path())
+        .args(["update", "--include-metadata-only"])
+        .write_stdin("y\n")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Update complete"));
+
+    let hash = metadata_hash_for_tag(temp.path(), "v1");
     assert!(metadata_ref_exists(temp.path(), &hash));
 }
 

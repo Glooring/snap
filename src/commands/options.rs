@@ -20,6 +20,10 @@ pub fn execute(_args: OptionsArgs) -> Result<()> {
             "listLimit",
             "Sets how many snapshots to show with 'snap list' (e.g., 5, 10, all)",
         ),
+        (
+            "trackMetadataOnlyChanges",
+            "Treat empty dirs / hidden / read-only changes as snapshot changes",
+        ),
         // --- END: NEW OPTION IN MAP ---
     ];
 
@@ -33,6 +37,9 @@ pub fn execute(_args: OptionsArgs) -> Result<()> {
                 // --- START: DISPLAY LOGIC FOR NEW OPTION ---
                 "editUpdatesTimestamp" => config.options.edit_updates_timestamp.to_string(),
                 "listLimit" => config.options.list_limit.clone(),
+                "trackMetadataOnlyChanges" => {
+                    config.options.track_metadata_only_changes.to_string()
+                }
                 // --- END: DISPLAY LOGIC FOR NEW OPTION ---
                 _ => "Unknown".to_string(),
             };
@@ -131,6 +138,20 @@ pub fn execute(_args: OptionsArgs) -> Result<()> {
             }
         }
         // --- END: UI LOGIC FOR NEW OPTION ---
+        "trackMetadataOnlyChanges" => {
+            let current = config.options.track_metadata_only_changes;
+            let new = Confirm::new("Treat metadata-only changes as snapshot changes?")
+                .with_help_message(
+                    "Includes empty directories and hidden/read-only attribute changes.",
+                )
+                .with_default(current)
+                .prompt()?;
+
+            if current != new {
+                config.options.track_metadata_only_changes = new;
+                changed = true;
+            }
+        }
         _ => unreachable!(),
     };
 

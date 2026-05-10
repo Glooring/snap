@@ -140,6 +140,14 @@ D:\Projects\my-app>snap new v1.0 "Initial release"
 [snap] New snapshot created: [a1b2c3d] v1.0
 ```
 
+By default, `snap new` ignores changes that are only snap metadata: empty directories, hidden/visible attributes, or read-only attributes. File/content changes still create snapshots and still record the current metadata. For a one-off metadata-only snapshot, use:
+
+```cmd
+D:\Projects\my-app>snap new v1.0-meta --include-metadata-only "Metadata cleanup"
+```
+
+To always track metadata-only changes, enable `trackMetadataOnlyChanges` in `snap options`.
+
 ### 3. `snap list` [limit]
 Lists all available snapshots in a compact view, showing the active one.
 
@@ -242,6 +250,8 @@ D:\Projects\my-app>snap update
 [snap] Update complete. Snapshot "v1.1" now points to new commit [b8c9d0e].
 ```
 
+Like `snap new`, `snap update` ignores metadata-only changes by default. Use `snap update --include-metadata-only` for a one-off metadata-only amend, or enable `trackMetadataOnlyChanges` in `snap options`.
+
 ### 9. `snap doctor`
 Runs a full Git and snap metadata health check for the current project. It detects empty Git object/ref files, detached `HEAD`, invalid branch refs, broken snapshot tags, missing/invalid snapshot metadata blobs, unpinned metadata blobs, and unused metadata refs.
 
@@ -285,6 +295,7 @@ D:\Projects\my-app>snap options
   orderBy            - Controls the sort order for 'snap list' (current: Timestamp)
   editUpdatesTimestamp - Controls if editing a snapshot updates its timestamp (current: false)
   listLimit          - Sets how many snapshots to show with 'snap list' (current: all)
+  trackMetadataOnlyChanges - Treat empty dirs / hidden / read-only changes as snapshot changes (current: false)
 ```
 ---
 
@@ -316,6 +327,7 @@ If you want to modify the tool or build it yourself, you'll need the Rust toolch
 *   **`Git HEAD is detached`**: Normal write commands stop. Run `snap doctor`; if it can determine the branch safely, `snap doctor --repair` can normalize `HEAD`. `snap restore` now keeps `HEAD` on the current branch by using `git reset --hard <snapshot_commit>` internally.
 *   **`Snapshot metadata blob ... could not read it`**: A manual Git prune/GC may have removed an old unpinned snap metadata blob. Run `snap doctor`; if the missing metadata belongs to the active snapshot, `snap doctor --repair` can regenerate it from the current worktree.
 *   **Need to reclaim disk space after a bad snapshot**: Plain `snap delete` removes only the tag. Use `snap delete <id> --purge` to pin remaining metadata, optionally create a bundle backup, expire unreachable reflogs, and run `git gc --prune=now`.
+*   **Empty directories or hidden/read-only changes do not create a new snapshot**: Metadata-only changes are ignored by default to avoid noisy histories. Use `--include-metadata-only` for one command, or enable `trackMetadataOnlyChanges` in `snap options`.
 
 ---
 

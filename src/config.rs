@@ -33,6 +33,9 @@ pub struct Options {
     #[serde(default = "default_bool_false")]
     pub edit_updates_timestamp: bool,
     // --- END: NEW TIMESTAMP OPTION ---
+    /// Whether metadata-only changes should create/update snapshots.
+    #[serde(default = "default_bool_false")]
+    pub track_metadata_only_changes: bool,
     /// How many snapshots to show in `snap list`. Can be a number or "all".
     #[serde(default = "default_list_limit")]
     pub list_limit: String,
@@ -58,6 +61,7 @@ impl Default for SnapConfig {
                 // --- START: SET DEFAULT FOR NEW OPTION ---
                 edit_updates_timestamp: false, // Default is NOT to update the timestamp
                 // --- END: SET DEFAULT FOR NEW OPTION ---
+                track_metadata_only_changes: false,
                 list_limit: default_list_limit(),
             },
         }
@@ -65,6 +69,10 @@ impl Default for SnapConfig {
 }
 
 pub fn get_config_path() -> Result<PathBuf> {
+    if let Ok(path) = env::var("SNAP_CONFIG_PATH") {
+        return Ok(PathBuf::from(path));
+    }
+
     let exe_path = env::current_exe().context("Failed to get current executable path")?;
     let snap_dir = exe_path
         .parent()
