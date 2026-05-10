@@ -2,16 +2,22 @@ use crate::cli::DoctorArgs;
 use crate::git_health::{
     collect_health_report, create_repair_plan, repair_git_repository, GitHealthReport, RepairPlan,
 };
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use colored::*;
 use std::io::{self, Write};
 
 pub fn execute(args: DoctorArgs) -> Result<()> {
+    if args.accept_metadata_loss && !args.repair {
+        return Err(anyhow!(
+            "`--accept-metadata-loss` must be used with `snap doctor --repair`."
+        ));
+    }
+
     let report = collect_health_report()?;
     print_report(&report);
 
     if args.repair {
-        repair(report)?;
+        repair(report, args.accept_metadata_loss)?;
     }
 
     Ok(())
@@ -119,7 +125,20 @@ fn print_report(report: &GitHealthReport) {
         println!("  See `doc/REPAIR_GIT_ERRORS.md` for the manual repair flow.");
     } else if report.has_warnings() {
         println!("\n{}", "[snap] Warnings were found.".yellow().bold());
-        println!("  Run `snap doctor --repair` to repair safe metadata pinning cases.");
+        if report.has_repairable_warnings() {
+            println!("  Run `snap doctor --repair` to repair safe metadata pinning cases.");
+        }
+        if report.has_historical_metadata_loss() {
+            println!(
+                "  Some historical snapshot metadata is missing and cannot be reconstructed automatically."
+            );
+            println!(
+                "  Snapshot file contents remain available, but empty-dir/hidden/read-only metadata is degraded for those old snapshots."
+            );
+            println!(
+                "  To accept that loss and make future doctor checks clean, run `snap doctor --repair --accept-metadata-loss`."
+            );
+        }
     } else {
         println!(
             "\n{}",
@@ -130,21 +149,33 @@ fn print_report(report: &GitHealthReport) {
     println!();
 }
 
-fn repair(report: GitHealthReport) -> Result<()> {
+fn repair(report: GitHealthReport, accept_metadata_loss: bool) -> Result<()> {
     if !report.has_problems() {
         println!("{}", "[snap] No repair needed.".green());
         return Ok(());
     }
 
-    let plan = create_repair_plan(&report)?;
+    let plan = create_repair_plan(&report, accept_metadata_loss)?;
     print_repair_plan(&plan);
 
     if !has_repair_actions(&plan) {
-        println!(
-            "{}",
-            "[snap] No safe automatic repair is available for the detected problem.".yellow()
-        );
-        println!("  See `doc/REPAIR_GIT_ERRORS.md` for the manual repair flow.");
+        if report.has_historical_metadata_loss() {
+            println!(
+                "{}",
+                "[snap] No safe automatic repair remains for historical metadata loss.".yellow()
+            );
+            println!("  The missing metadata blobs were already pruned by Git.");
+            println!("  Snapshot file contents remain available, but empty-dir/hidden/read-only metadata cannot be reconstructed automatically.");
+            println!(
+                "  Run `snap doctor --repair --accept-metadata-loss` to rewrite historical tags without those broken metadata refs."
+            );
+        } else {
+            println!(
+                "{}",
+                "[snap] No safe automatic repair is available for the detected problem.".yellow()
+            );
+            println!("  See `doc/REPAIR_GIT_ERRORS.md` for the manual repair flow.");
+        }
         return Ok(());
     }
 
@@ -177,6 +208,12 @@ fn repair(report: GitHealthReport) -> Result<()> {
     }
     for tag in &outcome.repaired_active_metadata_tags {
         println!("  Repaired active snapshot metadata: {}", tag);
+    }
+    if !outcome.forgotten_metadata_tags.is_empty() {
+        println!(
+            "  Accepted historical metadata loss for: {} snapshot tag(s)",
+            outcome.forgotten_metadata_tags.len()
+        );
     }
 
     println!("\n{}", "[snap] Rechecking repository...".cyan());
@@ -234,6 +271,22 @@ fn print_repair_plan(plan: &RepairPlan) {
         );
     }
 
+    if !plan.metadata_tags_to_forget.is_empty() {
+        println!(
+            "  - Rewrite {} historical snapshot tag(s) without broken metadata refs.",
+            plan.metadata_tags_to_forget.len()
+        );
+        for tag in plan.metadata_tags_to_forget.iter().take(10) {
+            println!("    - {}", tag);
+        }
+        if plan.metadata_tags_to_forget.len() > 10 {
+            println!(
+                "    ... and {} more",
+                plan.metadata_tags_to_forget.len() - 10
+            );
+        }
+    }
+
     if has_repair_actions(plan) {
         println!("  - Create a full .git backup before modifying anything.");
         if !plan.empty_git_files.is_empty() || plan.needs_branch_repair || plan.needs_head_repair {
@@ -248,6 +301,7 @@ fn has_repair_actions(plan: &RepairPlan) -> bool {
         || plan.needs_head_repair
         || !plan.metadata_refs_to_pin.is_empty()
         || !plan.active_metadata_repairs.is_empty()
+        || !plan.metadata_tags_to_forget.is_empty()
 }
 
 fn confirm_repair(question: &str) -> Result<bool> {
@@ -285,19 +339,29 @@ fn print_metadata_report(report: &GitHealthReport) {
         .filter(|metadata| metadata.error.is_none() && !metadata.pinned)
         .collect();
 
-    let status = if !invalid_metadata.is_empty() {
+    let active_invalid_count = invalid_metadata
+        .iter()
+        .filter(|metadata| metadata.snapshot_commit.as_deref() == report.head_commit.as_deref())
+        .count();
+    let historical_invalid_count = invalid_metadata.len().saturating_sub(active_invalid_count);
+
+    let status = if active_invalid_count > 0 {
         "ERR".red().bold()
-    } else if !unpinned_metadata.is_empty() || !report.unused_metadata_refs.is_empty() {
+    } else if !invalid_metadata.is_empty()
+        || !unpinned_metadata.is_empty()
+        || !report.unused_metadata_refs.is_empty()
+    {
         "WARN".yellow().bold()
     } else {
         "OK".green().bold()
     };
 
     println!(
-        "  {} Snapshot metadata: {} checked, {} invalid, {} unpinned",
+        "  {} Snapshot metadata: {} checked, {} active invalid, {} historical invalid, {} unpinned",
         status,
         report.metadata_blobs.len(),
-        invalid_metadata.len(),
+        active_invalid_count,
+        historical_invalid_count,
         unpinned_metadata.len()
     );
 

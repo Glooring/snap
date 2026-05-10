@@ -418,10 +418,82 @@ fn doctor_repair_reports_non_active_missing_metadata_without_guessing() {
         .assert()
         .success()
         .stdout(predicate::str::contains(
-            "No safe automatic repair is available",
+            "No safe automatic repair remains for historical metadata loss",
         ));
 
     assert!(!metadata_blob_exists(temp.path(), &hash));
+}
+
+#[test]
+fn doctor_reports_historical_missing_metadata_as_unrepairable_warning() {
+    let temp = assert_fs::TempDir::new().expect("tempdir");
+    init_snap_repo(temp.path());
+    create_snapshot_with_empty_dir(temp.path(), "v1", "empty-dir");
+    let hash = metadata_hash_for_tag(temp.path(), "v1");
+    fs::remove_dir_all(temp.path().join("empty-dir")).expect("remove metadata source");
+    create_snapshot(temp.path(), "v2", "file.txt", "two");
+
+    delete_metadata_ref(temp.path(), &hash);
+    prune_unreachable_now(temp.path());
+
+    snap_cmd(temp.path())
+        .arg("doctor")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Warnings were found"))
+        .stdout(predicate::str::contains("historical invalid"))
+        .stdout(predicate::str::contains(
+            "cannot be reconstructed automatically",
+        ))
+        .stdout(predicate::str::contains("Run `snap doctor --repair`").not());
+
+    snap_cmd(temp.path())
+        .args(["doctor", "--repair"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains(
+            "No safe automatic repair remains for historical metadata loss",
+        ));
+}
+
+#[test]
+fn doctor_accept_metadata_loss_rewrites_historical_tags_cleanly() {
+    let temp = assert_fs::TempDir::new().expect("tempdir");
+    init_snap_repo(temp.path());
+    create_snapshot_with_empty_dir(temp.path(), "v1", "empty-dir");
+    let hash = metadata_hash_for_tag(temp.path(), "v1");
+    fs::remove_dir_all(temp.path().join("empty-dir")).expect("remove metadata source");
+    create_snapshot(temp.path(), "v2", "file.txt", "two");
+
+    delete_metadata_ref(temp.path(), &hash);
+    prune_unreachable_now(temp.path());
+
+    snap_cmd(temp.path())
+        .args(["doctor", "--repair", "--accept-metadata-loss"])
+        .write_stdin("y\n")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Repair applied"))
+        .stdout(predicate::str::contains(
+            "Accepted historical metadata loss for: 1 snapshot tag(s)",
+        ));
+
+    assert!(metadata_hash_for_tag_optional(temp.path(), "v1").is_none());
+
+    snap_cmd(temp.path())
+        .arg("doctor")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains(
+            "Snapshot metadata: 0 checked, 0 active invalid, 0 historical invalid, 0 unpinned",
+        ))
+        .stdout(predicate::str::contains("Git repository looks healthy"));
+
+    snap_cmd(temp.path())
+        .args(["restore", "v1"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Restore complete"));
 }
 
 #[test]

@@ -97,6 +97,9 @@ pub struct DoctorArgs {
     /// Repair safe Git corruption cases after creating a .git backup
     #[arg(long)]
     pub repair: bool,
+    /// Rewrite historical snapshot tags to forget missing/invalid metadata refs
+    #[arg(long)]
+    pub accept_metadata_loss: bool,
 }
 
 #[derive(Args, Debug)]

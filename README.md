@@ -257,6 +257,8 @@ Runs a full Git and snap metadata health check for the current project. It detec
 
 `snap doctor` is read-only. To repair safe cases automatically, use `snap doctor --repair`; it creates a full `.git.backup.YYYYMMDD-HHMMSS` backup and asks for confirmation before changing anything.
 
+If old snapshot tags reference metadata blobs that Git already pruned, `snap doctor` reports them as historical warnings. File contents are still available, but empty-dir / hidden / read-only metadata for those old snapshots cannot be reconstructed exactly. To accept that loss and make future doctor checks clean, run `snap doctor --repair --accept-metadata-loss`; this rewrites affected historical tags without the broken `Snap-Metadata-Ref` lines after creating a `.git` backup.
+
 ```cmd
 D:\Projects\my-app>snap doctor
 
@@ -267,7 +269,7 @@ D:\Projects\my-app>snap doctor
   OK Current branch: main
   OK Snapshot tags: 12 checked, 0 invalid
   OK snapshot metadata scan
-  OK Snapshot metadata: 12 checked, 0 invalid, 0 unpinned
+  OK Snapshot metadata: 12 checked, 0 active invalid, 0 historical invalid, 0 unpinned
 
 [snap] Git repository looks healthy.
 ```
@@ -325,7 +327,7 @@ If you want to modify the tool or build it yourself, you'll need the Rust toolch
 *   **`Git repository has empty ref files`**: Normal commands use a fast preflight and stop immediately when `.git/refs` contains zero-byte refs. Run `snap doctor`, then `snap doctor --repair` if the repair plan looks correct.
 *   **`Git repository has empty object/ref files`**: `snap doctor` found corruption during the full scan. Use `snap doctor --repair` for safe automatic cleanup with backup, or follow `doc/REPAIR_GIT_ERRORS.md`.
 *   **`Git HEAD is detached`**: Normal write commands stop. Run `snap doctor`; if it can determine the branch safely, `snap doctor --repair` can normalize `HEAD`. `snap restore` now keeps `HEAD` on the current branch by using `git reset --hard <snapshot_commit>` internally.
-*   **`Snapshot metadata blob ... could not read it`**: A manual Git prune/GC may have removed an old unpinned snap metadata blob. Run `snap doctor`; if the missing metadata belongs to the active snapshot, `snap doctor --repair` can regenerate it from the current worktree.
+*   **`Snapshot metadata blob ... could not read it`**: A manual Git prune/GC may have removed an old unpinned snap metadata blob. Run `snap doctor`; if the missing metadata belongs to the active snapshot, `snap doctor --repair` can regenerate it from the current worktree. If only old historical snapshots are affected, use `snap doctor --repair --accept-metadata-loss` to remove the broken metadata references and return doctor to a clean report.
 *   **Need to reclaim disk space after a bad snapshot**: Plain `snap delete` removes only the tag. Use `snap delete <id> --purge` to pin remaining metadata, optionally create a bundle backup, expire unreachable reflogs, and run `git gc --prune=now`.
 *   **Empty directories or hidden/read-only changes do not create a new snapshot**: Metadata-only changes are ignored by default to avoid noisy histories. Use `--include-metadata-only` for one command, or enable `trackMetadataOnlyChanges` in `snap options`.
 

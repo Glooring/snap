@@ -984,7 +984,9 @@ The tool now implements the short-term design from this retrospective:
 
 - `snap new`, `snap update`, and `snap edit` pin metadata blobs under `refs/snap-metadata/<hash>`.
 - `snap doctor` validates `Snap-Metadata-Ref` blobs, JSON shape, pin refs, wrong pin targets, and unused metadata refs.
+- `snap doctor` treats missing/invalid metadata for the active snapshot as an error, and missing/invalid metadata for old historical snapshots as a warning.
 - `snap doctor --repair` creates a full `.git.backup.*`, pins existing valid metadata blobs, fixes wrong metadata refs, and regenerates missing metadata only for the active snapshot.
+- `snap doctor --repair --accept-metadata-loss` creates a `.git` backup and rewrites historical snapshot tags without broken `Snap-Metadata-Ref` lines, so the user can explicitly accept unrecoverable old metadata loss and return `doctor` to a clean report.
 - `snap delete` remains tag-only by default and explains that disk space was not reclaimed.
 - `snap delete --purge` pins remaining metadata, creates a targeted bundle backup by default, deletes the tag, expires unreachable reflogs, runs `git gc --prune=now`, and performs a final health check.
 - `snap delete --purge --no-backup` skips the bundle backup only after a stronger confirmation.

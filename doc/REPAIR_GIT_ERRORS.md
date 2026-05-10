@@ -52,6 +52,14 @@ Ce face:
 - reconstruiește indexul cu `git reset --mixed HEAD`;
 - rulează verificare finală.
 
+Dacă doar snapshot-uri istorice non-active au metadata lipsă sau invalidă, `snap doctor` le raportează ca warning. Ca să accepți pierderea acelei metadata și să revii la un raport curat, rulează:
+
+```bash
+snap doctor --repair --accept-metadata-loss
+```
+
+Această comandă creează backup complet `.git.backup.YYYYMMDD-HHMMSS`, apoi rescrie tag-urile istorice afectate fără linia `Snap-Metadata-Ref` stricată. Nu inventează metadata; doar marchează explicit că acele snapshot-uri vechi nu mai au metadata extra disponibilă.
+
 Ce nu face:
 
 - nu rulează fără confirmare;
@@ -87,7 +95,7 @@ Repair-ul automat:
 - pin-uiește blob-urile metadata care încă există;
 - regenerează metadata lipsă numai pentru snapshot-ul activ, folosind starea curentă a worktree-ului.
 
-Pentru snapshot-uri vechi non-active, `snap doctor --repair` raportează problema, dar nu ghicește metadata. Folosește manual un snapshot apropiat sau restore într-un worktree separat doar dacă știi exact ce metadata vrei să păstrezi.
+Pentru snapshot-uri vechi non-active, `snap doctor --repair` raportează problema, dar nu ghicește metadata. Dacă vrei să păstrezi avertizarea ca istoric degradat, nu face nimic. Dacă vrei raport verde și accepți că metadata extra s-a pierdut, rulează `snap doctor --repair --accept-metadata-loss`; tag-urile afectate vor fi rescrise fără referințele lipsă. Folosește manual un snapshot apropiat sau restore într-un worktree separat doar dacă știi exact ce metadata vrei să păstrezi.
 
 ## Reparare corectă (pas cu pas)
 

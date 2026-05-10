@@ -1,7 +1,7 @@
 use crate::utils::{
     create_tag_message, gather_metadata, get_snapshots, hash_metadata_blob,
     metadata_blob_hash_for_snapshot, metadata_ref_name, pin_metadata_blob, run_command_with_env,
-    SnapMetadata, METADATA_REF_NAMESPACE,
+    SnapMetadata, Snapshot, METADATA_REF_NAMESPACE,
 };
 use anyhow::{anyhow, Context, Result};
 use chrono::Local;
@@ -65,6 +65,7 @@ pub struct RepairPlan {
     pub needs_branch_repair: bool,
     pub metadata_refs_to_pin: Vec<String>,
     pub active_metadata_repairs: Vec<String>,
+    pub metadata_tags_to_forget: Vec<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -76,6 +77,7 @@ pub struct RepairOutcome {
     pub reset_index: bool,
     pub pinned_metadata_refs: Vec<String>,
     pub repaired_active_metadata_tags: Vec<String>,
+    pub forgotten_metadata_tags: Vec<String>,
 }
 
 impl GitHealthReport {
@@ -89,18 +91,33 @@ impl GitHealthReport {
             || self.snapshots_error.is_some()
             || self.snapshots.iter().any(|s| s.error.is_some())
             || self.metadata_error.is_some()
-            || self.metadata_blobs.iter().any(|m| m.error.is_some())
+            || self.metadata_blobs.iter().any(|m| {
+                m.error.is_some() && m.snapshot_commit.as_deref() == self.head_commit.as_deref()
+            })
     }
 
     pub fn has_warnings(&self) -> bool {
+        self.metadata_blobs
+            .iter()
+            .any(|m| m.error.is_some() || (m.error.is_none() && !m.pinned))
+            || !self.unused_metadata_refs.is_empty()
+    }
+
+    pub fn has_problems(&self) -> bool {
+        self.has_errors() || self.has_warnings()
+    }
+
+    pub fn has_repairable_warnings(&self) -> bool {
         self.metadata_blobs
             .iter()
             .any(|m| m.error.is_none() && !m.pinned)
             || !self.unused_metadata_refs.is_empty()
     }
 
-    pub fn has_problems(&self) -> bool {
-        self.has_errors() || self.has_warnings()
+    pub fn has_historical_metadata_loss(&self) -> bool {
+        self.metadata_blobs.iter().any(|m| {
+            m.error.is_some() && m.snapshot_commit.as_deref() != self.head_commit.as_deref()
+        })
     }
 
     pub fn latest_valid_snapshot(&self) -> Option<&SnapshotCheck> {
@@ -299,7 +316,10 @@ pub fn ensure_git_healthy_for_write(allow_unborn_head: bool) -> Result<()> {
     ensure_git_fast_preflight_for_write(allow_unborn_head)
 }
 
-pub fn create_repair_plan(report: &GitHealthReport) -> Result<RepairPlan> {
+pub fn create_repair_plan(
+    report: &GitHealthReport,
+    accept_metadata_loss: bool,
+) -> Result<RepairPlan> {
     if !report.is_git_repo {
         return Err(anyhow!("No .git directory found. Run `snap init` first."));
     }
@@ -354,6 +374,22 @@ pub fn create_repair_plan(report: &GitHealthReport) -> Result<RepairPlan> {
         active_metadata_repairs.dedup();
     }
 
+    let mut metadata_tags_to_forget = if accept_metadata_loss {
+        report
+            .metadata_blobs
+            .iter()
+            .filter(|check| {
+                check.error.is_some()
+                    && check.snapshot_commit.as_deref() != report.head_commit.as_deref()
+            })
+            .map(|check| check.snapshot_tag.clone())
+            .collect()
+    } else {
+        Vec::new()
+    };
+    metadata_tags_to_forget.sort();
+    metadata_tags_to_forget.dedup();
+
     Ok(RepairPlan {
         empty_git_files: report.empty_git_files.clone(),
         target_branch,
@@ -362,6 +398,7 @@ pub fn create_repair_plan(report: &GitHealthReport) -> Result<RepairPlan> {
         needs_branch_repair,
         metadata_refs_to_pin,
         active_metadata_repairs,
+        metadata_tags_to_forget,
     })
 }
 
@@ -395,6 +432,21 @@ pub fn repair_git_repository(plan: &RepairPlan) -> Result<RepairOutcome> {
         repaired_active_metadata_tags.push(tag.clone());
     }
 
+    let mut forgotten_metadata_tags = Vec::new();
+    if !plan.metadata_tags_to_forget.is_empty() {
+        let snapshots_by_tag: HashMap<_, _> = get_snapshots()?
+            .into_iter()
+            .map(|snapshot| (snapshot.tag.clone(), snapshot))
+            .collect();
+        for tag in &plan.metadata_tags_to_forget {
+            let snapshot = snapshots_by_tag
+                .get(tag)
+                .ok_or_else(|| anyhow!("Cannot forget metadata for missing snapshot '{}'.", tag))?;
+            forget_snapshot_metadata(snapshot)?;
+            forgotten_metadata_tags.push(tag.clone());
+        }
+    }
+
     if let (Some(branch), Some(commit)) =
         (plan.target_branch.as_deref(), plan.target_commit.as_deref())
     {
@@ -424,6 +476,7 @@ pub fn repair_git_repository(plan: &RepairPlan) -> Result<RepairOutcome> {
         reset_index,
         pinned_metadata_refs,
         repaired_active_metadata_tags,
+        forgotten_metadata_tags,
     })
 }
 
@@ -729,6 +782,28 @@ fn repair_active_snapshot_metadata(tag: &str) -> Result<()> {
     Ok(())
 }
 
+fn forget_snapshot_metadata(snapshot: &Snapshot) -> Result<()> {
+    let tag_message = create_tag_message(&snapshot.description, None);
+    let mut env_vars: HashMap<&str, &str> = HashMap::new();
+    if !snapshot.timestamp.is_empty() {
+        env_vars.insert("GIT_COMMITTER_DATE", snapshot.timestamp.as_str());
+    }
+
+    run_command_with_env(
+        &format!("git tag -a -f {} -F - {}", snapshot.tag, snapshot.full_id),
+        Some(&tag_message),
+        &env_vars,
+    )
+    .with_context(|| {
+        format!(
+            "Failed to rewrite snapshot tag '{}' without metadata",
+            snapshot.tag
+        )
+    })?;
+
+    Ok(())
+}
+
 fn find_empty_git_files() -> Result<Vec<PathBuf>> {
     let mut files = Vec::new();
     for root in [Path::new(".git/objects"), Path::new(".git/refs")] {
@@ -817,6 +892,8 @@ fn list_local_branches() -> Result<Vec<String>> {
 }
 
 fn backup_git_dir() -> Result<PathBuf> {
+    ensure_git_backup_excluded()?;
+
     let stamp = Local::now().format("%Y%m%d-%H%M%S").to_string();
     let mut backup_path = PathBuf::from(format!(".git.backup.{}", stamp));
     let mut counter = 1;
@@ -826,6 +903,28 @@ fn backup_git_dir() -> Result<PathBuf> {
     }
     copy_dir_recursive(Path::new(".git"), &backup_path)?;
     Ok(backup_path)
+}
+
+fn ensure_git_backup_excluded() -> Result<()> {
+    let exclude_path = Path::new(".git/info/exclude");
+    let pattern = ".git.backup.*";
+    let existing = fs::read_to_string(exclude_path).unwrap_or_default();
+    if existing.lines().any(|line| line.trim() == pattern) {
+        return Ok(());
+    }
+
+    if let Some(parent) = exclude_path.parent() {
+        fs::create_dir_all(parent)?;
+    }
+
+    let mut updated = existing;
+    if !updated.is_empty() && !updated.ends_with('\n') {
+        updated.push('\n');
+    }
+    updated.push_str(pattern);
+    updated.push('\n');
+    fs::write(exclude_path, updated).context("Failed to update .git/info/exclude")?;
+    Ok(())
 }
 
 fn copy_dir_recursive(source: &Path, destination: &Path) -> Result<()> {
