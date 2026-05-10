@@ -1,8 +1,9 @@
 use assert_cmd::Command;
 use predicates::prelude::*;
 use std::fs;
+use std::io::Write;
 use std::path::Path;
-use std::process::Command as StdCommand;
+use std::process::{Command as StdCommand, Stdio};
 
 fn snap_cmd(dir: &Path) -> Command {
     let mut cmd = Command::cargo_bin("snap").expect("snap binary");
@@ -60,6 +61,33 @@ fn create_snapshot_with_empty_dir(dir: &Path, label: &str, empty_dir: &str) {
         .args(["new", label, "metadata snapshot"])
         .assert()
         .success();
+}
+
+fn create_many_lightweight_tags(dir: &Path, count: usize) {
+    let head = git(dir, &["rev-parse", "HEAD"]).trim().to_string();
+    let mut child = StdCommand::new("git")
+        .args(["update-ref", "--stdin"])
+        .current_dir(dir)
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .expect("spawn git update-ref");
+
+    {
+        let stdin = child.stdin.as_mut().expect("git stdin");
+        for index in 0..count {
+            writeln!(stdin, "create refs/tags/many-{index:04} {head}").expect("write update-ref");
+        }
+    }
+
+    let output = child.wait_with_output().expect("wait git update-ref");
+    assert!(
+        output.status.success(),
+        "git update-ref --stdin failed\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
 }
 
 fn metadata_hash_for_tag(dir: &Path, tag: &str) -> String {
@@ -565,6 +593,22 @@ fn doctor_detects_detached_head() {
         .success()
         .stdout(predicate::str::contains("HEAD is detached"))
         .stdout(predicate::str::contains("Problems were found"));
+}
+
+#[test]
+fn doctor_handles_many_snapshot_tags_without_windows_command_line_overflow() {
+    let temp = assert_fs::TempDir::new().expect("tempdir");
+    init_snap_repo(temp.path());
+    create_snapshot(temp.path(), "v1", "file.txt", "one");
+    create_many_lightweight_tags(temp.path(), 950);
+
+    snap_cmd(temp.path())
+        .arg("doctor")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains(
+            "Snapshot tags: 951 checked, 0 invalid",
+        ));
 }
 
 #[test]

@@ -1,6 +1,8 @@
 use crate::cli::ListArgs;
 use crate::config::{load_config, SortOrder};
-use crate::utils::{format_timestamp, get_active_commit_full, get_snapshots};
+use crate::utils::{
+    format_timestamp, get_active_commit_full, get_snapshots, get_snapshots_with_limit,
+};
 use anyhow::Result;
 use colored::*;
 use std::cmp::max;
@@ -8,7 +10,23 @@ use std::env;
 
 pub fn execute(args: ListArgs) -> Result<()> {
     let config = load_config()?;
-    let mut snapshots = get_snapshots()?;
+
+    // Use limit from CLI arg if present, otherwise from config.
+    let limit_str = args.limit.as_deref().unwrap_or(&config.options.list_limit);
+    let numeric_limit = limit_str
+        .parse::<usize>()
+        .ok()
+        .filter(|limit| *limit > 0 && !limit_str.eq_ignore_ascii_case("all"));
+    let query_limit = if config.options.order_by == SortOrder::Timestamp {
+        numeric_limit.map(|limit| limit.saturating_add(1))
+    } else {
+        None
+    };
+
+    let mut snapshots = match query_limit {
+        Some(limit) => get_snapshots_with_limit(Some(limit))?,
+        None => get_snapshots()?,
+    };
     let active_commit = get_active_commit_full()?.unwrap_or_default();
 
     if config.options.order_by == SortOrder::Label {
@@ -33,15 +51,10 @@ pub fn execute(args: ListArgs) -> Result<()> {
     // --- START: SNAPSHOT LIST LIMIT LOGIC ---
     let mut truncated = false;
 
-    // Use limit from CLI arg if present, otherwise from config.
-    let limit_str = args.limit.as_deref().unwrap_or(&config.options.list_limit);
-
-    if !limit_str.eq_ignore_ascii_case("all") {
-        if let Ok(limit) = limit_str.parse::<usize>() {
-            if limit > 0 && snapshots.len() > limit {
-                snapshots.truncate(limit);
-                truncated = true;
-            }
+    if let Some(limit) = numeric_limit {
+        if snapshots.len() > limit {
+            snapshots.truncate(limit);
+            truncated = true;
         }
     }
     // --- END: SNAPSHOT LIST LIMIT LOGIC ---

@@ -31,6 +31,9 @@ pub struct SnapMetadata {
     pub empty_dirs: Vec<String>,
 }
 
+const SNAPSHOT_REF_FORMAT: &str =
+    "%(refname:short)%00%(*objectname)%00%(taggerdate:iso-strict)%00%(contents)%00";
+
 pub fn run_command(cmd_str: &str, input: Option<&str>) -> Result<String> {
     run_command_with_env(cmd_str, input, &HashMap::new())
 }
@@ -46,6 +49,20 @@ pub fn run_command_with_env(
     }
     let command = &parts[0];
     let args = &parts[1..];
+    let arg_refs: Vec<_> = args.iter().map(String::as_str).collect();
+    run_command_args_with_env(command, &arg_refs, input, env_vars)
+}
+
+pub fn run_command_args(command: &str, args: &[&str], input: Option<&str>) -> Result<String> {
+    run_command_args_with_env(command, args, input, &HashMap::new())
+}
+
+pub fn run_command_args_with_env(
+    command: &str,
+    args: &[&str],
+    input: Option<&str>,
+    env_vars: &HashMap<&str, &str>,
+) -> Result<String> {
     let mut cmd = Command::new(command);
     cmd.args(args).envs(env_vars);
 
@@ -56,7 +73,7 @@ pub fn run_command_with_env(
 
     let mut child = cmd
         .spawn()
-        .with_context(|| format!("Failed to spawn command: {}", cmd_str))?;
+        .with_context(|| format!("Failed to spawn command: {}", format_command(command, args)))?;
 
     if let (Some(stdin), Some(input_data)) = (child.stdin.as_mut(), input) {
         stdin.write_all(input_data.as_bytes())?;
@@ -68,11 +85,19 @@ pub fn run_command_with_env(
         let stderr = String::from_utf8_lossy(&output.stderr);
         return Err(anyhow!(
             "Command failed: '{}'\n---\n{}",
-            cmd_str,
+            format_command(command, args),
             stderr.trim()
         ));
     }
     Ok(String::from_utf8(output.stdout)?)
+}
+
+fn format_command(command: &str, args: &[&str]) -> String {
+    if args.is_empty() {
+        command.to_string()
+    } else {
+        format!("{} {}", command, args.join(" "))
+    }
 }
 
 pub fn check_dirty() -> Result<bool> {
@@ -89,8 +114,33 @@ pub fn get_active_commit_full() -> Result<Option<String>> {
 }
 
 pub fn get_snapshots() -> Result<Vec<Snapshot>> {
-    let command = r#"git for-each-ref refs/tags --sort=-taggerdate --format=%(refname:short)%00%(*objectname)%00%(taggerdate:iso-strict)%00%(contents)%00"#;
-    let output = run_command(command, None)
+    get_snapshots_with_limit(None)
+}
+
+pub fn get_snapshots_with_limit(limit: Option<usize>) -> Result<Vec<Snapshot>> {
+    let mut args = vec!["for-each-ref".to_string(), "--sort=-taggerdate".to_string()];
+    if let Some(limit) = limit {
+        args.push(format!("--count={}", limit));
+    }
+    args.push(format!("--format={}", SNAPSHOT_REF_FORMAT));
+    args.push("refs/tags".to_string());
+    get_snapshots_from_for_each_ref(args)
+}
+
+pub fn get_snapshots_pointing_at(commit: &str) -> Result<Vec<Snapshot>> {
+    get_snapshots_from_for_each_ref(vec![
+        "for-each-ref".to_string(),
+        "--sort=-taggerdate".to_string(),
+        "--points-at".to_string(),
+        commit.to_string(),
+        format!("--format={}", SNAPSHOT_REF_FORMAT),
+        "refs/tags".to_string(),
+    ])
+}
+
+fn get_snapshots_from_for_each_ref(args: Vec<String>) -> Result<Vec<Snapshot>> {
+    let arg_refs: Vec<_> = args.iter().map(String::as_str).collect();
+    let output = run_command_args("git", &arg_refs, None)
         .context("Failed to inspect snapshot tags. Run `snap doctor` for a read-only diagnosis")?;
     Ok(parse_snapshot_records(&output))
 }

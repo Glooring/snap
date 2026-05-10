@@ -1,9 +1,9 @@
 use crate::cli::NewArgs;
 use crate::config::load_config;
-use crate::git_health::ensure_git_healthy_for_write;
+use crate::git_health::{ensure_git_healthy_for_write, run_git};
 use crate::utils::{
-    check_dirty, create_tag_message, find_snapshot, gather_metadata, get_active_commit_full,
-    get_snapshots, hash_metadata_blob, load_metadata_for_snapshot, pin_metadata_blob,
+    check_dirty, create_tag_message, gather_metadata, get_active_commit_full,
+    get_snapshots_pointing_at, hash_metadata_blob, load_metadata_for_snapshot, pin_metadata_blob,
     pin_snapshot_metadata, run_command,
 };
 use anyhow::{anyhow, Context, Result};
@@ -24,9 +24,9 @@ pub fn execute(args: NewArgs) -> Result<()> {
     let tag_name = sanitize_tag_name(&args.label);
     let include_metadata_only = args.include_metadata_only;
     let config = load_config()?;
-    let all_snapshots = get_snapshots()?;
 
-    if all_snapshots.iter().any(|s| s.tag == tag_name) {
+    let tag_ref = format!("refs/tags/{}", tag_name);
+    if run_git(&["show-ref", "--verify", "--quiet", &tag_ref], None)?.success {
         return Err(anyhow!(
             "A snapshot with the label \"{}\" already exists.",
             tag_name
@@ -39,7 +39,8 @@ pub fn execute(args: NewArgs) -> Result<()> {
 
     let old_metadata = match get_active_commit_full()? {
         Some(id) => {
-            if let Some(active_snapshot) = find_snapshot(&all_snapshots, &id) {
+            let active_snapshot = get_snapshots_pointing_at(&id)?.into_iter().next();
+            if let Some(active_snapshot) = active_snapshot.as_ref() {
                 let metadata = load_metadata_for_snapshot(active_snapshot)?;
                 pin_snapshot_metadata(active_snapshot)?;
                 metadata

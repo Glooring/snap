@@ -495,7 +495,7 @@ fn collect_snapshot_checks() -> Result<(Vec<SnapshotCheck>, Option<String>)> {
             "for-each-ref",
             "refs/tags",
             "--sort=-taggerdate",
-            "--format=%(refname:short)\t%(taggerdate:iso-strict)",
+            "--format=%(refname:short)%00%(objectname)%00%(objecttype)%00%(*objectname)%00%(*objecttype)%00%(taggerdate:iso-strict)%00",
         ],
         None,
     )?;
@@ -504,47 +504,56 @@ fn collect_snapshot_checks() -> Result<(Vec<SnapshotCheck>, Option<String>)> {
         return Ok((Vec::new(), Some(tags.stderr.trim().to_string())));
     }
 
-    let tag_lines: Vec<_> = tags
-        .stdout
-        .lines()
-        .map(str::trim)
-        .filter(|line| !line.is_empty())
-        .collect();
-    if tag_lines.len() >= 100 {
-        eprintln!("[snap] Checking {} snapshot tag(s)...", tag_lines.len());
+    let fields: Vec<_> = tags.stdout.split('\0').collect();
+    let tag_count = fields.len() / 6;
+    if tag_count >= 100 {
+        eprintln!("[snap] Checking {} snapshot tag(s)...", tag_count);
     }
 
     let mut snapshots = Vec::new();
-    for line in tag_lines {
-        let mut parts = line.splitn(2, '\t');
-        let tag = parts.next().unwrap_or("").trim();
-        let timestamp = parts
-            .next()
-            .map(str::trim)
-            .filter(|value| !value.is_empty());
+    let mut index = 0;
+    while index + 5 < fields.len() {
+        let tag = fields[index].trim_start_matches('\n').trim();
+        let object_hash = fields[index + 1].trim();
+        let object_type = fields[index + 2].trim();
+        let peeled_hash = fields[index + 3].trim();
+        let peeled_type = fields[index + 4].trim();
+        let timestamp = fields[index + 5].trim();
+        index += 6;
+
         if tag.is_empty() {
             continue;
         }
 
-        let commit = run_git(
-            &["rev-parse", "--verify", &format!("{}^{{commit}}", tag)],
-            None,
-        )?;
-        if commit.success {
-            snapshots.push(SnapshotCheck {
-                tag: tag.to_string(),
-                commit: Some(commit.stdout.trim().to_string()),
-                timestamp: timestamp.map(ToString::to_string),
-                error: None,
-            });
+        let (commit, error) = if object_type == "commit" {
+            (Some(object_hash.to_string()), None)
+        } else if peeled_type == "commit" {
+            (Some(peeled_hash.to_string()), None)
         } else {
-            snapshots.push(SnapshotCheck {
-                tag: tag.to_string(),
-                commit: None,
-                timestamp: timestamp.map(ToString::to_string),
-                error: Some(commit.stderr.trim().to_string()),
-            });
-        }
+            let detail = if peeled_type.is_empty() {
+                object_type
+            } else {
+                peeled_type
+            };
+            (
+                None,
+                Some(format!(
+                    "tag does not point to a commit (object type: {})",
+                    if detail.is_empty() { "unknown" } else { detail }
+                )),
+            )
+        };
+
+        snapshots.push(SnapshotCheck {
+            tag: tag.to_string(),
+            commit,
+            timestamp: if timestamp.is_empty() {
+                None
+            } else {
+                Some(timestamp.to_string())
+            },
+            error,
+        });
     }
 
     sort_snapshot_checks_by_best_repair_target(&mut snapshots)?;
@@ -556,27 +565,7 @@ fn sort_snapshot_checks_by_best_repair_target(snapshots: &mut [SnapshotCheck]) -
         .iter()
         .filter_map(|snapshot| snapshot.commit.clone())
         .collect();
-    let independent_commits: HashSet<String> = if valid_commits.len() > 1 {
-        let mut args = Vec::with_capacity(valid_commits.len() + 2);
-        args.push("merge-base");
-        args.push("--independent");
-        args.extend(valid_commits.iter().map(String::as_str));
-
-        let result = run_git(&args, None)?;
-        if result.success {
-            result
-                .stdout
-                .lines()
-                .map(str::trim)
-                .filter(|commit| !commit.is_empty())
-                .map(ToString::to_string)
-                .collect()
-        } else {
-            valid_commits.iter().cloned().collect()
-        }
-    } else {
-        valid_commits.iter().cloned().collect()
-    };
+    let independent_commits = collect_independent_commits(&valid_commits)?;
 
     snapshots.sort_by(|a, b| {
         let a_is_tip = a
@@ -597,6 +586,52 @@ fn sort_snapshot_checks_by_best_repair_target(snapshots: &mut [SnapshotCheck]) -
     });
 
     Ok(())
+}
+
+fn collect_independent_commits(valid_commits: &[String]) -> Result<HashSet<String>> {
+    if valid_commits.len() <= 1 {
+        return Ok(valid_commits.iter().cloned().collect());
+    }
+
+    let selected_commits: HashSet<_> = valid_commits.iter().map(String::as_str).collect();
+    let mut input = valid_commits.join("\n");
+    input.push('\n');
+
+    let result = run_git(
+        &["rev-list", "--parents", "--topo-order", "--stdin"],
+        Some(&input),
+    )?;
+    if !result.success {
+        return Ok(valid_commits.iter().cloned().collect());
+    }
+
+    let mut has_selected_descendant = HashSet::new();
+    let mut non_independent = HashSet::new();
+
+    for line in result.stdout.lines() {
+        let mut parts = line.split_whitespace();
+        let Some(commit) = parts.next() else {
+            continue;
+        };
+
+        let has_descendant = has_selected_descendant.remove(commit);
+        let is_selected = selected_commits.contains(commit);
+        if is_selected && has_descendant {
+            non_independent.insert(commit.to_string());
+        }
+
+        if has_descendant || is_selected {
+            for parent in parts {
+                has_selected_descendant.insert(parent.to_string());
+            }
+        }
+    }
+
+    Ok(valid_commits
+        .iter()
+        .filter(|commit| !non_independent.contains(*commit))
+        .cloned()
+        .collect())
 }
 
 fn collect_metadata_checks() -> Result<(Vec<MetadataBlobCheck>, Vec<String>, Option<String>)> {
