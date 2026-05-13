@@ -3,12 +3,21 @@
 !include "MUI2.nsh"
 RequestExecutionLevel admin
 
-!define APP_NAME    "snap"
-!define APP_VER     "7.2.0"
-!define APP_EXE     "snap.exe"
+!ifndef APP_NAME
+!define APP_NAME "snap"
+!endif
+!ifndef APP_VER
+!define APP_VER "7.2.0"
+!endif
+!ifndef APP_EXE
+!define APP_EXE "snap.exe"
+!endif
+!ifndef OUT_FILE
+!define OUT_FILE "${APP_NAME}-setup.exe"
+!endif
 
 Name "${APP_NAME} ${APP_VER}"
-OutFile "${APP_NAME}-setup.exe"
+OutFile "${OUT_FILE}"
 InstallDir "$PROGRAMFILES\${APP_NAME}"
 InstallDirRegKey HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\${APP_NAME}" ""
 

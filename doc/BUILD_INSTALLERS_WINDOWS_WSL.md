@@ -4,14 +4,43 @@ This document explains the release/build flow for the `snap` CLI after the Git-h
 
 There are two targets:
 
-- **Windows installer artifacts**
-  - `target\wix\snap-7.2.0-x86_64.msi`
-  - `snap-setup.exe`
-- **WSL/Linux binary**
-  - native Linux executable installed as `/usr/local/bin/snap`
-  - optional archive: `target/linux-dist/snap-linux-x86_64.tar.gz`
+- **Windows release artifacts**
+  - `release-github\vX.Y.Z\snap-vX.Y.Z-windows-x86_64.exe`
+  - `release-github\vX.Y.Z\snap-vX.Y.Z-windows-x86_64-setup.exe`
+  - `release-github\vX.Y.Z\snap-vX.Y.Z-windows-x86_64.msi`
+- **WSL/Linux release artifacts**
+  - `release-github/vX.Y.Z/snap-vX.Y.Z-linux-x86_64`
+  - `release-github/vX.Y.Z/snap-vX.Y.Z-linux-x86_64.tar.gz`
 
-## 1. Build Windows installers
+## 1. Automated GitHub release assets
+
+Use these scripts when preparing files for GitHub Releases. They read the version from Cargo, create `release-github/vX.Y.Z`, run the full test suite, build the release binaries, and copy the final artifacts with versioned names.
+
+From Windows PowerShell or Command Prompt:
+
+```powershell
+cd D:\Projects\snap
+powershell -ExecutionPolicy Bypass -File .\scripts\release-windows.ps1
+```
+
+From WSL:
+
+```bash
+cd /mnt/d/Projects/snap
+bash ./scripts/release-linux.sh
+```
+
+The scripts do not delete artifacts from the other platform. Re-running one script only overwrites that script's own files in the release folder.
+
+The main settings are at the top of each script:
+
+```text
+ReleaseRoot / RELEASE_ROOT
+WindowsTarget / LINUX_TARGET
+AppName / APP_NAME
+```
+
+## 2. Manual Windows installer build
 
 Run from Windows PowerShell or Command Prompt:
 
@@ -59,7 +88,7 @@ snap 7.2.0
 [snap] Git repository looks healthy.
 ```
 
-## 2. Which Windows installer to use
+## 3. Which Windows installer to use
 
 Keep only one Windows installation of `snap` in PATH. If `where snap` prints more than one path, Windows uses the first one and ignores the others unless the first path is removed.
 
@@ -145,7 +174,7 @@ This installer is produced by `snap.nsi`. It installs the executable and creates
 
 You can use `snap-setup.exe`, but it is mainly useful for distribution. On this machine it may recreate or update the `C:\Program Files\snap` installation, which can conflict with the preferred `D:\Apps\snap\bin` copy if both are in PATH.
 
-## 3. Build and install for WSL / Ubuntu
+## 4. Build and install for WSL / Ubuntu
 
 The Windows `.exe` and `.msi` are not the right artifacts for WSL. WSL should use a native Linux build.
 
@@ -205,7 +234,7 @@ Expected `which snap`:
 
 If it points to `/mnt/c/.../snap.exe`, WSL is still using the Windows binary. Put `/usr/local/bin` earlier in PATH or remove the Windows path entry from the WSL PATH.
 
-## 4. Optional Linux archive
+## 5. Optional Linux archive
 
 If you want a portable Linux archive:
 
@@ -228,9 +257,21 @@ WSL path:
 /mnt/d/Projects/snap/target/linux-dist/snap-linux-x86_64.tar.gz
 ```
 
-## 5. Recommended release checklist
+## 6. Recommended release checklist
 
 Use this checklist every time you prepare a new release:
+
+```powershell
+cd D:\Projects\snap
+powershell -ExecutionPolicy Bypass -File .\scripts\release-windows.ps1
+```
+
+```bash
+cd /mnt/d/Projects/snap
+bash ./scripts/release-linux.sh
+```
+
+Manual equivalent:
 
 ```powershell
 cd D:\Projects\snap
@@ -282,7 +323,7 @@ snap --version
 snap doctor
 ```
 
-## 6. Notes from the latest build
+## 7. Notes from the latest build
 
 The latest Windows build produced:
 
