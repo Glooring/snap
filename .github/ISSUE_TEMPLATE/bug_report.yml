@@ -1,0 +1,66 @@
+name: Bug report
+description: Report a reproducible Snap bug.
+title: "[bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting a bug. Please avoid sharing secrets, private repository URLs, or private source code.
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: What went wrong?
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: Prefer a disposable local repository if possible.
+      placeholder: |
+        1. git init
+        2. snap init
+        3. snap new before "before"
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+    validations:
+      required: true
+  - type: input
+    id: os
+    attributes:
+      label: OS and shell
+      placeholder: Windows 11 PowerShell, Ubuntu 24.04 bash, WSL2, etc.
+    validations:
+      required: true
+  - type: input
+    id: git-version
+    attributes:
+      label: Git version
+      placeholder: git --version
+    validations:
+      required: true
+  - type: input
+    id: snap-version
+    attributes:
+      label: Snap version or commit
+      placeholder: snap --version, Cargo version, or commit SHA
+  - type: textarea
+    id: validation
+    attributes:
+      label: Validation
+      description: Include source-built validation if you are testing from this repo.
+      placeholder: |
+        cargo test
+        ./target/release/snap doctor

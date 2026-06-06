@@ -15,3 +15,4 @@ Sprint plans are historical. The audit should remain the current source of truth
 
 - [Sprint 0 - Baseline Audit And Safety Rails](sprint-0-baseline-safety-rails.md)
 - [Sprint 1 - README Positioning And Public Docs](sprint-1-readme-positioning-public-docs.md)
+- [Sprint 2 - OSS Hygiene Files](sprint-2-oss-hygiene-files.md)

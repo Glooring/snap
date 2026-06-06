@@ -171,6 +171,15 @@ Existing deeper technical notes:
 - [Snapshot purge and metadata GC retrospective](doc/SNAPSHOT_PURGE_AND_METADATA_GC_RETROSPECTIVE.md)
 - [Windows and WSL installer build notes](doc/BUILD_INSTALLERS_WINDOWS_WSL.md)
 
+Community and maintainer docs:
+
+- [Contributing](CONTRIBUTING.md)
+- [Security policy](SECURITY.md)
+- [Support](SUPPORT.md)
+- [Changelog](CHANGELOG.md)
+- [Code of conduct](CODE_OF_CONDUCT.md)
+- [Agent instructions](AGENTS.md)
+
 ## Troubleshooting
 
 - `Git is not installed or not in your system PATH`: install Git and open a new terminal.
@@ -182,7 +191,7 @@ Existing deeper technical notes:
 
 ## Contributing
 
-Contributor docs and issue templates are planned for the next OSS-readiness sprint. Until then, keep changes scoped, run the local gates, and be especially careful around restore, delete, doctor, Git health, metadata, command execution, and path handling.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the full contribution guide. Keep changes scoped, run the local gates, and be especially careful around restore, delete, doctor, Git health, metadata, command execution, and path handling.
 
 Recommended local checks:
 
@@ -197,4 +206,4 @@ cargo build --release
 
 ## License
 
-`Cargo.toml` declares this project as MIT licensed. A root `LICENSE` file is planned as part of the OSS hygiene sprint.
+Snap is MIT licensed. See [LICENSE](LICENSE).

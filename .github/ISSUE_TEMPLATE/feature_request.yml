@@ -1,0 +1,44 @@
+name: Feature request
+description: Suggest a focused improvement.
+title: "[feature]: "
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What workflow or user pain would this improve?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: What should Snap do?
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Snapshots
+        - Restore/delete safety
+        - Doctor/Git health
+        - Branch workflow
+        - GitHub/remotes
+        - Release helpers
+        - Documentation
+        - Packaging/install
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: safety
+    attributes:
+      label: Safety considerations
+      description: Could this discard files, rewrite refs, delete data, change remotes, or run external commands?
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered

@@ -21,9 +21,9 @@ Agents are encouraged to test deeply with disposable local projects and, when re
 
 ## Current State
 
-Sprint 1 has completed the first public-facing docs pass. The README now leads with Snap as a Git-powered local checkpoint workflow, and focused public docs cover AI-agent use, beginner use, why not just Git, safety, doctor, and limitations.
+Sprint 2 has completed the OSS hygiene file pass. The repository now has standard root maintainer/community files and GitHub issue/PR templates.
 
-The next phase is Sprint 2: OSS Hygiene Files.
+The next phase is Sprint 3: CI on Windows/Linux.
 
 ## Entries
 
@@ -326,8 +326,65 @@ Checkpoint:
 snap new oss-s1-readme "sprint 1: README positioning and public docs"
 ```
 
+### Sprint 2 - OSS Hygiene Files
+
+Status: completed
+Snapshot: `oss-s2-hygiene`
+Description: OSS hygiene files
+
+Completed:
+
+- Created `docs/architecture-audit/refactor-plans/sprint-2-oss-hygiene-files.md`.
+- Linked the Sprint 2 plan from `docs/architecture-audit/refactor-plans/README.md`.
+- Added root OSS files:
+  - `AGENTS.md`
+  - `CONTRIBUTING.md`
+  - `SECURITY.md`
+  - `CHANGELOG.md`
+  - `SUPPORT.md`
+  - `CODE_OF_CONDUCT.md`
+  - `LICENSE`
+- Added GitHub templates:
+  - `.github/pull_request_template.md`
+  - `.github/ISSUE_TEMPLATE/bug_report.yml`
+  - `.github/ISSUE_TEMPLATE/feature_request.yml`
+  - `.github/ISSUE_TEMPLATE/doctor_report.yml`
+- Updated README to link the new community, security, support, changelog, conduct, agent, and license files.
+- Kept Sprint 2 documentation/template-only: no Rust source, CLI behavior, metadata, schema, installer, or public API changes.
+- Created no GitHub sandbox repositories because Sprint 2 did not touch remote or visibility behavior.
+
+Validation:
+
+| Command | Result |
+| --- | --- |
+| `git diff --check` | Passed |
+| `cargo fmt --check` | Passed |
+| `cargo clippy --all-targets --all-features` | Passed with the known 9 warnings |
+| `cargo test` | Passed, 96 integration tests |
+| `cargo build --release` | Passed |
+| `./target/release/snap --help` | Passed |
+| `./target/release/snap doctor` | Passed; repo healthy, 8 snapshot tags checked |
+| Root file existence checks | Passed |
+| `.github` template listing | Passed; 4 template files found |
+| `AGENTS.md` safety/binary-rule scan | Passed |
+| Contributor validation-command scan | Passed |
+
+Known remaining gaps after Sprint 2:
+
+- CI is still missing; Sprint 3 owns it.
+- Strict Clippy still fails with `-D warnings`; Sprint 4 or pre-CI strictness owns cleanup.
+- Historical prompt noise and temporary patch comments remain for later cleanup.
+- Snapshot/tag ambiguity remains for Sprint 6.
+- Linux command-name conflict and packaging metadata remain for Sprint 8.
+
+Checkpoint:
+
+```bash
+snap new oss-s2-hygiene "sprint 2: OSS hygiene files"
+```
+
 ## Next Up
 
-Sprint 2 - OSS Hygiene Files:
+Sprint 3 - CI on Windows/Linux:
 
-- Add standard maintainer/community files and GitHub templates so contributors and future agents have clear project instructions.
+- Add GitHub Actions CI on Ubuntu and Windows for formatting, Clippy, tests, and source-built validation where appropriate.

@@ -7,15 +7,15 @@
 | Repository | `Glooring/snap` |
 | Local path | `/home/glooring/projects/snap` |
 | Audit date | `2026-06-06` |
-| Last refreshed | `2026-06-07T00:36:46+03:00` during Sprint 1 |
+| Last refreshed | `2026-06-07T00:42:46+03:00` during Sprint 2 |
 | Branch inspected | `main` |
-| Commit inspected | `44479dd18d017fc5fe9c6bd352d55262102c7f49` before Sprint 1 documentation edits |
+| Commit inspected | `ece07258268dbfbb385dc6b367ecd918253bf885` before Sprint 2 documentation edits |
 | Current audit path | `docs/architecture-audit/agent-efficiency-oss-readiness-audit-2026-06-06.md` |
 | Master plan | `docs/architecture-audit/CODEX_OSS_REFACTOR_PLAN.md` |
 | Progress log | `docs/architecture-audit/refactor-progress.md` |
 | Historical sprint plans | `docs/architecture-audit/refactor-plans/` |
 | Local ignored references | `docs/architecture-audit/reference-inputs/` |
-| Scope | Current OSS-readiness status after Sprint 1 README positioning and public-doc updates. Runtime behavior was validated with source-built Snap only. |
+| Scope | Current OSS-readiness status after Sprint 2 OSS hygiene file updates. Runtime behavior was validated with source-built Snap only. |
 
 ## 2. Executive Verdict
 
@@ -42,9 +42,9 @@ The refactor should therefore be an **OSS-readiness and maintainer-quality progr
 | Command / inspection | Result | Meaning |
 | --- | --- | --- |
 | `git rev-parse --abbrev-ref HEAD` | `main` | Current working branch. |
-| `git rev-parse HEAD` | `44479dd18d017fc5fe9c6bd352d55262102c7f49` | Starting commit before Sprint 1 documentation edits. |
-| `git log --oneline -8` | `oss-s0-baseline`, `oss-sandbox-test-policy`, `oss-global-binary-rule`, `oss-audit-baseline`, `oss-audit-detailed`, `oss-plan-foundation`, `oss-plan-codex`, initial import | OSS-readiness planning has named Snap checkpoints. |
-| `git status --short` | Clean before Sprint 1 documentation edits | Repo was clean after the Sprint 0 checkpoint. |
+| `git rev-parse HEAD` | `ece07258268dbfbb385dc6b367ecd918253bf885` | Starting commit before Sprint 2 documentation/template edits. |
+| `git log --oneline -8` | `oss-s1-readme`, `oss-s0-baseline`, `oss-sandbox-test-policy`, `oss-global-binary-rule`, `oss-audit-baseline`, `oss-audit-detailed`, `oss-plan-foundation`, `oss-plan-codex` | OSS-readiness planning has named Snap checkpoints. |
+| `git status --short` | Clean before Sprint 2 documentation/template edits | Repo was clean after the Sprint 1 checkpoint. |
 | `rustc --version` | `rustc 1.95.0 (59807616e 2026-04-14)` | Rust toolchain used for Sprint 0 validation. |
 | `cargo --version` | `cargo 1.95.0 (f2d3ce0bd 2026-03-21)` | Cargo toolchain used for Sprint 0 validation. |
 | `git diff --check` | Passed | Whitespace gate is clean. |
@@ -60,9 +60,11 @@ The refactor should therefore be an **OSS-readiness and maintainer-quality progr
 | Source-built sandbox smoke test | Passed | Disposable local repo exercised `init`, `new`, `list`, `diff`, `doctor`, and `restore`. |
 | README positioning | Sprint 1 completed | README now leads with Git-powered local checkpoints, AI-agent edits, risky refactors, beginner workflows, safety, limitations, and source command surface. |
 | Public docs | Sprint 1 completed | Added focused docs for AI-agent workflow, beginner workflow, why not Git, safety model, `snap doctor`, and known limitations. |
+| OSS root files | Sprint 2 completed | Added `AGENTS.md`, `CONTRIBUTING.md`, `SECURITY.md`, `CHANGELOG.md`, `SUPPORT.md`, `CODE_OF_CONDUCT.md`, and `LICENSE`. |
+| GitHub templates | Sprint 2 completed | Added PR template plus bug, feature, and doctor issue templates. |
 | `cargo audit` | Not installed | Security audit is not available locally yet; add later if desired. |
-| Root OSS file inspection | 0 files found | Missing `AGENTS.md`, `CONTRIBUTING.md`, `SECURITY.md`, `CHANGELOG.md`, `SUPPORT.md`, `CODE_OF_CONDUCT.md`, and visible license file. |
-| `.github` inspection | `.github` missing | No GitHub Actions, issue templates, or PR template. |
+| Root OSS file inspection | 7 standard files found | Sprint 2 added the expected root hygiene files. |
+| `.github` inspection | 4 template files found | Issue and PR templates exist; CI is still missing for Sprint 3. |
 | Temporary/placeholder scan | Open findings | `Cargo.toml`, `Packager.toml`, README/docs, and some command files need cleanup. |
 | Command construction scan | Open findings | Several `run_command(&format!(...))` and dynamic `Command::new(...)` sites need audit. |
 | Snapshot metadata scan | Open findings | Snapshot discovery still scans `refs/tags`; metadata uses `Snap-Metadata-Ref` and `refs/snap-metadata`. |
@@ -159,6 +161,36 @@ Results:
 
 Strict Clippy with `-D warnings` was not a Sprint 1 gate because that remains known baseline debt.
 
+### 4.5 Sprint 2 OSS Hygiene Validation
+
+Sprint 2 was documentation/template-only and ran:
+
+```bash
+git diff --check
+cargo fmt --check
+cargo clippy --all-targets --all-features
+cargo test
+cargo build --release
+./target/release/snap --help
+./target/release/snap doctor
+```
+
+Results:
+
+- `git diff --check` passed.
+- `cargo fmt --check` passed.
+- normal Clippy passed with the known 9 warnings.
+- `cargo test` passed, 96 integration tests.
+- `cargo build --release` passed.
+- source-built release help showed the modern broad command surface.
+- source-built release doctor reported a healthy repo with 8 snapshot tags and 8 metadata refs checked.
+- root OSS file existence checks passed.
+- `.github` template listing found 4 files.
+- `AGENTS.md` safety/binary-rule scan passed.
+- contributor validation-command scan passed.
+
+Strict Clippy with `-D warnings` was not a Sprint 2 gate because that remains known baseline debt.
+
 ## 5. Repository Metrics Snapshot
 
 ### 5.1 File Counts
@@ -168,9 +200,9 @@ Strict Clippy with `-D warnings` was not a Sprint 1 gate because that remains kn
 | `src/**/*.rs` | 33 |
 | `tests/**/*.rs` | 1 |
 | `doc/*.md` | 14 after Sprint 1 public docs |
-| `docs/**/*.md` | 6 after adding the Sprint 1 plan |
-| `.github` tracked files | 0 |
-| Standard OSS root files found | 0 |
+| `docs/**/*.md` | 7 after adding the Sprint 2 plan |
+| `.github` tracked files | 4 |
+| Standard OSS root files found | 7 |
 
 Standard OSS root files checked:
 
@@ -379,7 +411,7 @@ Open packaging issues:
 
 ### 9.1 Missing Standard Files
 
-Missing or not found:
+Sprint 2 added:
 
 - `AGENTS.md`
 - `CONTRIBUTING.md`
@@ -388,19 +420,16 @@ Missing or not found:
 - `SUPPORT.md`
 - `CODE_OF_CONDUCT.md`
 - `LICENSE` / `LICENSE.md`
-- `.github/workflows/ci.yml`
-- `.github/ISSUE_TEMPLATE/*`
+- `.github/ISSUE_TEMPLATE/bug_report.yml`
+- `.github/ISSUE_TEMPLATE/feature_request.yml`
+- `.github/ISSUE_TEMPLATE/doctor_report.yml`
 - `.github/pull_request_template.md`
 
-Priority:
+Still missing:
 
-1. `AGENTS.md`
-2. `LICENSE`
-3. `CONTRIBUTING.md`
-4. `SECURITY.md`
-5. `CHANGELOG.md`
-6. CI workflow
-7. issue/PR templates
+- `.github/workflows/ci.yml`
+- release/checksum automation polish
+- issue-driven cleanup records for strict Clippy, tag/ref model, and command hardening
 
 ### 9.2 README Positioning Gaps
 
@@ -438,7 +467,7 @@ Do not leave placeholder GitHub links in public docs before application.
 | Risk | Severity | Status | Evidence | Recommended sprint |
 | --- | --- | --- | --- | --- |
 | Public positioning is unclear | High | Addressed in Sprint 1 | README now leads with Git-powered local checkpoints, AI-agent edits, risky refactors, beginner workflows, and safety docs. | Monitor for drift |
-| OSS hygiene files missing | High | Open | 0 standard root OSS files and 0 `.github` files found. | Sprint 2 |
+| OSS hygiene files missing | High | Addressed in Sprint 2 | Standard root files and issue/PR templates now exist. | Monitor for drift |
 | CI missing | High | Open | No `.github/workflows`. | Sprint 3 |
 | Strict Clippy fails | Medium | Open | 9 warnings-as-errors. | Sprint 0 or 4 |
 | Temporary patch comments remain | Medium | Open | `Cargo.toml`, `new.rs`, `diff.rs`, `update.rs`. | Sprint 4 |
@@ -481,7 +510,7 @@ Current evidence:
 - `snap list` and health checks scan `refs/tags`.
 - Snapshot metadata is referenced through `Snap-Metadata-Ref`.
 - Metadata blobs are pinned through `refs/snap-metadata`.
-- The current Snap repo has 7 Snap snapshot tags before the Sprint 1 checkpoint:
+- The current Snap repo has 8 Snap snapshot tags before the Sprint 2 checkpoint:
   - `oss-plan-codex`
   - `oss-plan-foundation`
   - `oss-audit-detailed`
@@ -489,6 +518,7 @@ Current evidence:
   - `oss-global-binary-rule`
   - `oss-sandbox-test-policy`
   - `oss-s0-baseline`
+  - `oss-s1-readme`
 
 Risk:
 
@@ -695,7 +725,7 @@ Reason: those look like release tags and reinforce the current snapshot/tag ambi
 | --- | --- | --- |
 | 0 | Baseline Audit and Safety Rails | Completed in Sprint 0: plan, gates, metrics, source-built smoke test, strict Clippy deferral, and checkpoint discipline. |
 | 1 | README Positioning and Public Docs | Completed in Sprint 1: README and focused public docs now explain Snap's identity, workflows, safety model, limitations, storage model, and source command surface. |
-| 2 | OSS Hygiene Files | Adds maintainer credibility and gives Codex/agents safe project instructions. |
+| 2 | OSS Hygiene Files | Completed in Sprint 2: root OSS files, PR template, and issue templates now exist. |
 | 3 | CI on Windows/Linux | Makes cross-platform and test claims visible. |
 | 4 | Source Cleanup and Command Hardening Audit | Removes patch traces and reduces command-boundary risk. |
 | 5 | Restore/Doctor/Purge Safety Plan | Strengthens trust around data-loss and repair operations. |
@@ -729,13 +759,13 @@ Do not continue refactoring only for aesthetics. Once these criteria are met, mo
 
 ## 19. Next Recommendation
 
-Proceed to Sprint 2: OSS Hygiene Files.
+Proceed to Sprint 3: CI on Windows/Linux.
 
-Sprint 2 should:
+Sprint 3 should:
 
-- add standard maintainer/community files and GitHub templates;
-- create `AGENTS.md`, `CONTRIBUTING.md`, `SECURITY.md`, `CHANGELOG.md`, `SUPPORT.md`, root license file, PR template, and issue templates as scoped;
-- keep implementation documentation-only unless a template requires repository metadata;
-- continue using source-built Snap for validation and global Snap only for checkpoint/list.
+- add GitHub Actions CI for Ubuntu and Windows;
+- run formatting, normal Clippy, tests, and release build where appropriate;
+- decide how to represent known strict Clippy debt without blocking initial CI;
+- update README with a CI badge only after the workflow path is stable.
 
-After Sprint 2, move to Sprint 3: CI on Windows/Linux.
+After Sprint 3, move to Sprint 4: Source Cleanup and Command Hardening Audit.
