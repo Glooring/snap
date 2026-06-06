@@ -21,9 +21,9 @@ Agents are encouraged to test deeply with disposable local projects and, when re
 
 ## Current State
 
-Sprint 8 has completed the packaging, install, and Linux command-name conflict documentation. The repo now has a central installation/release-assets doc, refreshed Windows/WSL build notes, conflict-safe Linux/WSL guidance, checksum expectations, and cleaned packaging metadata.
+Sprint 9 has completed the cross-platform and performance proof sprint. The repo now has performance methodology docs, cross-platform support notes, optional benchmark scripts, targeted path/metadata edge-case tests, conservative CLI help language, and no tracked historical prompt dumps.
 
-The next phase is Sprint 9: Cross-Platform and Performance Proof.
+The next phase is Sprint 10: Community Feedback.
 
 ## Entries
 
@@ -703,8 +703,97 @@ Checkpoint:
 snap new oss-s8-packaging "sprint 8: packaging and name conflict docs"
 ```
 
+### Sprint 9 - Cross-Platform and Performance Proof
+
+Status: completed
+Snapshot: `oss-s9-platform`
+Description: Cross-platform and performance proof
+
+Completed:
+
+- Created `docs/architecture-audit/refactor-plans/sprint-9-cross-platform-performance-proof.md`.
+- Linked the Sprint 9 plan from `docs/architecture-audit/refactor-plans/README.md`.
+- Added `doc/PERFORMANCE.md` with benchmark methodology, interpretation rules, and a clear warning against broad speed claims.
+- Added `doc/CROSS_PLATFORM.md` with current Linux/Windows/WSL2 evidence and edge-case expectations.
+- Added optional benchmark helpers:
+  - `scripts/benchmark.sh`
+  - `scripts/benchmark.ps1`
+- Updated README public-doc links for performance and cross-platform docs.
+- Replaced the remaining source help `blazing fast` wording with `A Git-powered local checkpoint workflow tool.`
+- Rewrote `doc/documentation-solution-emptydir-speed.md` as a current historical note that points to the benchmark methodology.
+- Retired obsolete tracked prompt dumps:
+  - `doc/prompt-1.txt`
+  - `doc/prompt-2 - Copy.txt`
+  - `doc/prompt-2.txt`
+- Added integration coverage for:
+  - paths with spaces;
+  - Unicode paths;
+  - nested empty-directory restore;
+  - hidden metadata;
+  - read-only metadata restore.
+- Created no GitHub sandbox repositories because Sprint 9 did not touch remote or visibility behavior.
+
+Validation:
+
+| Command | Result |
+| --- | --- |
+| `git diff --check` | Passed |
+| `cargo fmt --check` | Passed |
+| `cargo clippy --all-targets --all-features` | Passed with no warnings |
+| `cargo clippy --all-targets --all-features -- -D warnings` | Passed |
+| `cargo test` | Passed, 107 integration tests |
+| `cargo build --release` | Passed |
+| `./target/release/snap --help` | Passed |
+| `./target/release/snap -h` | Passed; short help shows `A Git-powered local checkpoint workflow tool.` |
+| `./target/release/snap doctor` | Passed; repo healthy, 15 snapshot tags checked |
+| `bash scripts/benchmark.sh --help` | Passed |
+| `bash scripts/benchmark.sh` | Passed; disposable benchmark repo under `target/snap-benchmarks` was removed after the run |
+| `pwsh -File scripts/benchmark.ps1 -Help` | Not run; `pwsh` is unavailable locally |
+| Performance/public-noise scan | Passed for active docs/source; remaining speed-claim hits are negative examples or historical audit/plan text |
+| Targeted proof scan | Passed; found benchmark docs/scripts, cross-platform docs, new edge-case tests, and conservative CLI wording |
+
+Local benchmark smoke output:
+
+| Scenario | Result |
+| --- | ---: |
+| `snap init` | 2 ms |
+| `snap new bench-baseline` | 36 ms |
+| `snap new bench-changed` | 53 ms |
+| `snap list` | 4 ms |
+| `snap diff bench-baseline bench-changed` | 8 ms |
+| `snap doctor` | 21 ms |
+| `snap restore bench-baseline --dry-run` | 19 ms |
+
+These numbers are local observations only, from the disposable Sprint 9 script run on this workspace. They are not universal benchmark claims.
+
+Metrics after Sprint 9:
+
+| Area | Result |
+| --- | ---: |
+| `src/**/*.rs` files | 33 |
+| `tests/**/*.rs` files | 1 |
+| `doc/*.md` files | 19 |
+| `docs/**/*.md` tracked audit files | 15 |
+| `src` Rust LOC | 6,790 |
+| `tests` Rust LOC | 3,113 |
+| `doc` Markdown LOC | 5,709 |
+| `docs` audit Markdown LOC | 3,598 |
+
+Known remaining gaps after Sprint 9:
+
+- Checksum generation/upload is documented but not automated in release scripts or `snap release upload`.
+- The official Linux binary name remains `snap`; `gitsnap` is only a documented local workaround. Any official alternate Linux binary name needs a separate decision record.
+- Namespaced snapshot refs remain deferred; a future migration command/design should own `refs/tags/snap/*` or `refs/snapshots/*` if the project moves beyond marker-first tags.
+- Windows and WSL2 benchmark/script runs should be recorded from those platforms before making release-specific cross-platform performance claims.
+
+Checkpoint:
+
+```bash
+snap new oss-s9-platform "sprint 9: cross-platform and performance proof"
+```
+
 ## Next Up
 
-Sprint 9 - Cross-Platform and Performance Proof:
+Sprint 10 - Community Feedback:
 
-- Replace broad performance/cross-platform claims with methodology, scripts or issues, and path/metadata edge-case validation.
+- Prepare public repo metadata/topics, good-first/safety issues, and feedback materials without artificial hype.

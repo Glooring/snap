@@ -22,3 +22,4 @@ Sprint plans are historical. The audit should remain the current source of truth
 - [Sprint 6 - Snapshot Tags And Refs Decision](sprint-6-snapshot-tags-refs-decision.md)
 - [Sprint 7 - Codex And AI-Agent Workflow Docs](sprint-7-codex-ai-agent-workflow-docs.md)
 - [Sprint 8 - Packaging And Name Conflict](sprint-8-packaging-name-conflict.md)
+- [Sprint 9 - Cross-Platform And Performance Proof](sprint-9-cross-platform-performance-proof.md)

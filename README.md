@@ -173,6 +173,8 @@ During this repository's OSS-readiness refactor, source behavior is validated wi
 - [Safety model](doc/SAFETY_MODEL.md)
 - [Snap doctor](doc/SNAP_DOCTOR.md)
 - [Known limitations](doc/KNOWN_LIMITATIONS.md)
+- [Performance methodology](doc/PERFORMANCE.md)
+- [Cross-platform notes](doc/CROSS_PLATFORM.md)
 
 Existing deeper technical notes:
 

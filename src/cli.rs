@@ -1,7 +1,11 @@
 use clap::{Args, Parser, Subcommand};
 
 #[derive(Parser, Debug)]
-#[command(author, version, about = "A blazing fast, Git-powered snapshot tool.")]
+#[command(
+    author,
+    version,
+    about = "A Git-powered local checkpoint workflow tool."
+)]
 #[command(
     long_about = "snap is a friendly Git-powered workflow tool. It manages versioned snapshots and also wraps common Git/GitHub workflows with safer, clearer commands."
 )]

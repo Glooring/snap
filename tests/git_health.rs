@@ -269,6 +269,76 @@ fn create_snapshot_with_empty_dir(dir: &Path, label: &str, empty_dir: &str) {
         .success();
 }
 
+fn metadata_json_for_tag(dir: &Path, tag: &str) -> String {
+    let hash = metadata_hash_for_tag(dir, tag);
+    git(dir, &["cat-file", "-p", &hash])
+}
+
+fn set_readonly_path(path: &Path, readonly: bool) {
+    let mut permissions = fs::metadata(path)
+        .expect("metadata for readonly path")
+        .permissions();
+    permissions.set_readonly(readonly);
+    fs::set_permissions(path, permissions).expect("set readonly path");
+}
+
+fn is_readonly_path(path: &Path) -> bool {
+    fs::metadata(path)
+        .expect("metadata for readonly assertion")
+        .permissions()
+        .readonly()
+}
+
+#[cfg(windows)]
+fn hidden_fixture_path(dir: &Path) -> PathBuf {
+    dir.join("hidden metadata.txt")
+}
+
+#[cfg(not(windows))]
+fn hidden_fixture_path(dir: &Path) -> PathBuf {
+    dir.join(".hidden metadata")
+}
+
+#[cfg(windows)]
+fn set_hidden_path(path: &Path, hidden: bool) {
+    let flag = if hidden { "+H" } else { "-H" };
+    let output = StdCommand::new("attrib")
+        .arg(flag)
+        .arg(path)
+        .output()
+        .expect("run attrib");
+    assert!(
+        output.status.success(),
+        "attrib {} failed\nstdout:\n{}\nstderr:\n{}",
+        flag,
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+}
+
+#[cfg(not(windows))]
+fn set_hidden_path(_path: &Path, _hidden: bool) {}
+
+#[cfg(windows)]
+fn is_hidden_path(path: &Path) -> bool {
+    use std::os::windows::fs::MetadataExt;
+
+    const FILE_ATTRIBUTE_HIDDEN: u32 = 0x2;
+    fs::metadata(path)
+        .expect("metadata for hidden assertion")
+        .file_attributes()
+        & FILE_ATTRIBUTE_HIDDEN
+        != 0
+}
+
+#[cfg(not(windows))]
+fn is_hidden_path(path: &Path) -> bool {
+    path.file_name()
+        .and_then(|name| name.to_str())
+        .map(|name| name.starts_with('.'))
+        .unwrap_or(false)
+}
+
 fn create_many_lightweight_tags(dir: &Path, count: usize) {
     let head = git(dir, &["rev-parse", "HEAD"]).trim().to_string();
     let mut child = StdCommand::new("git")
@@ -646,6 +716,117 @@ fn file_changes_still_create_snapshot_and_record_current_metadata() {
 
     let hash = metadata_hash_for_tag(temp.path(), "v2");
     assert!(metadata_ref_exists(temp.path(), &hash));
+}
+
+#[test]
+fn snapshot_restore_handles_spaces_unicode_and_nested_empty_dirs() {
+    let temp = assert_fs::TempDir::new().expect("tempdir");
+    init_snap_repo(temp.path());
+
+    let space_file = temp.path().join("dir with spaces").join("nested file.txt");
+    let unicode_file = temp.path().join("unicodé λ").join("naïve Δ.txt");
+    let empty_dir = temp
+        .path()
+        .join("empty dirs")
+        .join("nested empty")
+        .join("leaf");
+
+    fs::create_dir_all(space_file.parent().expect("space parent")).expect("space dirs");
+    fs::create_dir_all(unicode_file.parent().expect("unicode parent")).expect("unicode dirs");
+    fs::create_dir_all(&empty_dir).expect("nested empty dir");
+    fs::write(&space_file, "space path v1").expect("space file");
+    fs::write(&unicode_file, "unicode path v1").expect("unicode file");
+
+    snap_cmd(temp.path())
+        .args(["new", "edge-one", "space unicode empty dir snapshot"])
+        .assert()
+        .success();
+
+    let metadata = metadata_json_for_tag(temp.path(), "edge-one");
+    assert!(metadata.contains("empty dirs/nested empty/leaf"));
+
+    fs::remove_dir_all(temp.path().join("dir with spaces")).expect("remove space dir");
+    fs::remove_dir_all(temp.path().join("unicodé λ")).expect("remove unicode dir");
+    fs::remove_dir_all(temp.path().join("empty dirs")).expect("remove empty dirs");
+    fs::write(temp.path().join("replacement.txt"), "replacement").expect("replacement");
+
+    snap_cmd(temp.path())
+        .args(["new", "edge-two", "changed edge paths"])
+        .assert()
+        .success();
+
+    snap_cmd(temp.path())
+        .args(["restore", "edge-one"])
+        .assert()
+        .success();
+
+    assert_eq!(
+        fs::read_to_string(&space_file).expect("restored space file"),
+        "space path v1"
+    );
+    assert_eq!(
+        fs::read_to_string(&unicode_file).expect("restored unicode file"),
+        "unicode path v1"
+    );
+    assert!(
+        empty_dir.exists(),
+        "nested empty directory should be restored"
+    );
+    assert!(
+        !temp.path().join("replacement.txt").exists(),
+        "restore should remove files added after the target snapshot"
+    );
+}
+
+#[test]
+fn snapshot_restore_preserves_hidden_and_readonly_metadata() {
+    let temp = assert_fs::TempDir::new().expect("tempdir");
+    init_snap_repo(temp.path());
+
+    let hidden_path = hidden_fixture_path(temp.path());
+    let readonly_path = temp.path().join("readonly metadata.txt");
+    fs::write(&hidden_path, "hidden").expect("hidden fixture");
+    fs::write(&readonly_path, "readonly").expect("readonly fixture");
+    set_hidden_path(&hidden_path, true);
+    set_readonly_path(&readonly_path, true);
+
+    snap_cmd(temp.path())
+        .args(["new", "meta-one", "hidden and readonly metadata"])
+        .assert()
+        .success();
+
+    let metadata = metadata_json_for_tag(temp.path(), "meta-one");
+    let hidden_name = hidden_path
+        .file_name()
+        .expect("hidden file name")
+        .to_string_lossy();
+    assert!(metadata.contains(hidden_name.as_ref()));
+    assert!(metadata.contains("readonly metadata.txt"));
+
+    set_hidden_path(&hidden_path, false);
+    set_readonly_path(&readonly_path, false);
+
+    snap_cmd(temp.path())
+        .args([
+            "new",
+            "meta-two",
+            "--include-metadata-only",
+            "metadata cleared",
+        ])
+        .assert()
+        .success();
+
+    snap_cmd(temp.path())
+        .args(["restore", "meta-one"])
+        .assert()
+        .success();
+
+    let restored_hidden = is_hidden_path(&hidden_path);
+    let restored_readonly = is_readonly_path(&readonly_path);
+    set_readonly_path(&readonly_path, false);
+
+    assert!(restored_hidden, "hidden metadata should be restored");
+    assert!(restored_readonly, "read-only metadata should be restored");
 }
 
 #[test]
