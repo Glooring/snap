@@ -101,6 +101,46 @@ Checkpoint:
 snap new oss-audit-detailed "Detailed OSS readiness audit"
 ```
 
+### Foundation - Complete Starting Audit Baseline
+
+Status: completed
+Snapshot: `oss-audit-baseline`
+Description: Complete OSS readiness baseline audit
+
+Completed:
+
+- Re-audited the current Snap repository as the real starting baseline for the upcoming refactor.
+- Recorded exact gate results, metrics, hotspots, OSS hygiene gaps, command-safety findings, packaging/docs risks, and snapshot/tag risks.
+- Clarified the binary rule: global `/usr/local/bin/snap` is intentionally older and should be used only for refactor checkpoints; product behavior must be validated with source-built Snap from this repo, such as `./target/release/snap`.
+
+Validation so far:
+
+| Command | Result |
+| --- | --- |
+| `git diff --check` | Passed before the final audit rewrite |
+| `cargo fmt --check` | Passed |
+| `cargo clippy --all-targets --all-features` | Passed with warnings |
+| `cargo clippy --all-targets --all-features -- -D warnings` | Failed on 9 baseline warnings |
+| `cargo test` | Passed, 96 tests |
+| `cargo build --release` | Passed |
+| `./target/release/snap doctor` | Passed |
+| `cargo audit` | Not installed |
+
+Final validation:
+
+| Command | Result |
+| --- | --- |
+| `git diff --check` | Passed |
+| Source-built/global Snap wording scan | Passed, audit distinguishes checkpoint binary from product-under-test binary |
+| Stale path/name scan | Passed |
+| `git status --short --ignored docs/architecture-audit` | Passed, only intended docs changes plus ignored reference inputs |
+
+Checkpoint:
+
+```bash
+snap new oss-audit-baseline "Complete OSS readiness baseline audit"
+```
+
 ## Next Up
 
 Sprint 0 - Baseline Audit and Safety Rails:

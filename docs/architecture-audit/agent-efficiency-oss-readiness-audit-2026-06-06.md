@@ -1,4 +1,4 @@
-# Snap OSS Readiness Audit — Agent Efficiency and CLI Health
+# Snap OSS Readiness Audit - Agent Efficiency and CLI Health
 
 ## 1. Metadata
 
@@ -8,67 +8,129 @@
 | Local path | `/home/glooring/projects/snap` |
 | Audit date | `2026-06-06` |
 | Branch inspected | `main` |
-| Commit inspected | `bfcab26eca16d480b009f108154ac3418603d9d4` |
+| Commit inspected | `6cf6c2c1563009588138203736354bae94c6140a` |
 | Current audit path | `docs/architecture-audit/agent-efficiency-oss-readiness-audit-2026-06-06.md` |
 | Master plan | `docs/architecture-audit/CODEX_OSS_REFACTOR_PLAN.md` |
 | Progress log | `docs/architecture-audit/refactor-progress.md` |
 | Historical sprint plans | `docs/architecture-audit/refactor-plans/` |
 | Local ignored references | `docs/architecture-audit/reference-inputs/` |
-| Scope | Initial OSS-readiness and agent-efficiency audit before the first real Snap refactor sprint. This audit is documentation/analysis only; it records baseline repo state, risks, validation, ownership, and next steps. |
+| Scope | Complete starting baseline for the Snap OSS-readiness refactor. Runtime code was inspected and validated, but this audit update is documentation-only. |
 
 ## 2. Executive Verdict
 
-Snap is already a real Rust CLI with a meaningful product story, not just a small personal script. It has a broad command surface, Git-backed checkpoint behavior, Git health diagnostics, metadata handling, tests, release helpers, and installer assets.
+Snap is already a substantial Rust CLI with a real product story. It is not merely a one-off backup script: it has Git-backed checkpoints, snapshot metadata, restore/diff/delete/edit/update flows, Git health diagnostics, branch/remote/GitHub helpers, release helpers, installer assets, and a meaningful integration test suite.
 
-The core opportunity is strong:
+The strongest public positioning is:
 
-> Snap can be positioned as a native Rust CLI for Git-powered local checkpoints before risky refactors, AI-agent edits, experiments, and release work, while helping beginners stop copying whole project folders manually.
+> Snap is a native Rust CLI for Git-powered local checkpoints before risky refactors, AI-agent edits, experiments, and release work. It also helps beginners stop copying entire project folders manually.
 
-The main weakness is not the idea. The main weakness is public readiness. A new maintainer, reviewer, or Codex/OpenAI program evaluator should not have to infer the story from old prompt docs, internal implementation files, or personal context.
+The main risk is public readiness. A new user, contributor, or Codex/OpenAI reviewer should understand the value and safety model from the repository itself, without reading old prompt dumps or relying on private context.
 
-The next work should be an **OSS-readiness refactor program**, not random cleanup:
+The refactor should therefore be an **OSS-readiness and maintainer-quality program**, not an open-ended code cleanup. The highest-value sequence is:
 
-- make positioning obvious in the first 10 seconds;
-- add standard OSS maintainer files;
-- add visible CI and cross-platform proof;
-- clean temporary patch comments;
-- document destructive/safety-sensitive behavior;
-- decide how Snap snapshots relate to normal Git release tags;
-- keep a strict sprint workflow with gates and named Snap checkpoints.
+1. lock the baseline with audit/progress/gates;
+2. fix positioning and README/docs;
+3. add OSS maintainer files and CI;
+4. clean obvious unprofessional traces;
+5. harden and document safety-sensitive command behavior;
+6. address the snapshot-tag model and Linux command-name conflict;
+7. prepare a truthful application package.
 
 ## 3. Current Baseline Evidence
 
-Commands and inspections already run for this baseline:
-
 | Command / inspection | Result | Meaning |
 | --- | --- | --- |
-| `git rev-parse --abbrev-ref HEAD` | `main` | Current baseline branch. |
-| `git rev-parse HEAD` | `bfcab26eca16d480b009f108154ac3418603d9d4` | Current baseline commit after foundation docs checkpoint. |
-| `git log --oneline -5` | `oss-plan-foundation`, `oss-plan-codex`, initial import | The OSS-readiness docs are already checkpointed with Snap. |
-| `cargo fmt --check` | Passed | Formatting gate was clean during master-plan setup. |
-| `cargo test` | Passed, `96` tests | Current test suite is runnable locally and substantial. |
-| `git diff --check` | Passed | Docs changes had no whitespace errors. |
-| Stale path/reference scan | Passed | Committed docs no longer depend on absolute Synthedu paths. |
-| Git ignored-reference check | Passed | Copied roadmap/workflow inputs are ignored and not public repo state. |
-| Root OSS file inspection | `0` standard OSS root files found | `AGENTS.md`, `CONTRIBUTING.md`, `SECURITY.md`, `CHANGELOG.md`, `SUPPORT.md`, and templates are still missing. |
-| `.github` inspection | `0` files found | CI, issue templates, and PR template are still missing. |
-| Temporary comment scan | Open findings | `Cargo.toml`, `new.rs`, `diff.rs`, and `update.rs` still contain patch-style comments. |
-| Snapshot storage scan | Open findings | Snapshot discovery still touches `refs/tags`; metadata uses `Snap-Metadata-Ref` and `refs/snap-metadata`. |
+| `git rev-parse --abbrev-ref HEAD` | `main` | Current working branch. |
+| `git rev-parse HEAD` | `6cf6c2c1563009588138203736354bae94c6140a` | Baseline commit before this complete audit update. |
+| `git log --oneline -8` | `oss-audit-detailed`, `oss-plan-foundation`, `oss-plan-codex`, initial import | OSS-readiness planning has named Snap checkpoints. |
+| `git status --short` | Clean before audit rewrite | Repo was clean after previous checkpoint. |
+| `git diff --check` | Passed | Whitespace gate is clean. |
+| `cargo fmt --check` | Passed | Rust formatting is clean. |
+| `cargo clippy --all-targets --all-features` | Passed with warnings | Clippy is runnable but not clean enough for `-D warnings`. |
+| `cargo clippy --all-targets --all-features -- -D warnings` | Failed with 9 warnings-as-errors | Strict Clippy should be a near-term cleanup target before CI enforces it. |
+| `cargo test` | Passed, 96 tests | Test suite is fast and substantial. |
+| `cargo build --release` | Passed | Release build works locally. |
+| global `snap doctor` | Passed | The older globally installed Snap binary can still checkpoint/inspect this repo, but it is not the product-under-test baseline. |
+| `./target/release/snap doctor` | Passed | Current source-built binary sees the repo as healthy; this is the correct behavior baseline for the project. |
+| `cargo audit` | Not installed | Security audit is not available locally yet; add later if desired. |
+| Root OSS file inspection | 0 files found | Missing `AGENTS.md`, `CONTRIBUTING.md`, `SECURITY.md`, `CHANGELOG.md`, `SUPPORT.md`, `CODE_OF_CONDUCT.md`, and visible license file. |
+| `.github` inspection | 0 files found | No GitHub Actions, issue templates, or PR template. |
+| Temporary/placeholder scan | Open findings | `Cargo.toml`, `Packager.toml`, README/docs, and some command files need cleanup. |
+| Command construction scan | Open findings | Several `run_command(&format!(...))` and dynamic `Command::new(...)` sites need audit. |
+| Snapshot metadata scan | Open findings | Snapshot discovery still scans `refs/tags`; metadata uses `Snap-Metadata-Ref` and `refs/snap-metadata`. |
 
-The next Sprint 0 should rerun the full baseline, especially `cargo clippy --all-targets --all-features` and `cargo build --release`, then record exact outputs here.
+## 4. Gate Details
 
-## 4. Repository Metrics Snapshot
+### 4.1 Passing Gates
 
-### 4.1 File Counts
+The following gates are currently green:
+
+```bash
+git diff --check
+cargo fmt --check
+cargo clippy --all-targets --all-features
+cargo test
+cargo build --release
+./target/release/snap doctor
+```
+
+`cargo test` result:
+
+```text
+96 passed; 0 failed; 0 ignored
+```
+
+`./target/release/snap doctor` result summary:
+
+```text
+Git repository looks healthy.
+Snapshot tags: 3 checked, 0 invalid
+Snapshot metadata: 3 checked, 0 active invalid, 0 historical invalid, 0 unpinned
+```
+
+### 4.2 Strict Clippy Baseline
+
+Strict Clippy currently fails:
+
+```bash
+cargo clippy --all-targets --all-features -- -D warnings
+```
+
+Failure categories:
+
+| File | Finding |
+| --- | --- |
+| `src/commands/branch.rs` | `clippy::print_literal` |
+| `src/commands/list.rs` | `clippy::useless_format` |
+| `src/commands/options.rs` | `clippy::useless_format`, `clippy::useless_vec` |
+| `src/commands/restore.rs` | `clippy::unnecessary_sort_by` |
+| `src/config.rs` | `clippy::derivable_impls` |
+| `src/git_health.rs` | `clippy::nonminimal_bool`, `clippy::len_zero` |
+
+These are not architectural blockers. They are good early cleanup candidates because they make future CI stricter and more credible.
+
+### 4.3 Missing Gate
+
+`cargo audit` is not installed:
+
+```text
+error: no such command: `audit`
+```
+
+This should not block Sprint 0, but a later security/OSS hygiene sprint can decide whether to add `cargo-audit` to local instructions or CI.
+
+## 5. Repository Metrics Snapshot
+
+### 5.1 File Counts
 
 | Area | Count |
 | --- | ---: |
-| `src/**/*.rs` | `33` |
-| `tests/**/*.rs` | `1` |
-| `doc/*.md` | `8` |
-| `docs/**/*.md` | `7` |
-| `.github` tracked files | `0` |
-| Standard OSS root files found | `0` |
+| `src/**/*.rs` | 33 |
+| `tests/**/*.rs` | 1 |
+| `doc/*.md` | 8 |
+| `docs/**/*.md` | 7 before this expanded audit |
+| `.github` tracked files | 0 |
+| Standard OSS root files found | 0 |
 
 Standard OSS root files checked:
 
@@ -80,41 +142,122 @@ Standard OSS root files checked:
 - `CODE_OF_CONDUCT.md`
 - `LICENSE` / `LICENSE.md`
 
-### 4.2 LOC Snapshot
+### 5.2 LOC Snapshot
 
 | Area | LOC |
 | --- | ---: |
-| `src` Rust | `6,445` |
-| `tests` Rust | `2,698` |
-| `doc` Markdown/text | `8,318` |
-| `docs` audit Markdown | `3,752` before this expanded audit |
+| `src` Rust | 6,445 |
+| `tests` Rust | 2,698 |
+| `doc` Markdown/text | 8,318 |
+| `docs` audit Markdown | 3,752 before this expanded audit |
 
-### 4.3 Largest Operational Files
+### 5.3 Largest Operational Files
 
 | Rank | File | LOC | Primary concern |
 | ---: | --- | ---: | --- |
-| 1 | `tests/git_health.rs` | `2,698` | Very valuable integration coverage, but large enough to need section ownership if expanded further. |
-| 2 | `src/git_health.rs` | `1,017` | High-risk Git diagnosis/repair logic; needs careful tests and documentation for every behavior change. |
-| 3 | `src/git.rs` | `487` | Git wrapper and remote metadata sync boundary; safety-sensitive because it executes Git commands. |
-| 4 | `src/commands/release.rs` | `471` | Release scripting/GitHub CLI boundary; cross-platform/runtime assumptions matter. |
-| 5 | `src/commands/doctor.rs` | `434` | User-facing diagnosis/repair UI; should remain read-only unless repair is explicit. |
-| 6 | `src/cli.rs` | `426` | Public command contract; changes affect help text, docs, and user expectations. |
-| 7 | `src/utils.rs` | `420` | Shared snapshot discovery, metadata, command helpers; contains tag/ref behavior central to future migration. |
-| 8 | `src/commands/delete.rs` | `380` | Destructive snapshot/purge workflow; needs strong tests and explicit safety docs. |
-| 9 | `src/commands/list.rs` | `318` | Snapshot discovery/presentation; affected by tag namespacing or marker filtering. |
-| 10 | `src/commands/remote.rs` | `304` | GitHub CLI command boundary and destructive remote operations. |
-| 11 | `src/github.rs` | `282` | GitHub CLI integration and release parsing. |
-| 12 | `src/commands/branch.rs` | `207` | Branch workflow wrapper; must preserve Git expectations. |
-| 13 | `src/commands/options.rs` | `170` | Global Snap options persistence. |
-| 14 | `src/commands/edit.rs` | `156` | Tag/message rewrite behavior; safety-sensitive because it mutates refs. |
-| 15 | `src/commands/restore.rs` | `150` | Destructive restore workflow; primary target for dry-run/rescue improvements. |
-| 16 | `src/commands/new.rs` | `136` | Snapshot creation; central to label/tag behavior and metadata pinning. |
-| 17 | `src/commands/update.rs` | `133` | Snapshot amend/update; central to tag and metadata rewrite behavior. |
-| 18 | `src/commands/diff.rs` | `123` | Snapshot comparison; useful in AI-agent workflow docs. |
+| 1 | `tests/git_health.rs` | 2,698 | Valuable integration coverage, but already large enough to need section ownership if expanded. |
+| 2 | `src/git_health.rs` | 1,017 | High-risk Git diagnosis/repair logic; behavior changes need tests and docs. |
+| 3 | `src/git.rs` | 487 | Git wrapper and remote metadata sync boundary. |
+| 4 | `src/commands/release.rs` | 471 | Release scripting and GitHub CLI boundary; cross-platform assumptions matter. |
+| 5 | `src/commands/doctor.rs` | 434 | User-facing diagnosis/repair UI; must stay read-only unless repair is explicit. |
+| 6 | `src/cli.rs` | 426 | Public command contract and help text. |
+| 7 | `src/utils.rs` | 420 | Snapshot discovery, metadata, and command helpers; central to tag/ref migration. |
+| 8 | `src/commands/delete.rs` | 380 | Destructive snapshot/purge workflow. |
+| 9 | `src/commands/list.rs` | 318 | Snapshot discovery/presentation, affected by future tag filtering. |
+| 10 | `src/commands/remote.rs` | 304 | GitHub CLI and destructive remote operations. |
+| 11 | `src/github.rs` | 282 | GitHub CLI integration and release parsing. |
+| 12 | `src/commands/branch.rs` | 207 | Branch workflow wrapper. |
+| 13 | `src/commands/options.rs` | 170 | Global Snap options persistence. |
+| 14 | `src/commands/edit.rs` | 156 | Tag/message rewrite behavior. |
+| 15 | `src/commands/restore.rs` | 150 | Destructive restore workflow; target for dry-run/rescue. |
+| 16 | `src/commands/new.rs` | 136 | Snapshot creation, labels, tags, metadata pinning. |
+| 17 | `src/commands/update.rs` | 133 | Snapshot amend/update and tag rewrite behavior. |
+| 18 | `src/commands/diff.rs` | 123 | Snapshot comparison, important for AI-agent workflow. |
 
-## 5. Architecture Map
+## 6. Product And CLI Baseline
 
-### 5.1 Runtime Shape
+### 6.1 Source Command Surface
+
+The current source-built binary exposes a broad command surface:
+
+```text
+init
+new
+list
+status
+save
+push
+pull
+sync
+history
+branch
+remote
+release
+update-repo
+setup-repo
+make-public
+make-private
+delete-repo
+examples
+restore
+delete
+edit
+update
+diff
+doctor
+options
+```
+
+The source help also includes workflow groups:
+
+```text
+Daily workflow
+Snapshots
+Branches
+Remote/GitHub
+Release
+Diagnostics
+Learn by example
+```
+
+This is a strength. The README should be updated to reflect this modern command surface instead of presenting Snap mostly as the older snapshot-only tool.
+
+### 6.2 Global Checkpoint Binary vs Source-Built Product
+
+The globally installed Snap binary at `/usr/local/bin/snap` is intentionally an older stable tool in the user's environment. It is useful for checkpointing this refactor, but it is not the binary that should be used to validate the current project behavior.
+
+The global binary reports version `7.2.0`, but its `snap --help` output only lists the older snapshot-oriented command set:
+
+```text
+init, new, list, restore, delete, edit, update, diff, doctor, options
+```
+
+The source-built `./target/release/snap --help` lists the newer command surface.
+
+This matters because the refactor workflow uses the global Snap binary for checkpoints, while validation must use the source-built binary from this repo:
+
+```bash
+cargo test
+cargo build --release
+./target/release/snap --help
+./target/release/snap doctor
+```
+
+Do not use the global `snap` binary to prove features from the current source tree.
+
+### 6.3 Binary Sizes
+
+Local inspected binaries:
+
+| Binary | Approx size | Note |
+| --- | ---: | --- |
+| `/usr/local/bin/snap` | 1.7 MB | Older global binary used only for refactor checkpoints. |
+| `target/release/snap` | 1.9 MB | Current source release build. |
+| `target/debug/snap` | 33 MB | Debug build. |
+
+## 7. Architecture Map
+
+### 7.1 Runtime Shape
 
 ```text
 snap
@@ -124,172 +267,265 @@ snap
 │   ├── snapshots: init, new, list, diff, restore, delete, edit, update
 │   ├── Git health: doctor and git_health internals
 │   ├── GitHub/remote: remote, setup-repo, visibility, delete-repo
-│   └── release: local script runner and GitHub release upload/list
+│   └── release: local scripts and GitHub release upload/list
 ├── Git command wrappers and utilities
 ├── metadata capture/storage
 ├── OS-specific hidden/readonly behavior
 └── integration tests
 ```
 
-### 5.2 Main Domains
+### 7.2 Domain Ownership
 
 | Domain | Primary files | Current state |
 | --- | --- | --- |
-| CLI contract | `src/cli.rs`, `src/main.rs` | Broad, useful command surface; README command list is not yet aligned with all newer workflow commands. |
-| Snapshot model | `src/commands/new.rs`, `update.rs`, `edit.rs`, `list.rs`, `utils.rs` | Core value of the tool; currently coupled to annotated Git tags and `Snap-Metadata-Ref`. |
-| Restore/delete safety | `src/commands/restore.rs`, `delete.rs`, `git_health.rs` | High-risk user trust area; tests exist but docs and dry-run/rescue behavior need improvement. |
-| Doctor/Git health | `src/commands/doctor.rs`, `src/git_health.rs`, `doc/GIT_HEALTH_STABILIZATION.md`, `doc/REPAIR_GIT_ERRORS.md` | Strong differentiator; should be promoted and made machine-readable in future. |
-| Git integration | `src/git.rs`, `src/utils.rs` | Critical command boundary; some operations already use explicit args, while some still use formatted command strings. |
-| GitHub/release | `src/github.rs`, `src/commands/remote.rs`, `src/commands/release.rs`, scripts | Useful but needs CI/release documentation polish before public promotion. |
-| Cross-platform metadata | `src/os/*`, metadata helpers, docs | Strong product claim; should be backed with Windows/Linux CI and docs. |
-| Docs/OSS presentation | `README.md`, `doc/*`, `docs/architecture-audit/*` | Lots of raw material exists; public-facing docs need consolidation and sharper positioning. |
+| CLI contract | `src/cli.rs`, `src/main.rs` | Broad and useful, but README/install docs lag behind source help. |
+| Snapshot creation/update | `src/commands/new.rs`, `update.rs`, `edit.rs`, `utils.rs` | Core model; tied to Git commits, tags, and metadata refs. |
+| Snapshot listing/diff | `src/commands/list.rs`, `diff.rs`, `utils.rs` | Important for AI-agent compare/rollback workflow. |
+| Restore/delete safety | `src/commands/restore.rs`, `delete.rs` | Destructive flows; should get dry-run/rescue docs/features. |
+| Doctor/Git health | `src/commands/doctor.rs`, `src/git_health.rs` | Strong differentiator; should be promoted and eventually get JSON/CI modes. |
+| Git helpers | `src/git.rs`, `src/utils.rs` | Safety-sensitive command boundary. |
+| GitHub/remote | `src/github.rs`, `src/commands/remote.rs`, `setup_repo.rs` | Useful, but needs clearer auth/error docs. |
+| Release | `src/commands/release.rs`, `scripts/*`, installer files | Good foundation, but public release workflow needs polish/checksums. |
+| Config/options | `src/config.rs`, `src/commands/options.rs` | User preference state; clippy cleanup is simple here. |
+| OS metadata | `src/os/*`, metadata helpers | Cross-platform claim; should be backed by Windows/Linux CI. |
+| Tests | `tests/git_health.rs` | Valuable, broad coverage; could be sectioned later if it grows. |
 
-## 6. Agent-Coding Efficiency Assessment
+## 8. Dependency And Packaging Baseline
 
-### 6.1 What Is Already Good
+### 8.1 Cargo Dependencies
 
-- The Rust module structure is easy to navigate.
-- Command modules are separated by user-facing command.
-- Tests are substantial and fast locally.
-- `snap doctor` and Git health code already encode many safety invariants.
-- The new `docs/architecture-audit/` area now gives agents a place for audit/progress/plans.
-- Local copied reference inputs are ignored, so committed docs can stay public-safe.
+Direct runtime dependencies:
 
-### 6.2 What Slows Agents Down
+```text
+anyhow
+chrono
+clap
+colored
+hex
+inquire
+rayon
+serde
+serde_json
+sha1
+shlex
+walkdir
+```
 
-| Problem | Impact | Example |
-| --- | --- | --- |
-| Public story is scattered | Agents/reviewers need old docs and context to understand why Snap matters. | README still leads with "Rust edition" and speed more than AI-agent/beginner safety. |
-| No root `AGENTS.md` | Coding agents lack project-specific safety rules by default. | Restore/delete/doctor changes need stronger instructions. |
-| No visible CI | Agents cannot rely on repository-hosted gates. | `.github/workflows` is absent. |
-| Large safety files | Agents must be careful editing Git health or tests. | `src/git_health.rs`, `tests/git_health.rs`. |
-| Command execution patterns are mixed | Harder to reason about injection/path safety. | formatted `git tag`, `git reset`, `git cat-file`, `git update-ref`. |
-| Historical prompt docs are noisy | Old prompt files contain placeholders and old code snippets. | `doc/prompt-2.txt` contains `your-username` examples. |
-| Snapshot tags look like release tags | Refactor workflow can accidentally create ambiguous labels. | Avoid `v7.3`-style snapshots in this repo. |
+Unique normal dependency tree count from `cargo tree -e normal`: 71 packages.
 
-### 6.3 Target Agent Experience
+Dev dependencies:
 
-A future coding agent should be able to answer quickly:
+```text
+assert_cmd
+assert_fs
+predicates
+```
 
-- What user problem does Snap solve?
-- Which commands are destructive or safety-sensitive?
-- Which gates must run before a PR?
-- Which files should not be touched without tests?
-- How are snapshots stored?
-- What is the current migration plan for snapshot tags?
-- How should a sprint be checkpointed without confusing release tags?
+### 8.2 Packaging Assets
 
-The current repo partially answers these through code and docs. Sprint 0-3 should make the answers explicit.
+Existing packaging/release assets:
 
-## 7. CLI and OSS Health Assessment
+- `Makefile.toml`
+- `Packager.toml`
+- `build-installers.ps1`
+- `scripts/release-linux.sh`
+- `scripts/release-windows.ps1`
+- `snap.nsi`
+- `wix/main.wxs`
+- `wix/License.rtf`
+- `README_INSTALLER.md`
+- `doc/BUILD_INSTALLERS_WINDOWS_WSL.md`
 
-### 7.1 Current Strengths
+Open packaging issues:
 
-- Real command surface and real workflows.
-- Strong test suite with 96 passing tests in baseline.
-- Clear safety-oriented feature: `snap doctor`.
-- Uses Git as a mature storage engine.
-- Metadata work covers empty directories and file attributes beyond plain Git.
-- Release scripts and installer files already exist.
-- The idea is easy to connect to modern AI-assisted coding workflows.
+- `Packager.toml` still uses placeholder identifier `com.yourname.snap`.
+- Cargo license is `MIT`, but no root `LICENSE`/`LICENSE.md` file was found.
+- Linux command-name conflict with Canonical `snap` is not yet handled as a clear install policy.
+- Release docs should explain checksums and artifact provenance.
 
-### 7.2 Current Health Risks
+## 9. OSS Readiness Gaps
 
-| Risk | User / maintainer consequence |
+### 9.1 Missing Standard Files
+
+Missing or not found:
+
+- `AGENTS.md`
+- `CONTRIBUTING.md`
+- `SECURITY.md`
+- `CHANGELOG.md`
+- `SUPPORT.md`
+- `CODE_OF_CONDUCT.md`
+- `LICENSE` / `LICENSE.md`
+- `.github/workflows/ci.yml`
+- `.github/ISSUE_TEMPLATE/*`
+- `.github/pull_request_template.md`
+
+Priority:
+
+1. `AGENTS.md`
+2. `LICENSE`
+3. `CONTRIBUTING.md`
+4. `SECURITY.md`
+5. `CHANGELOG.md`
+6. CI workflow
+7. issue/PR templates
+
+### 9.2 README Positioning Gaps
+
+Current README still leads with:
+
+- `Snap (The Rust Edition)`
+- `blazing-fast`
+- Rust rewrite history
+- snapshot/backup framing
+
+The public story should instead lead with:
+
+- Git-powered local checkpoints;
+- safety before AI-agent edits and risky refactors;
+- beginner alternative to copying folders;
+- Git is the engine, Snap is the workflow;
+- `snap doctor` as a serious differentiator.
+
+The Rust rewrite story can remain, but it should move lower.
+
+### 9.3 Old Prompt / Historical Docs
+
+Tracked `doc/prompt-*.txt` files contain old snippets and placeholders such as `your-username`. These may be useful historically, but they are noisy for a public OSS repo.
+
+Options:
+
+1. move them into an ignored local notes folder;
+2. rewrite them into clean historical docs;
+3. delete them after extracting useful content.
+
+Do not leave placeholder GitHub links in public docs before application.
+
+## 10. Risk Register
+
+| Risk | Severity | Status | Evidence | Recommended sprint |
+| --- | --- | --- | --- | --- |
+| Public positioning is unclear | High | Open | README leads with Rust edition/blazing-fast backup framing. | Sprint 1 |
+| OSS hygiene files missing | High | Open | 0 standard root OSS files and 0 `.github` files found. | Sprint 2 |
+| CI missing | High | Open | No `.github/workflows`. | Sprint 3 |
+| Strict Clippy fails | Medium | Open | 9 warnings-as-errors. | Sprint 0 or 4 |
+| Temporary patch comments remain | Medium | Open | `Cargo.toml`, `new.rs`, `diff.rs`, `update.rs`. | Sprint 4 |
+| Placeholder packaging identifier | Medium | Open | `Packager.toml` has `com.yourname.snap`. | Sprint 8 |
+| Public historical prompt noise | Medium | Open | `doc/prompt-2.txt` contains `your-username` and old snippets. | Sprint 1 or 2 |
+| Snapshot tags can mix with release tags | High | Open | `refs/tags` scanning and Snap checkpoints are tag-based. | Sprint 6 |
+| Linux command-name conflict | High | Open | Project/binary name `snap` conflicts with Canonical Snapcraft on many Linux systems. | Sprint 8 |
+| Command construction needs hardening | High | Open | Multiple `run_command(&format!(...))` sites with Git commands. | Sprint 4 |
+| Safety docs are fragmented | High | Open | Restore/purge/doctor guarantees spread across docs and code. | Sprint 5 |
+| Global checkpoint binary differs from source help | Medium | Open | `/usr/local/bin/snap --help` lacks newer commands while `target/release/snap --help` has them. This is intentional for now but must not affect product validation. | Sprint 8/release |
+| Security audit tooling absent | Low | Open | `cargo audit` not installed. | Later OSS hygiene |
+
+## 11. Command Safety Findings
+
+Command construction scan found these notable sites:
+
+| File | Pattern |
 | --- | --- |
-| Weak first impression | A reviewer may see "backup tool" instead of "developer safety workflow for AI/refactor era". |
-| Missing OSS files | Contributors and Codex agents lack clear rules. |
-| No CI | Cross-platform and safety claims rely on local trust. |
-| Temporary comments | Looks like unfinished generated patches. |
-| Mixed command execution | Increases audit burden for user-controlled labels/paths. |
-| Tag/snapshot ambiguity | Normal release tags can be confused with Snap snapshots. |
-| Linux command conflict | `snap` name can collide with Canonical Snapcraft. |
-| Safety docs spread across files | Restore/purge/doctor guarantees are harder to verify. |
+| `src/utils.rs` | `Command::new(command)`, `git update-ref` format string, `git cat-file` format string |
+| `src/commands/new.rs` | `git commit` format string, `git tag -a` format string |
+| `src/commands/update.rs` | `git tag -a -f` format string |
+| `src/commands/restore.rs` | `git reset --hard` format string |
+| `src/commands/edit.rs` | `git tag -d` format string |
+| `src/git_health.rs` | `git tag -a -f` format strings during repair |
+| `src/github.rs` | dynamic `Command::new(&command)` |
+| `src/commands/release.rs` | dynamic script runtime command |
 
-## 8. Critical Hotspots and Refactor Direction
+These are not automatically exploitable. Some values are sanitized or resolved from Git, and some dynamic runtimes are intentional. But for OSS credibility, each site should be reviewed and either:
 
-### 8.1 `src/git_health.rs`
+- converted to explicit args;
+- documented as safe because input is sanitized/resolved;
+- isolated behind a safer command helper;
+- covered with tests for labels, paths, spaces, and shell metacharacters.
 
-Recommended mode: `stabilize_before_extract`.
+## 12. Snapshot / Tag Model Findings
 
-Why:
+Current evidence:
 
-- It owns diagnosis and repair semantics.
-- It is large but heavily tested.
-- Behavior matters more than LOC reduction.
+- Snapshot labels are represented as Git tags.
+- `snap list` and health checks scan `refs/tags`.
+- Snapshot metadata is referenced through `Snap-Metadata-Ref`.
+- Metadata blobs are pinned through `refs/snap-metadata`.
+- The current Snap repo has 3 Snap snapshot tags:
+  - `oss-plan-codex`
+  - `oss-plan-foundation`
+  - `oss-audit-detailed`
 
-Near-term action:
+Risk:
 
-- Do not split in Sprint 0-3.
-- Improve docs and tests first.
-- Add machine-readable `doctor --json` / `--ci` plan before large movement.
+Normal Git release tags can be confused with Snap snapshots unless Snap distinguishes its own tags from normal tags.
 
-### 8.2 `src/utils.rs`
+Preferred future direction:
 
-Recommended mode: `audit_then_extract`.
+1. add an explicit `Snap-Snapshot: true` marker to new snapshot tag messages;
+2. filter `snap list` / `doctor` to Snap-marked tags, with compatibility handling for older Snap tags;
+3. consider `refs/tags/snap/<label>` or `refs/snapshots/<label>` as a later migration;
+4. add tests proving normal release tags are not treated as Snap snapshots.
 
-Why:
+Until then, this repo should avoid release-looking checkpoint labels like `v7.3`.
 
-- It owns snapshot discovery, metadata messages, and shared command helpers.
-- It currently scans `refs/tags`, which is central to the release-tag risk.
+## 13. Agent-Coding Efficiency Assessment
 
-Near-term action:
+### 13.1 What Is Already Good
 
-- Audit snapshot tag filtering.
-- Decide marker/namespace path.
-- Introduce tests before changing discovery behavior.
+- Rust modules are organized by command/domain.
+- The test suite is fast enough for frequent agent use.
+- `./target/release/snap doctor` provides a real health signal after changes.
+- Architecture-audit docs now exist inside the Snap repo.
+- Ignored local reference inputs avoid public dependency on Synthedu paths.
+- Snap checkpoints give clean rollback labels during the refactor.
 
-### 8.3 `src/commands/restore.rs` and `src/commands/delete.rs`
+### 13.2 What Slows Agents Down
 
-Recommended mode: `safety_feature_first`.
+| Problem | Agent impact |
+| --- | --- |
+| No `AGENTS.md` | Agents lack safety-specific instructions at startup. |
+| README lags source command surface | Agent may document or test older behavior. |
+| Old prompt docs are tracked | Search results are noisy and include stale placeholders. |
+| Clippy strict fails | CI cannot immediately use `-D warnings`. |
+| Command execution patterns vary | Agent must manually inspect safety assumptions. |
+| Large `git_health.rs` and test file | Harder to make surgical changes without context. |
+| Snapshot tag ambiguity | Agents need special checkpoint-label discipline. |
 
-Why:
+### 13.3 Target Agent Experience
 
-- These commands can discard or purge data.
-- User trust depends on clear prompts, dry-run behavior, backups, and tests.
+After Sprint 0-3, a new agent should quickly know:
 
-Near-term action:
+- Snap's product identity;
+- which commands are destructive;
+- which files are safety-sensitive;
+- how to run gates;
+- how to create a checkpoint safely;
+- how to update progress/audit docs;
+- how to avoid confusing release tags with checkpoints.
 
-- Plan `restore --dry-run`.
-- Plan rescue snapshot before restore.
-- Keep `delete --purge` backup behavior prominent in docs.
+## 14. CLI Health Assessment
 
-### 8.4 `src/commands/new.rs`, `update.rs`, and `edit.rs`
+### 14.1 Strong Areas
 
-Recommended mode: `command_hardening`.
+- Source-built `./target/release/snap doctor` health check is real and passes on the repo.
+- Snapshot metadata is pinned and validated.
+- Purge/doctor tests show significant attention to Git edge cases.
+- Branch/remote/release helpers make Snap broader than a simple snapshot-only tool.
+- Current source help is much better than README positioning.
 
-Why:
+### 14.2 Weak Areas
 
-- These commands create or rewrite Git tags.
-- They include user-facing labels and descriptions.
+- Global checkpoint binary help does not match current source help; this is acceptable only if tests use source-built Snap.
+- README needs repositioning and command-surface refresh.
+- Packaging metadata has placeholders.
+- No CI proves cross-platform behavior yet.
+- No root license file despite `Cargo.toml` declaring MIT.
+- No public-facing security policy for filesystem/Git operations.
 
-Near-term action:
+## 15. Recommended Validation Contract
 
-- Clean patch comments.
-- Replace formatted command strings with explicit args where user input is involved.
-- Preserve existing behavior with tests.
+### 15.1 Runtime / Code Changes
 
-### 8.5 Public Docs
-
-Recommended mode: `positioning_first`.
-
-Why:
-
-- Most technical strengths already exist.
-- The repo needs to communicate them cleanly before deeper refactor work.
-
-Near-term action:
-
-- Rewrite README top sections.
-- Promote `snap doctor`.
-- Add AI-agent and beginner workflows.
-- Add known limitations and Linux name conflict note.
-
-## 9. Validation Contract
-
-### 9.1 Full Gate Set
-
-For runtime or safety-sensitive changes:
+Use this as the full local gate set:
 
 ```bash
 git diff --check
@@ -297,9 +533,42 @@ cargo fmt --check
 cargo clippy --all-targets --all-features
 cargo test
 cargo build --release
+./target/release/snap doctor
 ```
 
-### 9.2 OSS Readiness Scans
+Use global `snap` only for checkpointing after gates pass. To test the current source tree, use:
+
+```bash
+cargo build --release
+./target/release/snap doctor
+./target/release/snap --help
+```
+
+Use this as the target strict gate once cleanup lands:
+
+```bash
+cargo clippy --all-targets --all-features -- -D warnings
+```
+
+### 15.2 Docs-Only Changes
+
+Use:
+
+```bash
+git diff --check
+rg -n "stale-path-or-private-absolute-path" docs doc README.md
+```
+
+Optional but encouraged:
+
+```bash
+cargo fmt --check
+cargo test
+```
+
+### 15.3 OSS Readiness Scans
+
+Run before application-related checkpoints:
 
 ```bash
 rg -n "your-username|TODO|FIXME|FINAL|START: THE FIX|END: THE FIX|CORRECTED LINE" . -g '!target'
@@ -307,32 +576,26 @@ rg -n "format!\\(\"git |format!\\(\"gh |run_command\\(&format!" src
 rg -n "refs/tags|refs/snap|Snap-Snapshot|Snap-Metadata" src doc README.md docs/architecture-audit
 ```
 
-### 9.3 Docs-Only Gate Set
+## 16. Snapshot Discipline
 
-For docs-only organization work:
+Use the stable globally installed Snap binary for refactor checkpoints only. The user intentionally keeps this global binary older for now.
+
+Use source-built Snap for product validation:
 
 ```bash
-git diff --check
-rg -n "stale-path-or-private-absolute-path" docs doc README.md
+cargo run -- doctor
+./target/debug/snap doctor
+./target/release/snap doctor
 ```
 
-Optional but encouraged if the docs are part of a sprint checkpoint:
+Do not treat global `snap --help` or global `snap doctor` as proof of current source behavior.
+
+Because Snap itself currently uses Git tags for checkpoints, use non-release-looking labels:
 
 ```bash
-cargo fmt --check
-cargo test
-```
-
-## 10. Snapshot Discipline
-
-Because Snap itself currently uses Git tags for checkpoints, the refactor should use non-release-looking labels.
-
-Good:
-
-```bash
-snap new oss-plan-foundation "Audit and local reference foundations"
 snap new oss-s0-baseline "OSS readiness baseline"
 snap new oss-s1-readme "README positioning and docs"
+snap new oss-s2-hygiene "OSS hygiene files"
 ```
 
 Avoid:
@@ -342,78 +605,57 @@ snap new v7.3 "sprint 1"
 snap new v8.0 "release prep"
 ```
 
-The `vX` style looks like release tags and conflicts with the exact snapshot-tag model risk this audit tracks.
+Reason: those look like release tags and reinforce the current snapshot/tag ambiguity.
 
-## 11. Refactor Progress Updates
-
-### Foundation Update — 2026-06-06
-
-Completed:
-
-- Created the Codex OSS master plan.
-- Moved audit/planning docs under `docs/architecture-audit/`.
-- Created `refactor-progress.md`.
-- Created `refactor-plans/README.md`.
-- Created ignored `reference-inputs/` area for local roadmap/workflow copies.
-- Removed committed-doc dependence on absolute Synthedu paths.
-- Created Snap checkpoint `oss-plan-foundation`.
-
-Validation:
-
-| Command | Result |
-| --- | --- |
-| `git diff --check` | Passed |
-| Stale path/reference scan | Passed |
-| Git ignored-reference check | Passed |
-| `cargo fmt --check` | Passed before this rename/detail pass |
-| `cargo test` | Passed before this rename/detail pass, 96 tests |
-
-## 12. Recommended Roadmap
+## 17. Recommended Roadmap
 
 | Sprint | Recommendation | Why |
 | --- | --- | --- |
-| 0 | Baseline Audit and Safety Rails | Capture exact metrics/gates before mutating README or code. |
-| 1 | README Positioning and Public Docs | First impression is the highest-leverage OSS readiness change. |
-| 2 | OSS Hygiene Files | Adds maintainer credibility and agent instructions. |
-| 3 | CI on Windows/Linux | Makes claims verifiable and future refactors safer. |
-| 4 | Source Cleanup and Command Hardening Audit | Removes unprofessional traces and reduces command-boundary risk. |
-| 5 | Restore/Doctor/Purge Safety Plan | Strengthens trust where data loss/repair is possible. |
-| 6 | Snapshot Tags/Refs Decision | Addresses the central Git integration ambiguity. |
+| 0 | Baseline Audit and Safety Rails | Write the first sprint plan, record full gates, and turn this audit/progress setup into a repeatable workflow. |
+| 1 | README Positioning and Public Docs | Highest-leverage OSS readiness fix; makes value obvious. |
+| 2 | OSS Hygiene Files | Adds maintainer credibility and gives Codex/agents safe project instructions. |
+| 3 | CI on Windows/Linux | Makes cross-platform and test claims visible. |
+| 4 | Source Cleanup and Command Hardening Audit | Removes patch traces and reduces command-boundary risk. |
+| 5 | Restore/Doctor/Purge Safety Plan | Strengthens trust around data-loss and repair operations. |
+| 6 | Snapshot Tags/Refs Decision | Resolves central Git integration ambiguity. |
 | 7 | Codex/AI-Agent Workflow Docs | Makes the project directly relevant to AI-assisted coding. |
 | 8 | Packaging/Name Conflict | Makes installation honest and practical. |
-| 9 | Cross-Platform and Performance Proof | Replaces broad claims with measured evidence. |
+| 9 | Cross-Platform and Performance Proof | Replaces broad claims with evidence. |
 | 10 | Community Feedback | Produces real OSS signals without artificial hype. |
 | 11 | OpenAI Application Package | Submit only after claims are visible and verifiable. |
 
-## 13. Closure Criteria
+## 18. Closure Criteria
 
 Close the OSS-readiness refactor when all are true:
 
 - README explains Snap's purpose clearly in under 10 seconds.
-- Standard OSS files and templates exist.
+- README/docs cover AI-agent workflow, beginner workflow, safety model, "why not Git", known limitations, and `snap doctor`.
+- `AGENTS.md`, `CONTRIBUTING.md`, `SECURITY.md`, `CHANGELOG.md`, `SUPPORT.md`, license file, issue templates, and PR template exist.
 - CI runs on Windows and Linux.
-- `cargo fmt`, clippy, tests, and release build are green or documented with explicit exceptions.
-- Temporary patch comments are cleaned.
-- Safety-sensitive commands have clear docs and tests.
-- Snapshot/tag model risk is fixed or has a tracked migration plan.
+- `cargo fmt`, clippy, tests, release build, and doctor are green.
+- Strict Clippy is either green or intentionally deferred with an issue.
+- Temporary patch comments and placeholder metadata are cleaned.
+- Snapshot/tag ambiguity is fixed or has a concrete migration issue.
 - Linux name conflict is documented.
+- Packaging/release docs explain artifacts and checksums.
 - A current release exists.
 - GitHub About/topics are set.
 - There is some real feedback or issue activity.
-- The OpenAI/Codex application answers are honest and backed by repository evidence.
+- OpenAI/Codex application answers are honest and backed by visible repository evidence.
 
 Do not continue refactoring only for aesthetics. Once these criteria are met, move remaining work into normal issue-driven maintenance.
 
-## 14. Next Recommendation
+## 19. Next Recommendation
 
-Proceed with Sprint 0: Baseline Audit and Safety Rails.
+Proceed to Sprint 0: Baseline Audit and Safety Rails.
 
 Sprint 0 should:
 
-- write `docs/architecture-audit/refactor-plans/sprint-0-baseline-safety-rails.md`;
+- create `docs/architecture-audit/refactor-plans/sprint-0-baseline-safety-rails.md`;
 - update `docs/architecture-audit/refactor-progress.md`;
-- rerun and record full gates, including clippy and release build where feasible;
-- update this audit with exact command outputs and any new findings;
+- rerun full gates and record exact outputs;
+- decide whether to fix strict Clippy warnings immediately or track them for Sprint 4;
+- update this audit with any new findings;
 - create checkpoint `oss-s0-baseline`.
 
-After Sprint 0, continue to Sprint 1: README Positioning and Public Docs.
+After Sprint 0, move to Sprint 1: README Positioning and Public Docs.
