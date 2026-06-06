@@ -38,6 +38,36 @@ snap doctor --repair --accept-metadata-loss
 
 This rewrites affected historical tags without broken `Snap-Metadata-Ref` lines after creating a backup.
 
+## JSON And CI Modes
+
+Use JSON output when automation needs to parse the health report:
+
+```bash
+snap doctor --json
+```
+
+Use CI mode when a workflow should fail on either warnings or errors:
+
+```bash
+snap doctor --ci
+```
+
+JSON and CI mode can be combined:
+
+```bash
+snap doctor --json --ci
+```
+
+`--json` and `--ci` are read-only modes and cannot be combined with `--repair`.
+
+## Exit Behavior
+
+- `snap doctor` exits `0` after printing the report, even when it found warnings or repairable problems.
+- `snap doctor --json` exits `0` after printing JSON, even when the JSON status is `warning` or `error`.
+- `snap doctor --ci` exits `0` only when the report is clean.
+- `snap doctor --ci` exits non-zero when warnings or errors are found.
+- Command failures, invalid flag combinations, and repair failures also exit non-zero through Snap's normal error path.
+
 ## When To Run It
 
 Run `snap doctor`:

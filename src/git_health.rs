@@ -5,6 +5,7 @@ use crate::utils::{
 };
 use anyhow::{anyhow, Context, Result};
 use chrono::Local;
+use serde::Serialize;
 use std::collections::{HashMap, HashSet};
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -18,7 +19,7 @@ pub struct GitCommandResult {
     pub stderr: String,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct SnapshotCheck {
     pub tag: String,
     pub commit: Option<String>,
@@ -26,7 +27,7 @@ pub struct SnapshotCheck {
     pub error: Option<String>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct MetadataBlobCheck {
     pub snapshot_tag: String,
     pub snapshot_commit: Option<String>,
@@ -39,7 +40,7 @@ pub struct MetadataBlobCheck {
     pub error: Option<String>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct GitHealthReport {
     pub is_git_repo: bool,
     pub empty_git_files: Vec<PathBuf>,

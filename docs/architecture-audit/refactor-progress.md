@@ -21,9 +21,9 @@ Agents are encouraged to test deeply with disposable local projects and, when re
 
 ## Current State
 
-Sprint 4 has completed source cleanup and command-construction audit. Strict Clippy now passes, patch-marker comments are gone from `Cargo.toml` and `src`, and the remaining command boundaries are documented.
+Sprint 5 has completed restore, doctor, and purge safety work. Restore dry-run and rescue snapshots are implemented, doctor JSON/CI modes are available, purge safety docs are current, and destructive behavior changes are covered by integration and local smoke tests.
 
-The next phase is Sprint 5: Restore, Doctor, and Purge Safety Plan.
+The next phase is Sprint 6: Snapshot Tags/Refs Decision.
 
 ## Entries
 
@@ -479,7 +479,6 @@ Validation:
 
 Known remaining gaps after Sprint 4:
 
-- Restore/doctor/purge safety features remain for Sprint 5.
 - Snapshot/tag ambiguity remains for Sprint 6.
 - Codex/AI-agent workflow docs remain for Sprint 7.
 - Linux command-name conflict and packaging metadata remain for Sprint 8.
@@ -490,8 +489,65 @@ Checkpoint:
 snap new oss-s4-cleanup "sprint 4: source cleanup and command audit"
 ```
 
+### Sprint 5 - Restore, Doctor, and Purge Safety Plan
+
+Status: completed
+Snapshot: `oss-s5-safety`
+Description: Restore doctor purge safety
+
+Completed:
+
+- Created `docs/architecture-audit/refactor-plans/sprint-5-restore-doctor-purge-safety.md`.
+- Linked the Sprint 5 plan from `docs/architecture-audit/refactor-plans/README.md`.
+- Added `snap restore --dry-run` so restore previews target, current HEAD, dirty state, and rescue behavior without changing files or tags.
+- Added default restore rescue snapshots using `snap-rescue-YYYYMMDD-HHMMSS` labels when the current state is dirty or otherwise unprotected by a snapshot tag.
+- Added `snap restore --no-rescue` as the explicit old discard-confirmation path.
+- Added `snap doctor --json` for machine-readable read-only health output.
+- Added `snap doctor --ci` so automation exits non-zero on doctor warnings or errors.
+- Documented doctor exit behavior and the read-only nature of JSON/CI modes.
+- Updated README, safety model, known limitations, and doctor docs for restore, doctor, purge, and repair safety.
+- Added integration tests for restore dry-run, restore rescue snapshots, doctor JSON, doctor CI success, and doctor JSON+CI warning failure.
+- Created no GitHub sandbox repositories because Sprint 5 did not touch remote or visibility behavior.
+
+Validation:
+
+| Command | Result |
+| --- | --- |
+| `git diff --check` | Passed |
+| `cargo fmt --check` | Passed |
+| `cargo clippy --all-targets --all-features` | Passed with no warnings |
+| `cargo clippy --all-targets --all-features -- -D warnings` | Passed |
+| `cargo test` | Passed, 101 integration tests |
+| `cargo build --release` | Passed |
+| `./target/release/snap --help` | Passed; top-level help shows restore dry-run and doctor JSON/CI examples |
+| `./target/release/snap restore --help` | Passed; shows `--dry-run` and `--no-rescue` |
+| `./target/release/snap doctor --help` | Passed; shows `--json` and `--ci` |
+| `./target/release/snap doctor` | Passed; repo healthy, 11 snapshot tags checked |
+
+Source-built sandbox smoke test:
+
+- Created disposable repo: `/tmp/snap-agent-smoke-s5-jLGMAo`.
+- Used only `/home/glooring/projects/snap/target/release/snap` for product behavior.
+- Exercised `init`, `new`, `restore --dry-run`, rescue-backed `restore`, `doctor --json`, `doctor --ci`, `delete --purge`, and final `doctor --ci`.
+- Verified dry-run changed no files/tags, rescue restore created `snap-rescue-20260607-011015`, restored `app.txt` to `one`, removed `extra.txt`, produced doctor JSON with `"status": "ok"`, created a purge bundle backup for `s5-three`, and passed final doctor CI.
+- Removed the sandbox after the test.
+- No external GitHub sandbox repositories were created.
+
+Known remaining gaps after Sprint 5:
+
+- Snapshot/tag ambiguity remains for Sprint 6.
+- Codex/AI-agent workflow docs remain for Sprint 7.
+- Linux command-name conflict and packaging metadata remain for Sprint 8.
+- Historical prompt dumps still contain stale placeholders and old snippets; handle in a later docs cleanup if they remain public.
+
+Checkpoint:
+
+```bash
+snap new oss-s5-safety "sprint 5: restore doctor purge safety"
+```
+
 ## Next Up
 
-Sprint 5 - Restore, Doctor, and Purge Safety Plan:
+Sprint 6 - Snapshot Tags/Refs Decision:
 
-- Specify and implement or track restore dry-run, rescue snapshot, doctor JSON/CI, exit codes, and expanded destructive-operation safety docs.
+- Decide whether Snap snapshots stay on ordinary `refs/tags` short term or move toward namespaced refs, and document/implement the migration path or issue.

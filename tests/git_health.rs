@@ -389,6 +389,62 @@ fn doctor_reports_healthy_repo() {
 }
 
 #[test]
+fn doctor_json_reports_healthy_repo() {
+    let temp = assert_fs::TempDir::new().expect("tempdir");
+    init_snap_repo(temp.path());
+    create_snapshot(temp.path(), "v1", "file.txt", "one");
+
+    let assert = snap_cmd(temp.path())
+        .args(["doctor", "--json"])
+        .assert()
+        .success();
+    let stdout = String::from_utf8(assert.get_output().stdout.clone()).expect("utf8 stdout");
+    let value: serde_json::Value = serde_json::from_str(&stdout).expect("doctor json");
+
+    assert_eq!(value["schema_version"], 1);
+    assert_eq!(value["status"], "ok");
+    assert_eq!(value["summary"]["has_errors"], false);
+    assert_eq!(value["summary"]["has_warnings"], false);
+    assert_eq!(value["report"]["is_git_repo"], true);
+}
+
+#[test]
+fn doctor_ci_succeeds_for_clean_repo() {
+    let temp = assert_fs::TempDir::new().expect("tempdir");
+    init_snap_repo(temp.path());
+    create_snapshot(temp.path(), "v1", "file.txt", "one");
+
+    snap_cmd(temp.path())
+        .args(["doctor", "--ci"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Git repository looks healthy"));
+}
+
+#[test]
+fn doctor_json_ci_fails_on_warnings_after_printing_json() {
+    let temp = assert_fs::TempDir::new().expect("tempdir");
+    init_snap_repo(temp.path());
+    create_snapshot_with_empty_dir(temp.path(), "v1", "empty-dir");
+    let hash = metadata_hash_for_tag(temp.path(), "v1");
+    delete_metadata_ref(temp.path(), &hash);
+    assert!(metadata_blob_exists(temp.path(), &hash));
+
+    let assert = snap_cmd(temp.path())
+        .args(["doctor", "--json", "--ci"])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("health warnings or errors"));
+    let stdout = String::from_utf8(assert.get_output().stdout.clone()).expect("utf8 stdout");
+    let value: serde_json::Value = serde_json::from_str(&stdout).expect("doctor json");
+
+    assert_eq!(value["status"], "warning");
+    assert_eq!(value["summary"]["has_errors"], false);
+    assert_eq!(value["summary"]["has_warnings"], true);
+    assert_eq!(value["summary"]["unpinned_metadata_count"], 1);
+}
+
+#[test]
 fn new_pins_metadata_blob() {
     let temp = assert_fs::TempDir::new().expect("tempdir");
     init_snap_repo(temp.path());
@@ -2470,6 +2526,82 @@ fn restore_keeps_head_attached_to_branch() {
     let branch_after = git(temp.path(), &["symbolic-ref", "--short", "HEAD"]);
     assert_eq!(branch_before, branch_after);
 
+    let head = git(temp.path(), &["rev-parse", "HEAD"]);
+    let v1 = git(temp.path(), &["rev-parse", "v1^{commit}"]);
+    assert_eq!(head, v1);
+}
+
+#[test]
+fn restore_dry_run_does_not_change_files_head_or_tags() {
+    let temp = assert_fs::TempDir::new().expect("tempdir");
+    init_snap_repo(temp.path());
+    create_snapshot(temp.path(), "v1", "file.txt", "one");
+    create_snapshot(temp.path(), "v2", "file.txt", "two");
+    fs::write(temp.path().join("file.txt"), "dirty").expect("dirty file");
+    fs::write(temp.path().join("extra.txt"), "extra").expect("extra file");
+
+    let head_before = git(temp.path(), &["rev-parse", "HEAD"]);
+    let tags_before = git(temp.path(), &["tag", "--list"]);
+
+    snap_cmd(temp.path())
+        .args(["restore", "v1", "--dry-run"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Restore dry run"))
+        .stdout(predicate::str::contains("would be created before restore"))
+        .stdout(predicate::str::contains("Files changed: no"))
+        .stdout(predicate::str::contains("Tags created: no"));
+
+    let head_after = git(temp.path(), &["rev-parse", "HEAD"]);
+    let tags_after = git(temp.path(), &["tag", "--list"]);
+    assert_eq!(head_before, head_after);
+    assert_eq!(tags_before, tags_after);
+    assert_eq!(
+        fs::read_to_string(temp.path().join("file.txt")).expect("file"),
+        "dirty"
+    );
+    assert_eq!(
+        fs::read_to_string(temp.path().join("extra.txt")).expect("extra"),
+        "extra"
+    );
+}
+
+#[test]
+fn restore_creates_rescue_snapshot_for_dirty_worktree() {
+    let temp = assert_fs::TempDir::new().expect("tempdir");
+    init_snap_repo(temp.path());
+    create_snapshot(temp.path(), "v1", "file.txt", "one");
+    create_snapshot(temp.path(), "v2", "file.txt", "two");
+    fs::write(temp.path().join("file.txt"), "dirty").expect("dirty file");
+    fs::write(temp.path().join("extra.txt"), "extra").expect("extra file");
+
+    snap_cmd(temp.path())
+        .args(["restore", "v1"])
+        .write_stdin("y\n")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Rescue snapshot created"))
+        .stdout(predicate::str::contains("Restore complete"));
+
+    let rescue_tags = git(temp.path(), &["tag", "--list", "snap-rescue-*"]);
+    let rescue_tag = rescue_tags.lines().next().expect("rescue tag").to_string();
+    assert!(!rescue_tag.is_empty());
+    assert_eq!(
+        git(temp.path(), &["show", &format!("{}:file.txt", rescue_tag)]),
+        "dirty"
+    );
+    assert_eq!(
+        git(temp.path(), &["show", &format!("{}:extra.txt", rescue_tag)]),
+        "extra"
+    );
+    assert_eq!(
+        fs::read_to_string(temp.path().join("file.txt")).expect("file"),
+        "one"
+    );
+    assert!(!temp.path().join("extra.txt").exists());
+
+    let branch = git(temp.path(), &["symbolic-ref", "--short", "HEAD"]);
+    assert!(!branch.trim().is_empty());
     let head = git(temp.path(), &["rev-parse", "HEAD"]);
     let v1 = git(temp.path(), &["rev-parse", "v1^{commit}"]);
     assert_eq!(head, v1);

@@ -20,20 +20,15 @@ Until the tag/ref model is improved, avoid routine checkpoint labels that look l
 
 On many Linux systems, `snap` already means Canonical Snapcraft. Check your PATH before installing this project as `snap`. The packaging/name-conflict strategy is still planned.
 
-## Safety Features Still Planned
+## Safety Work Still Planned
 
 The roadmap tracks:
 
-- restore dry-run;
-- rescue snapshot before restore;
-- doctor JSON/CI modes;
-- documented exit codes;
-- stricter command-construction audit;
-- Windows/Linux CI.
+- moving snapshots away from ordinary Git tag names;
+- broader cross-platform destructive-operation tests;
+- packaging and command-name conflict decisions for Linux systems where `snap` already means Snapcraft.
 
-## OSS Hygiene Still Planned
-
-The repository still needs standard public project files such as `AGENTS.md`, `CONTRIBUTING.md`, `SECURITY.md`, `CHANGELOG.md`, issue templates, PR template, CI, and a root `LICENSE` file.
+Restore dry-run, restore rescue snapshots, doctor JSON/CI modes, documented doctor exit behavior, stricter command-construction cleanup, Windows/Linux CI, and core OSS hygiene files are present after the Sprint 1-5 OSS-readiness work.
 
 ## Strict Clippy
 

@@ -8,11 +8,11 @@ use clap::{Args, Parser, Subcommand};
 #[command(after_help = "\
 Workflow groups:
   Daily workflow:    snap status | snap save \"message\" | snap history | snap update-repo \"message\" | snap sync
-  Snapshots:         snap new <label> \"description\" | snap list | snap restore <label>
+  Snapshots:         snap new <label> \"description\" | snap list | snap restore <label> --dry-run
   Branches:          snap branch list | snap branch new feature-x | snap branch switch main
   Remote/GitHub:     snap remote status | snap setup-repo owner/repo --private | snap delete-repo owner/repo
   Release:           snap release windows | snap release upload | snap release list
-  Diagnostics:       snap doctor | snap doctor --repair | snap options
+  Diagnostics:       snap doctor | snap doctor --json --ci | snap doctor --repair | snap options
   Learn by example:  snap examples
 ")]
 #[command(propagate_version = true)]
@@ -377,6 +377,12 @@ pub struct ExamplesArgs {}
 pub struct RestoreArgs {
     /// The ID or label of the snapshot to restore. Shows a menu if omitted.
     pub id_or_label: Option<String>,
+    /// Preview the restore target and rescue behavior without changing files
+    #[arg(long)]
+    pub dry_run: bool,
+    /// Skip the rescue snapshot created before restore
+    #[arg(long)]
+    pub no_rescue: bool,
 }
 
 #[derive(Args, Debug)]
@@ -415,11 +421,17 @@ pub struct DiffArgs {
 #[derive(Args, Debug)]
 pub struct DoctorArgs {
     /// Repair safe Git corruption cases after creating a .git backup
-    #[arg(long)]
+    #[arg(long, conflicts_with_all = ["json", "ci"])]
     pub repair: bool,
     /// Rewrite historical snapshot tags to forget missing/invalid metadata refs
-    #[arg(long)]
+    #[arg(long, requires = "repair")]
     pub accept_metadata_loss: bool,
+    /// Print machine-readable JSON instead of the human report
+    #[arg(long)]
+    pub json: bool,
+    /// Exit non-zero when warnings or errors are found
+    #[arg(long)]
+    pub ci: bool,
 }
 
 #[derive(Args, Debug)]

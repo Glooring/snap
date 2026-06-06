@@ -4,6 +4,7 @@ use crate::git_health::{
 };
 use anyhow::{anyhow, Result};
 use colored::*;
+use serde::Serialize;
 use std::io::{self, Write};
 
 pub fn execute(args: DoctorArgs) -> Result<()> {
@@ -12,15 +13,145 @@ pub fn execute(args: DoctorArgs) -> Result<()> {
             "`--accept-metadata-loss` must be used with `snap doctor --repair`."
         ));
     }
+    if args.repair && (args.json || args.ci) {
+        return Err(anyhow!(
+            "`--json` and `--ci` are read-only doctor modes and cannot be used with `--repair`."
+        ));
+    }
 
     let report = collect_health_report()?;
-    print_report(&report);
+    if args.json {
+        print_json_report(&report)?;
+    } else {
+        print_report(&report);
+    }
 
     if args.repair {
         repair(report, args.accept_metadata_loss)?;
+    } else if args.ci && report.has_problems() {
+        return Err(anyhow!(
+            "`snap doctor --ci` found repository health warnings or errors."
+        ));
     }
 
     Ok(())
+}
+
+#[derive(Serialize)]
+struct DoctorJsonReport<'a> {
+    schema_version: u8,
+    command: &'static str,
+    status: &'static str,
+    summary: DoctorSummary,
+    report: &'a GitHealthReport,
+}
+
+#[derive(Serialize)]
+struct DoctorSummary {
+    has_errors: bool,
+    has_warnings: bool,
+    error_count: usize,
+    warning_count: usize,
+    snapshot_count: usize,
+    invalid_snapshot_count: usize,
+    metadata_blob_count: usize,
+    invalid_active_metadata_count: usize,
+    invalid_historical_metadata_count: usize,
+    unpinned_metadata_count: usize,
+    unused_metadata_ref_count: usize,
+}
+
+fn print_json_report(report: &GitHealthReport) -> Result<()> {
+    let output = DoctorJsonReport {
+        schema_version: 1,
+        command: "snap doctor",
+        status: doctor_status(report),
+        summary: doctor_summary(report),
+        report,
+    };
+    println!("{}", serde_json::to_string_pretty(&output)?);
+    Ok(())
+}
+
+fn doctor_status(report: &GitHealthReport) -> &'static str {
+    if report.has_errors() {
+        "error"
+    } else if report.has_warnings() {
+        "warning"
+    } else {
+        "ok"
+    }
+}
+
+fn doctor_summary(report: &GitHealthReport) -> DoctorSummary {
+    let invalid_snapshot_count = report
+        .snapshots
+        .iter()
+        .filter(|snapshot| snapshot.error.is_some())
+        .count();
+    let invalid_active_metadata_count = report
+        .metadata_blobs
+        .iter()
+        .filter(|metadata| {
+            metadata.error.is_some()
+                && metadata.snapshot_commit.as_deref() == report.head_commit.as_deref()
+        })
+        .count();
+    let invalid_historical_metadata_count = report
+        .metadata_blobs
+        .iter()
+        .filter(|metadata| {
+            metadata.error.is_some()
+                && metadata.snapshot_commit.as_deref() != report.head_commit.as_deref()
+        })
+        .count();
+    let unpinned_metadata_count = report
+        .metadata_blobs
+        .iter()
+        .filter(|metadata| metadata.error.is_none() && !metadata.pinned)
+        .count();
+
+    let mut error_count =
+        report.empty_git_files.len() + invalid_snapshot_count + invalid_active_metadata_count;
+    if !report.is_git_repo {
+        error_count += 1;
+    }
+    if report.status_error.is_some() {
+        error_count += 1;
+    }
+    if report.head_error.is_some() {
+        error_count += 1;
+    }
+    if report.detached_head {
+        error_count += 1;
+    }
+    if report.branch_error.is_some() {
+        error_count += 1;
+    }
+    if report.snapshots_error.is_some() {
+        error_count += 1;
+    }
+    if report.metadata_error.is_some() {
+        error_count += 1;
+    }
+
+    let warning_count = invalid_historical_metadata_count
+        + unpinned_metadata_count
+        + report.unused_metadata_refs.len();
+
+    DoctorSummary {
+        has_errors: report.has_errors(),
+        has_warnings: report.has_warnings(),
+        error_count,
+        warning_count,
+        snapshot_count: report.snapshots.len(),
+        invalid_snapshot_count,
+        metadata_blob_count: report.metadata_blobs.len(),
+        invalid_active_metadata_count,
+        invalid_historical_metadata_count,
+        unpinned_metadata_count,
+        unused_metadata_ref_count: report.unused_metadata_refs.len(),
+    }
 }
 
 fn print_report(report: &GitHealthReport) {

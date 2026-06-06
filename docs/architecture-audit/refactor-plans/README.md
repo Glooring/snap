@@ -18,3 +18,4 @@ Sprint plans are historical. The audit should remain the current source of truth
 - [Sprint 2 - OSS Hygiene Files](sprint-2-oss-hygiene-files.md)
 - [Sprint 3 - CI On Windows And Linux](sprint-3-ci-windows-linux.md)
 - [Sprint 4 - Source Cleanup And Command Hardening Audit](sprint-4-source-cleanup-command-audit.md)
+- [Sprint 5 - Restore, Doctor, And Purge Safety Plan](sprint-5-restore-doctor-purge-safety.md)
