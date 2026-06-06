@@ -1,9 +1,10 @@
 # OpenAI Application Package
 
 Status: prepared locally, not submitted
-Prepared: 2026-06-07T02:09:49+03:00
+Last refreshed: 2026-06-07T02:16:38+03:00
 Repository: <https://github.com/Glooring/snap>
-Local HEAD: `9b7cf3e061b7808b32eaa0a3b578580fde7aa6a5`
+
+This package intentionally does not rely on a hard-coded local commit SHA or checkpoint label. Before submission, run `git rev-parse HEAD` and verify that the public GitHub repository shows the same content after publication.
 
 ## Submission Readiness
 
@@ -133,10 +134,53 @@ Latest valid snapshot: oss-s10-community
 
 ## Final Pre-Submission Checklist
 
-- Push local OSS-readiness commits to `origin/main`.
+- Push local OSS-readiness commits to `origin/main` only after maintainer approval.
 - Confirm GitHub shows the updated README, docs, workflow, templates, and package doc.
 - Confirm `gh workflow list --repo Glooring/snap` shows the CI workflow.
 - Decide whether a public release is required before submission.
 - If creating a release, build artifacts, generate `SHA256SUMS.txt`, check release notes, and publish deliberately.
 - Rerun source-built validation after any release/package changes.
 - Keep application answers aligned with the actual public repo state on the day of submission.
+
+## Publication Decision Runbook
+
+This section is a maintainer runbook. It records commands to run only after deciding to publish the local OSS-readiness work.
+
+### Option A: Publish Docs And CI Without A Release
+
+Use this if the application does not require a current GitHub release:
+
+```bash
+git status --branch --short
+git rev-parse HEAD
+git push origin main
+gh workflow list --repo Glooring/snap
+gh repo view Glooring/snap --json nameWithOwner,description,repositoryTopics,isPrivate,url
+gh issue list --repo Glooring/snap --state open --limit 20
+```
+
+Do not push all local Snap checkpoint tags by default. They are useful local refactor checkpoints but can clutter public GitHub tags and are not required for README/docs/CI evidence.
+
+After pushing, verify in a browser or with `gh` that GitHub shows:
+
+- updated README positioning;
+- `doc/OPENAI_APPLICATION_PACKAGE.md`;
+- `.github/workflows/ci.yml`;
+- issue templates and PR template;
+- existing About description and topics;
+- issues #1-#6.
+
+### Option B: Publish A Current Release
+
+Use this only if the maintainer decides a current release is required before submission.
+
+Prerequisites:
+
+- release version/tag decision;
+- release notes checked against current behavior;
+- artifacts built for the supported platforms;
+- `SHA256SUMS.txt` generated and reviewed;
+- source-built validation rerun after release-prep changes;
+- no overwrite of the global `/usr/local/bin/snap`.
+
+Do not claim a release exists until `gh release list --repo Glooring/snap` shows it.

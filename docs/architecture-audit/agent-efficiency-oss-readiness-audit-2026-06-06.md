@@ -7,7 +7,7 @@
 | Repository | `Glooring/snap` |
 | Local path | `/home/glooring/projects/snap` |
 | Audit date | `2026-06-06` |
-| Last refreshed | `2026-06-07T02:11:56+03:00` during Sprint 11 validation |
+| Last refreshed | `2026-06-07T02:16:38+03:00` during closure follow-up validation |
 | Branch inspected | `main` |
 | Commit inspected | `9b7cf3e061b7808b32eaa0a3b578580fde7aa6a5` before the Sprint 11 checkpoint |
 | Current audit path | `docs/architecture-audit/agent-efficiency-oss-readiness-audit-2026-06-06.md` |
@@ -15,7 +15,7 @@
 | Progress log | `docs/architecture-audit/refactor-progress.md` |
 | Historical sprint plans | `docs/architecture-audit/refactor-plans/` |
 | Local ignored references | `docs/architecture-audit/reference-inputs/` |
-| Scope | Current OSS-readiness status after Sprint 11 local OpenAI application package preparation. Runtime behavior was validated with source-built Snap only. Public GitHub visibility remains blocked until local commits are pushed. |
+| Scope | Current OSS-readiness status after Sprint 11 local OpenAI application package preparation and closure publication-runbook refinement. Runtime behavior was validated with source-built Snap only. Public GitHub visibility remains blocked until local commits are pushed. |
 
 ## 2. Executive Verdict
 
@@ -77,6 +77,7 @@ The refactor should therefore be an **OSS-readiness and maintainer-quality progr
 | Cross-platform/performance docs | Sprint 9 completed | Added performance methodology, cross-platform notes, benchmark scripts, and path/metadata edge-case tests. |
 | Community feedback readiness | Sprint 10 completed | GitHub About/topics are set, six starter/hardening issues are open, and feedback drafts avoid artificial engagement asks. |
 | OpenAI application package | Sprint 11 completed locally | `doc/OPENAI_APPLICATION_PACKAGE.md` contains ready-to-paste answers, evidence links, do-not-claim guidance, and public-visibility/release blockers. |
+| Publication decision runbook | Closure follow-up completed locally | The application package now avoids hard-coded local SHAs/checkpoint labels and records separate push-without-release vs release-required paths. |
 | Live GitHub workflow listing | None returned | `gh workflow list --repo Glooring/snap` returned no workflows because the CI workflow is still local until pushed. |
 | GitHub releases | None returned | `gh release list --repo Glooring/snap --limit 5 --json tagName,name,isDraft,isPrerelease,publishedAt,isLatest` returned `[]`; release creation remains open. |
 | `cargo audit` | Not installed | Security audit is not available locally yet; add later if desired. |
@@ -527,6 +528,34 @@ Closure decision:
 
 The local refactor package is ready, but the OSS-readiness refactor should not be marked fully closed until a maintainer approves pushing the local commits to `origin/main` and decides whether a current GitHub release is required before application submission.
 
+### 4.15 Closure Follow-up Publication Runbook Validation
+
+This follow-up changed only the application package and audit/progress docs. It ran:
+
+```bash
+git diff --check
+rg -n "hard-coded local commit SHA|git push origin main|Do not push all local Snap checkpoint tags|gh release list|SHA256SUMS.txt" doc/OPENAI_APPLICATION_PACKAGE.md docs/architecture-audit
+cargo fmt --check
+cargo clippy --all-targets --all-features
+cargo clippy --all-targets --all-features -- -D warnings
+cargo test
+cargo build --release
+./target/release/snap --help
+./target/release/snap doctor
+```
+
+Results:
+
+- `git diff --check` passed.
+- application-package scan passed and found the hard-coded-SHA warning, `git push origin main`, no-default-tag-push warning, `gh release list`, and `SHA256SUMS.txt` release prerequisites.
+- `cargo fmt --check` passed.
+- normal Clippy passed with no warnings.
+- strict Clippy passed with `-D warnings`.
+- `cargo test` passed, 107 integration tests.
+- `cargo build --release` passed.
+- source-built top-level help passed and showed the current command surface.
+- source-built release doctor reported a healthy repo with 18 snapshot tags and 18 metadata refs checked before the follow-up checkpoint.
+
 ## 5. Repository Metrics Snapshot
 
 ### 5.1 File Counts
@@ -556,8 +585,8 @@ Standard OSS root files checked:
 | --- | ---: |
 | `src` Rust | 6,786 after Sprint 6 marker/filtering changes |
 | `tests` Rust | 3,113 after Sprint 9 path/metadata tests |
-| `doc` Markdown/text | 6,053 after Sprint 11 application package docs |
-| `docs` audit Markdown | 3,958 after Sprint 11 plan/progress/audit updates |
+| `doc` Markdown/text | 6,097 after publication runbook follow-up |
+| `docs` audit Markdown | 4,150 after publication runbook follow-up |
 
 ### 5.3 Largest Operational Files
 

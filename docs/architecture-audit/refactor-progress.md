@@ -21,7 +21,7 @@ Agents are encouraged to test deeply with disposable local projects and, when re
 
 ## Current State
 
-Sprint 11 has completed the local OpenAI application package. The package is ready as a local evidence bundle, but it should not be submitted until the OSS-readiness commits are pushed to `origin/main`; no GitHub release exists yet.
+Sprint 11 has completed the local OpenAI application package. A closure follow-up also refreshed the package so it avoids hard-coded local SHAs/checkpoint labels and includes a maintainer publication runbook. The package should not be submitted until the OSS-readiness commits are pushed to `origin/main`; no GitHub release exists yet.
 
 The next phase is a maintainer decision: push the local OSS-readiness branch and decide whether to create a current release before submission.
 
@@ -947,6 +947,49 @@ Checkpoint:
 
 ```bash
 snap new oss-s11-application "sprint 11: OpenAI application package"
+```
+
+### Closure Follow-up - Publication Decision Runbook
+
+Status: completed locally; closure still blocked on maintainer publication/release decision
+Snapshot: `oss-s11-publish-runbook`
+Description: Publication decision runbook
+
+Completed:
+
+- Refreshed `doc/OPENAI_APPLICATION_PACKAGE.md` so it no longer hard-codes a local commit SHA or checkpoint label.
+- Added an explicit publication decision runbook:
+  - Option A: push local docs/CI/package evidence without a release;
+  - Option B: create a release only after version, artifacts, checksums, notes, and validation are ready.
+- Documented that local Snap checkpoint tags should not be pushed by default because they are workflow checkpoints, not release tags.
+- Kept this follow-up documentation-only: no Rust source, CLI behavior, metadata, schema, package metadata, public GitHub state, or release state changed.
+- Did not push `main` and did not create a GitHub release.
+
+Validation:
+
+| Command | Result |
+| --- | --- |
+| `git diff --check` | Passed |
+| Application package scan | Passed; found hard-coded-SHA warning, `git push origin main`, no-default-tag-push warning, `gh release list`, and `SHA256SUMS.txt` release prerequisites |
+| `cargo fmt --check` | Passed |
+| `cargo clippy --all-targets --all-features` | Passed with no warnings |
+| `cargo clippy --all-targets --all-features -- -D warnings` | Passed |
+| `cargo test` | Passed, 107 integration tests |
+| `cargo build --release` | Passed |
+| `./target/release/snap --help` | Passed; source-built help shows the current command surface |
+| `./target/release/snap doctor` | Passed; repo healthy, 18 snapshot tags checked before the follow-up checkpoint |
+
+Metrics after publication runbook follow-up:
+
+| Area | Result |
+| --- | ---: |
+| `doc` Markdown LOC | 6,097 |
+| `docs` audit Markdown LOC | 4,150 |
+
+Checkpoint:
+
+```bash
+snap new oss-s11-publish-runbook "sprint 11 follow-up: publication decision runbook"
 ```
 
 ## Next Up
