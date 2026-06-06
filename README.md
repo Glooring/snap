@@ -1,5 +1,7 @@
 # Snap
 
+[![CI](https://github.com/Glooring/snap/actions/workflows/ci.yml/badge.svg)](https://github.com/Glooring/snap/actions/workflows/ci.yml)
+
 Snap is a native Rust CLI for Git-powered local project checkpoints. It helps you create fast save points before risky refactors, AI-agent edits, experiments, or release work, and it gives beginners a safer alternative to copying entire project folders by hand.
 
 > Git is the engine. Snap is the workflow.

@@ -21,9 +21,9 @@ Agents are encouraged to test deeply with disposable local projects and, when re
 
 ## Current State
 
-Sprint 2 has completed the OSS hygiene file pass. The repository now has standard root maintainer/community files and GitHub issue/PR templates.
+Sprint 3 has completed the first CI baseline. The repository now has GitHub Actions CI for Ubuntu and Windows.
 
-The next phase is Sprint 3: CI on Windows/Linux.
+The next phase is Sprint 4: Source Cleanup and Command Hardening Audit.
 
 ## Entries
 
@@ -383,8 +383,63 @@ Checkpoint:
 snap new oss-s2-hygiene "sprint 2: OSS hygiene files"
 ```
 
+### Sprint 3 - CI on Windows/Linux
+
+Status: completed
+Snapshot: `oss-s3-ci`
+Description: Windows and Linux CI
+
+Completed:
+
+- Created `docs/architecture-audit/refactor-plans/sprint-3-ci-windows-linux.md`.
+- Linked the Sprint 3 plan from `docs/architecture-audit/refactor-plans/README.md`.
+- Added `.github/workflows/ci.yml`.
+- Configured CI for `ubuntu-latest` and `windows-latest`.
+- Configured checkout with `fetch-depth: 0` so source-built `snap doctor` can inspect tags/metadata.
+- Configured stable Rust install with `rustfmt` and `clippy`.
+- Configured Cargo cache through `actions/cache@v4`.
+- Configured CI commands:
+  - `cargo fmt --check`
+  - `cargo clippy --all-targets --all-features`
+  - `cargo test`
+  - `cargo build --release`
+  - source-built `snap --help`
+  - source-built `snap doctor`
+- Added README CI badge for `.github/workflows/ci.yml`.
+- Kept Sprint 3 CI/documentation-only: no Rust source, CLI behavior, metadata, schema, installer, or public API changes.
+
+Validation:
+
+| Command | Result |
+| --- | --- |
+| `git diff --check` | Passed |
+| `cargo fmt --check` | Passed |
+| `cargo clippy --all-targets --all-features` | Passed with the known 9 warnings |
+| `cargo test` | Passed, 96 integration tests |
+| `cargo build --release` | Passed |
+| `./target/release/snap --help` | Passed |
+| `./target/release/snap doctor` | Passed; repo healthy, 9 snapshot tags checked |
+| Workflow existence/content scan | Passed |
+| README badge scan | Passed |
+| `actionlint` | Not installed locally |
+| Ruby YAML syntax parser | Not available locally |
+
+Known remaining gaps after Sprint 3:
+
+- Strict Clippy still fails with `-D warnings`; Sprint 4 or pre-strict-CI cleanup owns it.
+- Temporary patch comments remain for Sprint 4.
+- Command-construction audit/hardening remains for Sprint 4.
+- Snapshot/tag ambiguity remains for Sprint 6.
+- Linux command-name conflict and packaging metadata remain for Sprint 8.
+
+Checkpoint:
+
+```bash
+snap new oss-s3-ci "sprint 3: Windows and Linux CI"
+```
+
 ## Next Up
 
-Sprint 3 - CI on Windows/Linux:
+Sprint 4 - Source Cleanup and Command Hardening Audit:
 
-- Add GitHub Actions CI on Ubuntu and Windows for formatting, Clippy, tests, and source-built validation where appropriate.
+- Clean temporary patch comments and address the known normal/strict Clippy warnings, then audit command-construction risks.
