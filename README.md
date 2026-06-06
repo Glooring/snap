@@ -331,6 +331,7 @@ The newer Git/GitHub workflow layer is documented here:
 *   [`doc/FRIENDLY_GIT_WORKFLOW_IMPLEMENTED.md`](doc/FRIENDLY_GIT_WORKFLOW_IMPLEMENTED.md) - implemented commands and workflows.
 *   [`doc/SNAP_GIT_WORKFLOW_ROADMAP.md`](doc/SNAP_GIT_WORKFLOW_ROADMAP.md) - original roadmap and future direction.
 *   [`doc/BUILD_INSTALLERS_WINDOWS_WSL.md`](doc/BUILD_INSTALLERS_WINDOWS_WSL.md) - Windows/WSL release artifact build flow.
+*   [`doc/demo-fixture/README.md`](doc/demo-fixture/README.md) - a tiny disposable demo workflow for new contributors.
 
 ---
 
