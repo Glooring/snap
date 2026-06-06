@@ -10,3 +10,7 @@ Current operational docs:
 - Architecture audit: [`../agent-efficiency-oss-readiness-audit-2026-06-06.md`](../agent-efficiency-oss-readiness-audit-2026-06-06.md)
 
 Sprint plans are historical. The audit should remain the current source of truth for status, risks, and next recommendation.
+
+## Sprint Plans
+
+- [Sprint 0 - Baseline Audit And Safety Rails](sprint-0-baseline-safety-rails.md)

@@ -197,12 +197,90 @@ Checkpoint:
 snap new oss-sandbox-test-policy "Document sandbox testing permission"
 ```
 
+### Sprint 0 - Baseline Audit and Safety Rails
+
+Status: completed
+Snapshot: `oss-s0-baseline`
+Description: Baseline audit and source-built validation safety rails
+
+Completed:
+
+- Created `docs/architecture-audit/refactor-plans/sprint-0-baseline-safety-rails.md`.
+- Linked the Sprint 0 plan from `docs/architecture-audit/refactor-plans/README.md`.
+- Refreshed the current OSS readiness audit with the 2026-06-07 local baseline.
+- Confirmed Sprint 0 stayed documentation-only: no Rust source, CLI behavior, metadata, schema, or public API changes.
+- Validated current Snap behavior only with source-built commands.
+- Recorded strict Clippy as deferred baseline debt for Sprint 4 or before strict CI enforcement.
+- Confirmed no GitHub sandbox repositories were created because Sprint 0 did not touch remote or visibility behavior.
+
+Baseline environment:
+
+| Fact | Value |
+| --- | --- |
+| Run timestamp | `2026-06-07T00:08:49+03:00` |
+| Branch | `main` |
+| Starting commit | `093fc05b44c90f0d69ffa43927f6ead01f960f75` |
+| Initial `git status --short` | Clean |
+| `rustc --version` | `rustc 1.95.0 (59807616e 2026-04-14)` |
+| `cargo --version` | `cargo 1.95.0 (f2d3ce0bd 2026-03-21)` |
+
+Validation:
+
+| Command | Result |
+| --- | --- |
+| `git diff --check` | Passed |
+| `cargo fmt --check` | Passed |
+| `cargo clippy --all-targets --all-features` | Passed with 9 warnings |
+| `cargo clippy --all-targets --all-features -- -D warnings` | Failed with 9 warnings-as-errors; deferred intentionally |
+| `cargo test` | Passed, 96 integration tests |
+| `cargo run -- --help` | Passed; source-built debug help shows modern command surface |
+| `cargo run -- doctor` | Passed; repo healthy, 6 snapshot tags checked |
+| `cargo build --release` | Passed |
+| `./target/release/snap --help` | Passed; source-built release help shows modern command surface |
+| `./target/release/snap doctor` | Passed; repo healthy, 6 snapshot tags checked |
+| `cargo audit` | Not installed: `error: no such command: audit` |
+
+Baseline metrics:
+
+| Area | Result |
+| --- | ---: |
+| `src/**/*.rs` files | 33 |
+| `tests/**/*.rs` files | 1 |
+| `doc/*.md` files | 8 |
+| `docs/**/*.md` tracked audit files before Sprint 0 plan | 4 |
+| `src` Rust LOC | 6,445 |
+| `tests` Rust LOC | 2,698 |
+| `doc` Markdown LOC | 4,925 |
+| `docs` audit Markdown LOC before Sprint 0 plan | 1,582 |
+| `.github` tracked files | 0 |
+| Standard OSS root files found | 0 |
+
+Strict Clippy decision:
+
+- Do not fix strict Clippy in Sprint 0.
+- Record the 9 mechanical warnings-as-errors as baseline debt.
+- Clean them in Sprint 4 or before enabling `-D warnings` in CI.
+
+Source-built sandbox smoke test:
+
+- Created disposable repo: `/tmp/snap-agent-smoke-s0-hwmvPg`.
+- Used only `/home/glooring/projects/snap/target/release/snap` for product behavior.
+- Exercised `init`, `new`, `list`, `diff`, `doctor`, and `restore`.
+- Verified `restore s0-first` restored `app.txt` to `first` and removed `extra.txt`.
+- Removed the sandbox after the test.
+- No external GitHub sandbox repositories were created.
+
+Checkpoint:
+
+```bash
+snap new oss-s0-baseline "sprint 0: baseline audit and safety rails"
+```
+
 ## Next Up
 
-Sprint 0 - Baseline Audit and Safety Rails:
+Sprint 1 - README Positioning and Public Docs:
 
-- write a dedicated Sprint 0 plan under `docs/architecture-audit/refactor-plans/`;
-- run the full Rust gate baseline where feasible;
-- update the architecture audit with exact metrics and warnings;
-- mark this foundation entry complete;
-- create checkpoint `oss-s0-baseline`.
+- Rewrite the README opening around Git-powered local checkpoints, AI-agent edits, risky refactors, and beginner-friendly workflows.
+- Keep claims truthful: Snap uses Git and does not replace Git.
+- Promote `snap doctor`, the safety model, known limitations, and the source command surface.
+- Prepare focused public docs without cleaning unrelated source issues yet.
