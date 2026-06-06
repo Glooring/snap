@@ -21,9 +21,9 @@ Agents are encouraged to test deeply with disposable local projects and, when re
 
 ## Current State
 
-The refactor has not started runtime/code changes yet.
+Sprint 1 has completed the first public-facing docs pass. The README now leads with Snap as a Git-powered local checkpoint workflow, and focused public docs cover AI-agent use, beginner use, why not just Git, safety, doctor, and limitations.
 
-The current phase is foundation setup: make the plan, audit, progress log, and reference-input structure self-contained inside the Snap repo.
+The next phase is Sprint 2: OSS Hygiene Files.
 
 ## Entries
 
@@ -276,11 +276,58 @@ Checkpoint:
 snap new oss-s0-baseline "sprint 0: baseline audit and safety rails"
 ```
 
+### Sprint 1 - README Positioning and Public Docs
+
+Status: completed
+Snapshot: `oss-s1-readme`
+Description: README positioning and public docs
+
+Completed:
+
+- Created `docs/architecture-audit/refactor-plans/sprint-1-readme-positioning-public-docs.md`.
+- Linked the Sprint 1 plan from `docs/architecture-audit/refactor-plans/README.md`.
+- Rewrote README so it leads with Git-powered local checkpoints, risky refactors, AI-agent edits, release work, and beginner-friendly workflows.
+- Removed old README-first-positioning around `Snap (The Rust Edition)`, `blazing-fast`, and project-folder backup framing.
+- Added focused public docs:
+  - `doc/AI_AGENT_WORKFLOW.md`
+  - `doc/BEGINNER_WORKFLOW.md`
+  - `doc/WHY_NOT_GIT.md`
+  - `doc/SAFETY_MODEL.md`
+  - `doc/SNAP_DOCTOR.md`
+  - `doc/KNOWN_LIMITATIONS.md`
+- Documented truthful constraints: Snap uses Git and does not replace Git; snapshots are currently Git tags; Linux `snap` command-name conflict remains open; strict Clippy is still known debt.
+- Kept Sprint 1 documentation-only: no Rust source, CLI behavior, metadata, schema, installer, or public API changes.
+- Created no GitHub sandbox repositories because Sprint 1 did not touch remote or visibility behavior.
+
+Validation:
+
+| Command | Result |
+| --- | --- |
+| `git diff --check` | Passed |
+| `cargo fmt --check` | Passed |
+| `cargo clippy --all-targets --all-features` | Passed with the known 9 warnings |
+| `cargo test` | Passed, 96 integration tests |
+| `cargo build --release` | Passed |
+| `./target/release/snap --help` | Passed |
+| `./target/release/snap doctor` | Passed; repo healthy, 7 snapshot tags checked |
+| Scoped stale README/new-doc scan | Passed; no `Snap (The Rust Edition)`, `blazing-fast`, `your-username`, or stale private path matches in README/new docs |
+| Required topic scan | Passed; README/new docs include `Git is the engine`, AI-agent workflow, beginner workflow, why-not-Git, known limitations, and `snap doctor` coverage |
+
+Known remaining gaps after Sprint 1:
+
+- `doc/prompt-2.txt` still contains historical `your-username` placeholders and old README snippets; this remains tracked for Sprint 2 or a later cleanup sprint.
+- Standard OSS files and `.github` templates are still missing; Sprint 2 owns those.
+- CI is still missing; Sprint 3 owns it.
+- Strict Clippy still fails with `-D warnings`; Sprint 4 or pre-CI strictness owns cleanup.
+
+Checkpoint:
+
+```bash
+snap new oss-s1-readme "sprint 1: README positioning and public docs"
+```
+
 ## Next Up
 
-Sprint 1 - README Positioning and Public Docs:
+Sprint 2 - OSS Hygiene Files:
 
-- Rewrite the README opening around Git-powered local checkpoints, AI-agent edits, risky refactors, and beginner-friendly workflows.
-- Keep claims truthful: Snap uses Git and does not replace Git.
-- Promote `snap doctor`, the safety model, known limitations, and the source command surface.
-- Prepare focused public docs without cleaning unrelated source issues yet.
+- Add standard maintainer/community files and GitHub templates so contributors and future agents have clear project instructions.

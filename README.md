@@ -1,369 +1,200 @@
-# 📦 Snap (The Rust Edition)
+# Snap
 
-**A truly native, blazing-fast, and portable snapshot tool for Windows & Linux developers. Create efficient, versioned backups of your project folders with full cross-platform compatibility.**
+Snap is a native Rust CLI for Git-powered local project checkpoints. It helps you create fast save points before risky refactors, AI-agent edits, experiments, or release work, and it gives beginners a safer alternative to copying entire project folders by hand.
 
-`snap` is a command-line utility that provides a simple way to capture point-in-time states of your projects. It uses the power and reliability of Git for its core operations but provides a simplified, focused workflow. It's perfect for quick, local backups before a major refactor, for archiving project milestones, or for any situation where you need a reliable "undo" button for your entire directory.
+> Git is the engine. Snap is the workflow.
 
----
+Snap does not replace Git. It uses Git commits, annotated tags, and Snap metadata refs to provide a smaller, more guided workflow around local checkpoints, restore, diff, health checks, branch helpers, remote helpers, and release helpers.
 
-## From Node.js to Native: The Quest for Speed
+## Why Snap Exists
 
-This project began its life as a Node.js application, packaged into an `.exe` for convenience. While functional, it had a noticeable startup delay inherent to the Node.js runtime. For a tool designed to be a quick, seamless part of a developer's workflow, this was a critical friction point.
+Developers often need a quick "known good" point before doing something risky:
 
-The desire for **instantaneous, native-level performance** led to a complete rewrite in **Rust**. By compiling directly to a native binary, `snap` now launches as fast as `git` itself, eliminating all runtime overhead. This new version retains 100% of the original's features while providing the speed and responsiveness a command-line power tool deserves.
+- asking an AI agent to edit several files;
+- refactoring a subsystem;
+- trying a dependency upgrade;
+- preparing release artifacts;
+- teaching a beginner how to stop making `project-backup-final-final` folders.
 
----
+Git can already do all of this, but the workflow can be noisy when you only want a local safety point with clear labels, descriptions, restore, and health checks. Snap keeps Git underneath and gives the repeated workflow a direct command surface.
 
-## 📋 Table of Contents
+## Quick Workflows
 
-*   [Key Features](#-key-features)
-*   [How It Works](#-how-it-works)
-*   [Prerequisites](#-prerequisites)
-*   [Installation](#-installation)
-*   [Usage](#-usage)
-    *   [`snap init`](#1-snap-init)
-    *   [`snap new <label> [description...]`](#2-snap-new-label-description)
-    *   [`snap list [limit]`](#3-snap-list-limit)
-    *   [`snap diff <snapshot-A> <snapshot-B>`](#4-snap-diff-snapshot-a-snapshot-b)
-    *   [`snap restore [id_or_label]`](#5-snap-restore-id_or_label)
-    *   [`snap delete [id_or_label]`](#6-snap-delete-id_or_label)
-    *   [`snap edit [id_or_label]`](#7-snap-edit-id_or_label)
-    *   [`snap update`](#8-snap-update)
-    *   [`snap doctor`](#9-snap-doctor)
-    *   [`snap options`](#10-snap-options)
-*   [Building from Source](#-building-from-source)
-*   [Additional Documentation](#-additional-documentation)
-*   [Troubleshooting](#️-troubleshooting)
-*   [Contributing](#-contributing)
-*   [License](#-license)
+### Before AI-agent edits or refactors
 
----
-
-## ✨ Key Features
-
-*   **🚀 Truly Native Performance**: Rewritten in Rust for instantaneous startup and execution. Feels as fast and responsive as `git` itself.
-*   ** Fully Portable**: The entire snapshot history, including all metadata, is stored *inside* the project's `.git` directory. Paths are always stored with forward slashes (`/`) internally, making your metadata 100% portable between Windows and Linux/WSL2 setups!
-*   ** dependable Git Core**: Leverages the rock-solid foundation of `git` for all file storage and versioning. Snapshots are lightweight, annotated Git tags.
-*   **⚡️ Efficient Storage**: Benefits from Git's mature Content-Addressable Storage model. Identical files across hundreds of snapshots consume the space of just one file.
-*   **🎯 Smart Restores**: `snap restore` intelligently checks for uncommitted local changes and prompts you to prevent accidental data loss. It also restores your project files and synchronizes metadata attributes and empty directories.
-*   **🐧 Multi-Platform Support**: Fully supports Windows, Linux, and WSL2. It correctly preserves Windows **Hidden** status when on Windows, and uses POSIX-aware permissions on Unix, managing empty directories seamlessly across both.
-*   **✍️ Rich Metadata**: Snapshots are tagged with a simple `label` and a more detailed `description`, which are stored directly in Git's annotated tags.
-*   **💻 User-Friendly CLI**: Features an interactive menu, human-readable timestamps, a compact list view, and an **`(active)`** marker to show you exactly which version your project is on.
-*   **🚫 Zero Dependencies**: The compiled `snap` is a standalone binary. No need for Node.js, Rust, or any other runtime on the user's machine.
-
----
-
-## ⚙️ How It Works
-
-`snap` manages your project as a standard Git repository but uses a simple, robust interaction model. It is now **fully self-contained**.
-
-1.  **The Project Repository (`.git`)**
-    When you run `snap init`, your project folder becomes a standard Git repository. `snap` then acts as a user-friendly wrapper around `git.exe`.
-
-2.  **The Internal Metadata Store**
-    Because Git doesn't natively track the "Hidden" attribute on Windows or empty directories, `snap` captures this information. Instead of using an external folder, it now does the following:
-    *   It bundles the metadata (lists of hidden paths and empty directories) into a JSON string.
-    *   It stores this JSON string as a native Git "blob" object inside your project's `.git/objects` directory using the `git hash-object` command.
-    *   It then embeds a reference to this blob's hash directly into the annotated Git tag that represents the snapshot.
-
-**Visualized Structure:**
-
-```text
-// Your project folder contains the Git repository:
-D:/Projects/MyUnityGame/
-└── .git/
-    └── objects/
-        ├── ...
-        ├── 8f/729c75...  <-- A Git Blob containing your metadata JSON
-        └── ...
-
-// The Git tag for your snapshot links everything together:
-- Tag Name: "v1.0"
-- Points to Commit: f4e5d6c...
-- Tag Message:
-  "Initial release.
-
-   Snap-Metadata-Ref: 8f729c75..."
+```bash
+snap new before-agent-edit "before AI-assisted refactor"
+# Run your editor, Codex, migration, or experiment.
+snap new after-agent-edit "after AI-assisted refactor"
+snap diff before-agent-edit after-agent-edit
+snap doctor
 ```
 
-This elegant design keeps your project folder clean, standard, and **100% portable**.
+If the result is wrong, restore the earlier checkpoint:
 
----
-
-## 🔧 Prerequisites
-
-*   **Windows:** Windows 10 or later
-*   **Linux/WSL2:** Any modern distribution (Ubuntu, Debian, etc.)
-*   **Git** must be installed and accessible in your system's PATH (`git` on Linux, `git.exe` on Windows). `snap` relies on it for all core operations.
-
----
-
-## 📥 Installation
-
-You can either download a pre-compiled binary or build it from the source yourself.
-
-1.  **Download the Release**
-    *   Go to the [Releases](https://github.com/Glooring/snap/releases) page of this repository.
-    *   Download the latest `snap.exe` file.
-
-2.  **Place it in your PATH**
-    *   Move `snap.exe` to a permanent location on your system (e.g., `D:\Tools\`).
-    *   Add this directory (`D:\Tools`) to your Windows PATH environment variable. This allows you to run the `snap` command from any terminal.
-
-3.  **Verify**
-    Open a **new** terminal window (so it loads the new PATH). Navigate to a project you want to back up and run `snap init`. It should initialize the repository instantly.
-
----
-
-## 🚀 Usage
-
-All commands are run from within your project's directory.
-
-For the newer Git/GitHub workflow commands (`snap save`, `snap sync`, `snap branch`,
-`snap remote`, `snap release`, and related aliases), see
-[`doc/FRIENDLY_GIT_WORKFLOW_IMPLEMENTED.md`](doc/FRIENDLY_GIT_WORKFLOW_IMPLEMENTED.md).
-
-### 1. `snap init`
-Initializes the current folder as a `snap` repository. **Must be run once per project.** This command is now non-interactive and much simpler.
-
-```cmd
-D:\Projects\my-app>snap init
-[snap] Initialized empty snap repository in D:\Projects\my-app
+```bash
+snap restore before-agent-edit
 ```
 
-### 2. `snap new <label> [description...]`
-Creates a snapshot of the current project state.
+### For beginners
 
-```cmd
-D:\Projects\my-app>snap new v1.0 "Initial release"
-
-[snap] Step 1/4: Scanning for metadata (hidden files, empty dirs)...
-[snap] Step 2/4: Staging all files...
-[snap] Step 3/4: Creating the commit...
-[snap] Step 4/4: Creating the annotated snapshot tag...
-
-[snap] New snapshot created: [a1b2c3d] v1.0
+```bash
+snap init
+snap new first-working-version "it runs"
+snap list
+snap restore first-working-version
 ```
 
-By default, `snap new` ignores changes that are only snap metadata: empty directories, hidden/visible attributes, or read-only attributes. File/content changes still create snapshots and still record the current metadata. For a one-off metadata-only snapshot, use:
+Snap is meant to be a bridge into Git-powered history, not a way to avoid learning Git forever.
 
-```cmd
-D:\Projects\my-app>snap new v1.0-meta --include-metadata-only "Metadata cleanup"
+### Daily Git workflow helpers
+
+```bash
+snap status
+snap save "small normal Git commit"
+snap sync
+snap history
+snap branch list
 ```
 
-To always track metadata-only changes, enable `trackMetadataOnlyChanges` in `snap options`.
+### Health checks
 
-### 3. `snap list` [limit]
-Lists all available snapshots in a compact view, showing the active one.
-
-```cmd
-D:\Projects\my-app>snap list 2
-
-[snap] Snapshots for "my-app":
-
-  Label           Description                   Timestamp
-  --------------  ----------------------------  ----------------
-  v1.1            Second public release         2025-06-16 09:15   (active)
-  v1.0-hotfix     A quick fix for the release   2025-06-15 18:00
-  ... and 1 more. Use 'snap list all' to see all snapshots.
-```
-If [limit] is omitted, it uses the default value from your configuration (changeable via snap options). Use snap list all to view all snapshots regardless of the configured limit.
-
-### 4. `snap diff <snapshot-A> <snapshot-B>`
-Compares two snapshots and shows a list of changes.
-
-```cmd
-D:\Projects\my-app>snap diff v1.0 v1.1
-
-[snap] Comparing snapshots a1b2c3d ("v1.0") ➜ f4e5d6c ("v1.1"):
-
-  + src/auth/new-logic.js
-  - config/old-settings.json
-  ~ src/app.js
-  ! .env (visibility changed)
-  + assets/sounds/ (empty directory)
-
-[snap] Summary: 1 added, 1 deleted, 1 modified, 1 visibility change, 1 empty dir added
+```bash
+snap doctor
 ```
 
-### 5. `snap restore [id_or_label]`
-Restores the project to a previous state. If run without arguments, it displays an interactive menu.
+`snap doctor` is read-only by default. It checks Git repository health, snapshot tags, and Snap metadata refs, then reports whether the repository looks healthy.
 
-```cmd
-D:\Projects\my-app>snap restore v1.0
+## Command Surface
 
-[snap] Restoring project files for snapshot "v1.0"...
-[snap] Synchronizing metadata...
-[snap] Restore complete. Your project is now at the state of this snapshot.
+The current source-built CLI exposes these command groups:
+
+| Area | Commands |
+| --- | --- |
+| Snapshots | `init`, `new`, `list`, `diff`, `restore`, `delete`, `edit`, `update` |
+| Daily Git workflow | `status`, `save`, `push`, `pull`, `sync`, `history`, `update-repo` |
+| Branches | `branch list`, `branch new`, `branch switch`, `branch delete`, `branch merge` |
+| GitHub/remotes | `remote`, `setup-repo`, `make-public`, `make-private`, `delete-repo` |
+| Release helpers | `release windows`, `release linux`, `release all`, `release upload`, `release list` |
+| Diagnostics/config | `doctor`, `options`, `examples` |
+
+Run `snap --help` or `snap <command> --help` for the exact CLI contract of the binary you are using.
+
+## How Snap Stores Checkpoints
+
+Snap stores data inside the project Git repository:
+
+- project files are stored as normal Git commits;
+- snapshot labels are annotated Git tags;
+- snapshot descriptions live in tag messages;
+- empty-directory, hidden-file, and read-only metadata is serialized as Git blobs;
+- metadata blobs are pinned under `refs/snap-metadata/<hash>` so Git garbage collection keeps them reachable.
+
+This keeps the working directory clean and makes snapshots portable across Windows, Linux, and WSL2. It also means Snap snapshots are currently visible as Git tags. Until the tag model is improved, avoid using release-looking snapshot labels such as `v1.0` for routine checkpoints.
+
+## Safety Model
+
+Snap is designed around explicit local operations:
+
+- `snap doctor` is read-only unless you pass `--repair`.
+- `snap doctor --repair` creates a `.git.backup.YYYYMMDD-HHMMSS` backup and asks before changing anything.
+- `snap restore` checks for uncommitted local changes and asks before discarding them.
+- `snap delete` removes a snapshot tag only after confirmation.
+- `snap delete --purge` is the disk-reclaiming path. It pins remaining metadata, creates a targeted bundle backup by default, asks for stronger confirmation, and then runs Git cleanup.
+
+Planned safety improvements include restore dry-run, rescue snapshots before restore, machine-readable doctor output, and CI-friendly doctor exit modes.
+
+## Known Limitations
+
+- Snap is local-first. It is not a cloud backup service.
+- Snap uses Git. If Git is missing or the repository is badly corrupted, run `snap doctor` first and follow the repair guidance.
+- Snapshot labels are currently Git tags, so normal release tags and Snap snapshot tags can be confused until the tag/ref model is improved.
+- On many Linux systems, `snap` may already be Canonical Snapcraft. Check your PATH before installing this binary as `snap`.
+- Cross-platform CI, OSS maintainer files, and a root license file are planned in upcoming OSS-readiness sprints.
+- Strict Clippy with `-D warnings` is known baseline debt and is tracked for cleanup before strict CI enforcement.
+
+## Why Not Just Git?
+
+Use Git directly when you want full version-control control. Use Snap when you want a focused workflow for local checkpoints:
+
+- human labels and descriptions for restore points;
+- a compact `snap list`;
+- `snap diff` between checkpoints;
+- metadata handling for empty directories and hidden/read-only attributes;
+- `snap doctor` for Git and Snap metadata health;
+- friendlier commands for common branch, remote, and release tasks.
+
+Snap should make Git less intimidating, not invisible.
+
+## Why CLI-First?
+
+Snap is built for repeated developer workflows. A CLI works well in terminals, editors, scripts, CI, WSL2, and AI-agent sessions. It is easy to run before and after a risky operation, and it keeps the workflow inspectable through plain Git and plain text output.
+
+## Prerequisites
+
+- Git must be installed and available on PATH.
+- Windows 10 or later, a modern Linux distribution, or WSL2.
+- Rust is required only if you build from source.
+
+## Installation
+
+Release packaging is still being polished. For now, use the release assets when available or build from source.
+
+On Linux, be careful with the command name. `snap` may already refer to Canonical Snapcraft. Do not overwrite an existing system command unless you intentionally choose that installation strategy.
+
+## Build From Source
+
+```bash
+git clone https://github.com/Glooring/snap.git
+cd snap
+cargo build --release
+./target/release/snap --help
+./target/release/snap doctor
 ```
 
-### 6. `snap delete [id_or_label]`
-Deletes a snapshot tag. By default this is conservative: it removes the visible snapshot label, but it does not run Git garbage collection or promise disk-space recovery.
+During this repository's OSS-readiness refactor, source behavior is validated with source-built Snap (`cargo run -- ...`, `./target/debug/snap ...`, or `./target/release/snap ...`). The maintainer's globally installed `snap` binary is intentionally older and used only for local refactor checkpoints.
 
-```cmd
-D:\Projects\my-app>snap delete v1.1-hotfix
+## Public Docs
 
-[snap] You are about to delete snapshot:
-  Label: v1.1-hotfix
-? [snap] WARNING: This will permanently delete the snapshot tag. Continue? [y/N] y
-[snap] Deleting tag "v1.1-hotfix"...
-[snap] Snapshot "v1.1-hotfix" deleted successfully.
-[snap] Disk space was not reclaimed. To remove objects reachable only from this snapshot, run with `--purge`.
+- [AI-agent workflow](doc/AI_AGENT_WORKFLOW.md)
+- [Beginner workflow](doc/BEGINNER_WORKFLOW.md)
+- [Why not just Git](doc/WHY_NOT_GIT.md)
+- [Safety model](doc/SAFETY_MODEL.md)
+- [Snap doctor](doc/SNAP_DOCTOR.md)
+- [Known limitations](doc/KNOWN_LIMITATIONS.md)
+
+Existing deeper technical notes:
+
+- [Friendly Git workflow implementation](doc/FRIENDLY_GIT_WORKFLOW_IMPLEMENTED.md)
+- [Git health stabilization](doc/GIT_HEALTH_STABILIZATION.md)
+- [Repair Git errors](doc/REPAIR_GIT_ERRORS.md)
+- [Snapshot purge and metadata GC retrospective](doc/SNAPSHOT_PURGE_AND_METADATA_GC_RETROSPECTIVE.md)
+- [Windows and WSL installer build notes](doc/BUILD_INSTALLERS_WINDOWS_WSL.md)
+
+## Troubleshooting
+
+- `Git is not installed or not in your system PATH`: install Git and open a new terminal.
+- `Not a snap repository`: run `snap init` in the project first.
+- `Git repository has empty object/ref files`: run `snap doctor`, then `snap doctor --repair` if the repair plan looks correct.
+- `Git HEAD is detached`: run `snap doctor`; repair mode can normalize safe cases.
+- `Snapshot metadata blob ... could not read it`: run `snap doctor`; active metadata may be regenerated by repair mode, while historical metadata loss must be accepted explicitly with `snap doctor --repair --accept-metadata-loss`.
+- Need to reclaim disk space after a bad snapshot: plain `snap delete` removes the tag only. Use `snap delete <id> --purge` for Git object cleanup.
+
+## Contributing
+
+Contributor docs and issue templates are planned for the next OSS-readiness sprint. Until then, keep changes scoped, run the local gates, and be especially careful around restore, delete, doctor, Git health, metadata, command execution, and path handling.
+
+Recommended local checks:
+
+```bash
+git diff --check
+cargo fmt --check
+cargo clippy --all-targets --all-features
+cargo test
+cargo build --release
+./target/release/snap doctor
 ```
 
-To remove Git objects that were reachable only from the deleted snapshot, use explicit purge mode:
+## License
 
-```cmd
-D:\Projects\my-app>snap delete v1.1-hotfix --purge
-
-[snap] Purge will:
-  - delete snapshot tag 'v1.1-hotfix'
-  - pin metadata used by remaining snapshots
-  - create a targeted Git bundle backup
-  - expire unreachable reflog entries
-  - run `git gc --prune=now`
-? [snap] WARNING: This will permanently delete the snapshot tag and prune unreachable Git objects. Continue? [y/N] y
-[snap] Purge complete. Git storage: 1.6 GB -> 1.1 GB.
-```
-
-`snap delete --purge` creates `.git/snap-backups/snap-purge-<tag>-<timestamp>.bundle` by default. Use `snap delete <id> --purge --no-backup` to skip that backup; snap will ask for a stronger confirmation before pruning.
-
-### 7. `snap edit [id_or_label]`
-Edits the label and description of an existing snapshot.
-
-```cmd
-D:\Projects\my-app>snap edit v1.0
-? Select snapshot to edit: › v1.0
-[snap] Editing snapshot "v1.0":
-? Enter new label (tag name): v1.0-final
-? Enter new description: Final version for initial release
-...
-[snap] Snapshot successfully updated to "v1.0-final".
-```
-
-### 8. `snap update`
-Amends the **active** snapshot with the current state of the project.
-
-```cmd
-D:\Projects\my-app>snap update
-
-[snap] This command will replace the active snapshot...
-  Target Snapshot:
-    Label:       v1.1
-? [snap] This will amend the commit for snapshot "v1.1". This action is hard to undo. [y/N] y
-...
-[snap] Update complete. Snapshot "v1.1" now points to new commit [b8c9d0e].
-```
-
-Like `snap new`, `snap update` ignores metadata-only changes by default. Use `snap update --include-metadata-only` for a one-off metadata-only amend, or enable `trackMetadataOnlyChanges` in `snap options`.
-
-### 9. `snap doctor`
-Runs a full Git and snap metadata health check for the current project. It detects empty Git object/ref files, detached `HEAD`, invalid branch refs, broken snapshot tags, missing/invalid snapshot metadata blobs, unpinned metadata blobs, and unused metadata refs.
-
-`snap doctor` is read-only. To repair safe cases automatically, use `snap doctor --repair`; it creates a full `.git.backup.YYYYMMDD-HHMMSS` backup and asks for confirmation before changing anything.
-
-If old snapshot tags reference metadata blobs that Git already pruned, `snap doctor` reports them as historical warnings. File contents are still available, but empty-dir / hidden / read-only metadata for those old snapshots cannot be reconstructed exactly. To accept that loss and make future doctor checks clean, run `snap doctor --repair --accept-metadata-loss`; this rewrites affected historical tags without the broken `Snap-Metadata-Ref` lines after creating a `.git` backup.
-
-```cmd
-D:\Projects\my-app>snap doctor
-
-[snap] Git health report
-  OK Empty object/ref files: 0 found
-  OK git status
-  OK HEAD commit: a1b2c3d
-  OK Current branch: main
-  OK Snapshot tags: 12 checked, 0 invalid
-  OK snapshot metadata scan
-  OK Snapshot metadata: 12 checked, 0 active invalid, 0 historical invalid, 0 unpinned
-
-[snap] Git repository looks healthy.
-```
-
-If problems are found, follow `doc/REPAIR_GIT_ERRORS.md` for the manual repair flow.
-
-```cmd
-D:\Projects\my-app>snap doctor --repair
-
-[snap] Repair plan:
-  - Delete 1 empty Git object/ref file(s).
-  - Pin 2 existing snapshot metadata blob(s).
-  - Create a full .git backup before modifying anything.
-? [snap] Create a .git backup and apply this repair plan? [y/N]
-```
-
-### 10. `snap options`
-Allows you to configure global UI settings. These are stored in a `.snapconfig` file next to the executable.
-
-```cmd
-D:\Projects\my-app>snap options
-? Select option to change:
-> showIds            - Controls if IDs are shown in lists (current: false)
-  confirm_command    - Asks for y/N on destructive actions (current: true)
-  orderBy            - Controls the sort order for 'snap list' (current: Timestamp)
-  editUpdatesTimestamp - Controls if editing a snapshot updates its timestamp (current: false)
-  listLimit          - Sets how many snapshots to show with 'snap list' (current: all)
-  trackMetadataOnlyChanges - Treat empty dirs / hidden / read-only changes as snapshot changes (current: false)
-```
----
-
-## 🏗️ Building from Source
-
-If you want to modify the tool or build it yourself, you'll need the Rust toolchain.
-
-1.  **Install Rust**: If you don't have it, get it from [rustup.rs](https://rustup.rs).
-2.  **Clone the Repository**:
-    ```cmd
-    git clone https://github.com/Glooring/snap.git
-    cd snap
-    ```
-3.  **Build the Release Executable**:
-    ```cmd
-    cargo build --release
-    ```
-4.  **Find the Executable**: The final `snap.exe` will be in the `target/release/` directory. You can then copy it to a location in your PATH.
-
----
-
-## 📚 Additional Documentation
-
-The newer Git/GitHub workflow layer is documented here:
-
-*   [`doc/FRIENDLY_GIT_WORKFLOW_IMPLEMENTED.md`](doc/FRIENDLY_GIT_WORKFLOW_IMPLEMENTED.md) - implemented commands and workflows.
-*   [`doc/SNAP_GIT_WORKFLOW_ROADMAP.md`](doc/SNAP_GIT_WORKFLOW_ROADMAP.md) - original roadmap and future direction.
-*   [`doc/BUILD_INSTALLERS_WINDOWS_WSL.md`](doc/BUILD_INSTALLERS_WINDOWS_WSL.md) - Windows/WSL release artifact build flow.
-
----
-
-## 🛠️ Troubleshooting
-
-*   **`Error: Git is not installed or not in your system PATH.`**: `snap` requires `git.exe` to function. Install Git for Windows and ensure its `bin` and `cmd` directories are in your system's PATH.
-*   **`'snap' is not recognized...`**: This means the directory containing `snap.exe` was not correctly added to your PATH, or you haven't opened a new terminal window since adding it.
-*   **`Error: Not a snap repository...`**: You are trying to run a command (like `list` or `new`) inside a directory that has not been initialized. Run `snap init` first.
-*   **`Git repository has empty ref files`**: Normal commands use a fast preflight and stop immediately when `.git/refs` contains zero-byte refs. Run `snap doctor`, then `snap doctor --repair` if the repair plan looks correct.
-*   **`Git repository has empty object/ref files`**: `snap doctor` found corruption during the full scan. Use `snap doctor --repair` for safe automatic cleanup with backup, or follow `doc/REPAIR_GIT_ERRORS.md`.
-*   **`Git HEAD is detached`**: Normal write commands stop. Run `snap doctor`; if it can determine the branch safely, `snap doctor --repair` can normalize `HEAD`. `snap restore` now keeps `HEAD` on the current branch by using `git reset --hard <snapshot_commit>` internally.
-*   **`Snapshot metadata blob ... could not read it`**: A manual Git prune/GC may have removed an old unpinned snap metadata blob. Run `snap doctor`; if the missing metadata belongs to the active snapshot, `snap doctor --repair` can regenerate it from the current worktree. If only old historical snapshots are affected, use `snap doctor --repair --accept-metadata-loss` to remove the broken metadata references and return doctor to a clean report.
-*   **Need to reclaim disk space after a bad snapshot**: Plain `snap delete` removes only the tag. Use `snap delete <id> --purge` to pin remaining metadata, optionally create a bundle backup, expire unreachable reflogs, and run `git gc --prune=now`.
-*   **Empty directories or hidden/read-only changes do not create a new snapshot**: Metadata-only changes are ignored by default to avoid noisy histories. Use `--include-metadata-only` for one command, or enable `trackMetadataOnlyChanges` in `snap options`.
-
----
-
-## 🤝 Contributing
-
-Contributions are welcome!
-
-1.  Fork the repository.
-2.  Create your feature branch (`git checkout -b feature/my-new-feature`).
-3.  Make your changes to the `.rs` files within the `src/` directory.
-4.  Test your changes by running `cargo run -- <command>` (e.g., `cargo run -- list`).
-5.  **Rebuild the release executable** by running `cargo build --release`.
-6.  Test the new `snap.exe` file thoroughly.
-7.  Commit your changes (`git commit -am 'Add some feature'`).
-8.  Push to the branch (`git push origin feature/my-new-feature`).
-9.  Open a Pull Request.
-
----
-
-## 📜 License
-
-This project is licensed under the MIT License.
+`Cargo.toml` declares this project as MIT licensed. A root `LICENSE` file is planned as part of the OSS hygiene sprint.

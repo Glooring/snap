@@ -7,15 +7,15 @@
 | Repository | `Glooring/snap` |
 | Local path | `/home/glooring/projects/snap` |
 | Audit date | `2026-06-06` |
-| Last refreshed | `2026-06-07T00:08:49+03:00` during Sprint 0 |
+| Last refreshed | `2026-06-07T00:36:46+03:00` during Sprint 1 |
 | Branch inspected | `main` |
-| Commit inspected | `093fc05b44c90f0d69ffa43927f6ead01f960f75` before Sprint 0 documentation edits |
+| Commit inspected | `44479dd18d017fc5fe9c6bd352d55262102c7f49` before Sprint 1 documentation edits |
 | Current audit path | `docs/architecture-audit/agent-efficiency-oss-readiness-audit-2026-06-06.md` |
 | Master plan | `docs/architecture-audit/CODEX_OSS_REFACTOR_PLAN.md` |
 | Progress log | `docs/architecture-audit/refactor-progress.md` |
 | Historical sprint plans | `docs/architecture-audit/refactor-plans/` |
 | Local ignored references | `docs/architecture-audit/reference-inputs/` |
-| Scope | Complete starting baseline for the Snap OSS-readiness refactor. Sprint 0 is documentation-only; runtime behavior was validated with source-built Snap only. |
+| Scope | Current OSS-readiness status after Sprint 1 README positioning and public-doc updates. Runtime behavior was validated with source-built Snap only. |
 
 ## 2. Executive Verdict
 
@@ -42,9 +42,9 @@ The refactor should therefore be an **OSS-readiness and maintainer-quality progr
 | Command / inspection | Result | Meaning |
 | --- | --- | --- |
 | `git rev-parse --abbrev-ref HEAD` | `main` | Current working branch. |
-| `git rev-parse HEAD` | `093fc05b44c90f0d69ffa43927f6ead01f960f75` | Starting commit before Sprint 0 documentation edits. |
-| `git log --oneline -8` | `oss-sandbox-test-policy`, `oss-global-binary-rule`, `oss-audit-baseline`, `oss-audit-detailed`, `oss-plan-foundation`, `oss-plan-codex`, initial import | OSS-readiness planning has named Snap checkpoints. |
-| `git status --short` | Clean before Sprint 0 documentation edits | Repo was clean after the previous checkpoint. |
+| `git rev-parse HEAD` | `44479dd18d017fc5fe9c6bd352d55262102c7f49` | Starting commit before Sprint 1 documentation edits. |
+| `git log --oneline -8` | `oss-s0-baseline`, `oss-sandbox-test-policy`, `oss-global-binary-rule`, `oss-audit-baseline`, `oss-audit-detailed`, `oss-plan-foundation`, `oss-plan-codex`, initial import | OSS-readiness planning has named Snap checkpoints. |
+| `git status --short` | Clean before Sprint 1 documentation edits | Repo was clean after the Sprint 0 checkpoint. |
 | `rustc --version` | `rustc 1.95.0 (59807616e 2026-04-14)` | Rust toolchain used for Sprint 0 validation. |
 | `cargo --version` | `cargo 1.95.0 (f2d3ce0bd 2026-03-21)` | Cargo toolchain used for Sprint 0 validation. |
 | `git diff --check` | Passed | Whitespace gate is clean. |
@@ -58,6 +58,8 @@ The refactor should therefore be an **OSS-readiness and maintainer-quality progr
 | `./target/release/snap --help` | Passed | Source-built release binary exposes the modern broad command surface. |
 | `./target/release/snap doctor` | Passed | Current source-built release binary sees the repo as healthy; this is the correct behavior baseline for the project. |
 | Source-built sandbox smoke test | Passed | Disposable local repo exercised `init`, `new`, `list`, `diff`, `doctor`, and `restore`. |
+| README positioning | Sprint 1 completed | README now leads with Git-powered local checkpoints, AI-agent edits, risky refactors, beginner workflows, safety, limitations, and source command surface. |
+| Public docs | Sprint 1 completed | Added focused docs for AI-agent workflow, beginner workflow, why not Git, safety model, `snap doctor`, and known limitations. |
 | `cargo audit` | Not installed | Security audit is not available locally yet; add later if desired. |
 | Root OSS file inspection | 0 files found | Missing `AGENTS.md`, `CONTRIBUTING.md`, `SECURITY.md`, `CHANGELOG.md`, `SUPPORT.md`, `CODE_OF_CONDUCT.md`, and visible license file. |
 | `.github` inspection | `.github` missing | No GitHub Actions, issue templates, or PR template. |
@@ -93,8 +95,8 @@ cargo run -- doctor
 
 ```text
 Git repository looks healthy.
-Snapshot tags: 6 checked, 0 invalid
-Snapshot metadata: 6 checked, 0 active invalid, 0 historical invalid, 0 unpinned
+Snapshot tags: 7 checked, 0 invalid
+Snapshot metadata: 7 checked, 0 active invalid, 0 historical invalid, 0 unpinned
 ```
 
 Sprint 0 also ran one disposable local smoke test using only the source-built release binary at `/home/glooring/projects/snap/target/release/snap`. The sandbox was `/tmp/snap-agent-smoke-s0-hwmvPg` and was removed after validation. It exercised `git init`, an initial commit, `snap init`, two `snap new` calls, `snap list`, `snap diff`, `snap doctor`, and `snap restore s0-first`. Restore verified that `app.txt` returned to `first` and `extra.txt` was removed.
@@ -130,6 +132,33 @@ error: no such command: `audit`
 
 This should not block Sprint 0, but a later security/OSS hygiene sprint can decide whether to add `cargo-audit` to local instructions or CI.
 
+### 4.4 Sprint 1 Docs Validation
+
+Sprint 1 was documentation-only and ran:
+
+```bash
+git diff --check
+cargo fmt --check
+cargo clippy --all-targets --all-features
+cargo test
+cargo build --release
+./target/release/snap --help
+./target/release/snap doctor
+```
+
+Results:
+
+- `git diff --check` passed.
+- `cargo fmt --check` passed.
+- normal Clippy passed with the known 9 warnings.
+- `cargo test` passed, 96 integration tests.
+- `cargo build --release` passed.
+- source-built release help showed the modern broad command surface.
+- source-built release doctor reported a healthy repo with 7 snapshot tags and 7 metadata refs checked.
+- README/new-doc stale phrase scan passed for `Snap (The Rust Edition)`, `blazing-fast`, `your-username`, and stale private path markers.
+
+Strict Clippy with `-D warnings` was not a Sprint 1 gate because that remains known baseline debt.
+
 ## 5. Repository Metrics Snapshot
 
 ### 5.1 File Counts
@@ -138,8 +167,8 @@ This should not block Sprint 0, but a later security/OSS hygiene sprint can deci
 | --- | ---: |
 | `src/**/*.rs` | 33 |
 | `tests/**/*.rs` | 1 |
-| `doc/*.md` | 8 |
-| `docs/**/*.md` | 4 before the Sprint 0 plan file, 5 after adding it |
+| `doc/*.md` | 14 after Sprint 1 public docs |
+| `docs/**/*.md` | 6 after adding the Sprint 1 plan |
 | `.github` tracked files | 0 |
 | Standard OSS root files found | 0 |
 
@@ -159,8 +188,8 @@ Standard OSS root files checked:
 | --- | ---: |
 | `src` Rust | 6,445 |
 | `tests` Rust | 2,698 |
-| `doc` Markdown/text | 4,925 |
-| `docs` audit Markdown | 1,582 before the Sprint 0 plan file |
+| `doc` Markdown/text | 5,182 at Sprint 1 validation time |
+| `docs` audit Markdown | 1,989 before this Sprint 1 audit refresh |
 
 ### 5.3 Largest Operational Files
 
@@ -375,14 +404,14 @@ Priority:
 
 ### 9.2 README Positioning Gaps
 
-Current README still leads with:
+Sprint 1 replaced the old README opening that led with:
 
 - `Snap (The Rust Edition)`
 - `blazing-fast`
 - Rust rewrite history
 - snapshot/backup framing
 
-The public story should instead lead with:
+The README now leads with:
 
 - Git-powered local checkpoints;
 - safety before AI-agent edits and risky refactors;
@@ -390,7 +419,7 @@ The public story should instead lead with:
 - Git is the engine, Snap is the workflow;
 - `snap doctor` as a serious differentiator.
 
-The Rust rewrite story can remain, but it should move lower.
+The Rust rewrite story is no longer the first impression. The README also links focused public docs for AI-agent workflow, beginner workflow, why not Git, safety model, `snap doctor`, and known limitations.
 
 ### 9.3 Old Prompt / Historical Docs
 
@@ -408,13 +437,13 @@ Do not leave placeholder GitHub links in public docs before application.
 
 | Risk | Severity | Status | Evidence | Recommended sprint |
 | --- | --- | --- | --- | --- |
-| Public positioning is unclear | High | Open | README leads with Rust edition/blazing-fast backup framing. | Sprint 1 |
+| Public positioning is unclear | High | Addressed in Sprint 1 | README now leads with Git-powered local checkpoints, AI-agent edits, risky refactors, beginner workflows, and safety docs. | Monitor for drift |
 | OSS hygiene files missing | High | Open | 0 standard root OSS files and 0 `.github` files found. | Sprint 2 |
 | CI missing | High | Open | No `.github/workflows`. | Sprint 3 |
 | Strict Clippy fails | Medium | Open | 9 warnings-as-errors. | Sprint 0 or 4 |
 | Temporary patch comments remain | Medium | Open | `Cargo.toml`, `new.rs`, `diff.rs`, `update.rs`. | Sprint 4 |
 | Placeholder packaging identifier | Medium | Open | `Packager.toml` has `com.yourname.snap`. | Sprint 8 |
-| Public historical prompt noise | Medium | Open | `doc/prompt-2.txt` contains `your-username` and old snippets. | Sprint 1 or 2 |
+| Public historical prompt noise | Medium | Open | `doc/prompt-2.txt` contains `your-username` and old snippets. | Sprint 2 or 4 |
 | Snapshot tags can mix with release tags | High | Open | `refs/tags` scanning and Snap checkpoints are tag-based. | Sprint 6 |
 | Linux command-name conflict | High | Open | Project/binary name `snap` conflicts with Canonical Snapcraft on many Linux systems. | Sprint 8 |
 | Command construction needs hardening | High | Open | Multiple `run_command(&format!(...))` sites with Git commands. | Sprint 4 |
@@ -452,13 +481,14 @@ Current evidence:
 - `snap list` and health checks scan `refs/tags`.
 - Snapshot metadata is referenced through `Snap-Metadata-Ref`.
 - Metadata blobs are pinned through `refs/snap-metadata`.
-- The current Snap repo has 6 Snap snapshot tags before the Sprint 0 checkpoint:
+- The current Snap repo has 7 Snap snapshot tags before the Sprint 1 checkpoint:
   - `oss-plan-codex`
   - `oss-plan-foundation`
   - `oss-audit-detailed`
   - `oss-audit-baseline`
   - `oss-global-binary-rule`
   - `oss-sandbox-test-policy`
+  - `oss-s0-baseline`
 
 Risk:
 
@@ -489,7 +519,7 @@ Until then, this repo should avoid release-looking checkpoint labels like `v7.3`
 | Problem | Agent impact |
 | --- | --- |
 | No `AGENTS.md` | Agents lack safety-specific instructions at startup. |
-| README lags source command surface | Agent may document or test older behavior. |
+| README drift can recur | Agents may document or test older behavior if README is not kept aligned with source help. |
 | Old prompt docs are tracked | Search results are noisy and include stale placeholders. |
 | Clippy strict fails | CI cannot immediately use `-D warnings`. |
 | Command execution patterns vary | Agent must manually inspect safety assumptions. |
@@ -521,7 +551,7 @@ After Sprint 0-3, a new agent should quickly know:
 ### 14.2 Weak Areas
 
 - Global checkpoint binary help does not match current source help; this is acceptable only if tests use source-built Snap.
-- README needs repositioning and command-surface refresh.
+- README positioning and command-surface refresh landed in Sprint 1.
 - Packaging metadata has placeholders.
 - No CI proves cross-platform behavior yet.
 - No root license file despite `Cargo.toml` declaring MIT.
@@ -664,7 +694,7 @@ Reason: those look like release tags and reinforce the current snapshot/tag ambi
 | Sprint | Recommendation | Why |
 | --- | --- | --- |
 | 0 | Baseline Audit and Safety Rails | Completed in Sprint 0: plan, gates, metrics, source-built smoke test, strict Clippy deferral, and checkpoint discipline. |
-| 1 | README Positioning and Public Docs | Highest-leverage OSS readiness fix; makes value obvious. |
+| 1 | README Positioning and Public Docs | Completed in Sprint 1: README and focused public docs now explain Snap's identity, workflows, safety model, limitations, storage model, and source command surface. |
 | 2 | OSS Hygiene Files | Adds maintainer credibility and gives Codex/agents safe project instructions. |
 | 3 | CI on Windows/Linux | Makes cross-platform and test claims visible. |
 | 4 | Source Cleanup and Command Hardening Audit | Removes patch traces and reduces command-boundary risk. |
@@ -699,14 +729,13 @@ Do not continue refactoring only for aesthetics. Once these criteria are met, mo
 
 ## 19. Next Recommendation
 
-Proceed to Sprint 1: README Positioning and Public Docs.
+Proceed to Sprint 2: OSS Hygiene Files.
 
-Sprint 1 should:
+Sprint 2 should:
 
-- rewrite the README opening around Git-powered local checkpoints;
-- explain the AI-agent/refactor workflow and the beginner workflow;
-- promote `snap doctor`, the safety model, known limitations, and "why not Git";
-- keep claims truthful and avoid implying Snap replaces Git;
-- prepare public docs for the later OSS hygiene and CI sprints.
+- add standard maintainer/community files and GitHub templates;
+- create `AGENTS.md`, `CONTRIBUTING.md`, `SECURITY.md`, `CHANGELOG.md`, `SUPPORT.md`, root license file, PR template, and issue templates as scoped;
+- keep implementation documentation-only unless a template requires repository metadata;
+- continue using source-built Snap for validation and global Snap only for checkpoint/list.
 
-After Sprint 1, move to Sprint 2: OSS Hygiene Files.
+After Sprint 2, move to Sprint 3: CI on Windows/Linux.
