@@ -117,7 +117,7 @@ The operational documents for this refactor live under `docs/architecture-audit/
 
 - `docs/architecture-audit/refactor-progress.md`: official sprint-by-sprint journal.
 - `docs/architecture-audit/refactor-plans/`: historical plans for individual sprints.
-- `docs/architecture-audit/agent-efficiency-platform-health-audit-2026-06-06.md`: current audit/status, risk register, metrics, and next recommendation.
+- `docs/architecture-audit/agent-efficiency-oss-readiness-audit-2026-06-06.md`: current audit/status, risk register, metrics, and next recommendation.
 - `docs/architecture-audit/reference-inputs/`: local ignored copies of imported planning references.
 
 This master plan should remain at:
@@ -242,7 +242,7 @@ Create the working documents before making broad changes:
 
 - `docs/architecture-audit/refactor-progress.md`
 - `docs/architecture-audit/refactor-plans/README.md`
-- `docs/architecture-audit/agent-efficiency-platform-health-audit-2026-06-06.md`
+- `docs/architecture-audit/agent-efficiency-oss-readiness-audit-2026-06-06.md`
 
 Record:
 
@@ -586,7 +586,7 @@ Start with Sprint 0:
 
 1. Update `docs/architecture-audit/refactor-progress.md`.
 2. Create `docs/architecture-audit/refactor-plans/README.md`.
-3. Update `docs/architecture-audit/agent-efficiency-platform-health-audit-2026-06-06.md`.
+3. Update `docs/architecture-audit/agent-efficiency-oss-readiness-audit-2026-06-06.md`.
 4. Run baseline gates.
 5. Record exact warnings and risks.
 6. Create checkpoint:

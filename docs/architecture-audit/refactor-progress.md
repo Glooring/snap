@@ -3,7 +3,7 @@
 Status: active  
 Started: 2026-06-06  
 Master plan: [`CODEX_OSS_REFACTOR_PLAN.md`](CODEX_OSS_REFACTOR_PLAN.md)  
-Current audit: [`agent-efficiency-platform-health-audit-2026-06-06.md`](agent-efficiency-platform-health-audit-2026-06-06.md)
+Current audit: [`agent-efficiency-oss-readiness-audit-2026-06-06.md`](agent-efficiency-oss-readiness-audit-2026-06-06.md)
 
 ## Workflow
 
@@ -73,6 +73,32 @@ Checkpoint:
 
 ```bash
 snap new oss-plan-foundation "Audit and local reference foundations"
+```
+
+### Foundation - Detailed OSS Readiness Audit
+
+Status: completed
+Snapshot: `oss-audit-detailed`
+Description: Detailed OSS readiness audit
+
+Completed:
+
+- Renamed the audit from the earlier Synthedu-style name to `agent-efficiency-oss-readiness-audit-2026-06-06.md`, because Snap is a CLI/OSS project rather than a platform.
+- Expanded the audit to match the detailed style used in the Synthedu refactor program: metadata, executive verdict, baseline evidence, metrics, architecture map, agent-efficiency assessment, CLI/OSS health risks, hotspots, validation contract, snapshot discipline, roadmap, and closure criteria.
+- Updated links in the master plan and refactor plan index.
+
+Validation:
+
+| Command | Result |
+| --- | --- |
+| `git diff --check` | Passed |
+| Old audit-name scan | Passed, no stale names |
+| New audit-name reference scan | Passed, current audit is linked from plan/progress/index |
+
+Checkpoint:
+
+```bash
+snap new oss-audit-detailed "Detailed OSS readiness audit"
 ```
 
 ## Next Up
