@@ -580,6 +580,8 @@ rg -n "refs/tags|refs/snap|Snap-Snapshot|Snap-Metadata" src doc README.md docs/a
 
 Use the stable globally installed Snap binary for refactor checkpoints only. The user intentionally keeps this global binary older for now.
 
+Do not replace, reinstall, overwrite, or upgrade the global Snap binary during this refactor. In particular, do not copy `target/release/snap` to `/usr/local/bin/snap` and do not run an install command that changes the global binary unless the user explicitly approves it after the refactor goal is complete.
+
 Use source-built Snap for product validation:
 
 ```bash
@@ -596,6 +598,12 @@ Because Snap itself currently uses Git tags for checkpoints, use non-release-loo
 snap new oss-s0-baseline "OSS readiness baseline"
 snap new oss-s1-readme "README positioning and docs"
 snap new oss-s2-hygiene "OSS hygiene files"
+```
+
+After each sprint, use this checkpoint pattern:
+
+```bash
+snap new oss-sN-short-name "sprint N: short description"
 ```
 
 Avoid:

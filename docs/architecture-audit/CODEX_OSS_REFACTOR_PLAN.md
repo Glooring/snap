@@ -165,7 +165,9 @@ Do not claim a gate passed unless it was run in the current workspace.
 
 ## Snapshot Rule
 
-Use the stable installed Snap binary for checkpointing the Snap repo, not a freshly modified `target/debug/snap`, unless the sprint is intentionally testing the new binary.
+Use the stable globally installed Snap binary for checkpointing the Snap repo. The user intentionally keeps this global Snap binary older because it is known-good for the refactor workflow.
+
+Do **not** replace, reinstall, overwrite, or upgrade the global Snap binary during this refactor unless the user explicitly asks for that in a separate step after the refactor goal is complete.
 
 Verify before using:
 
@@ -173,6 +175,25 @@ Verify before using:
 command -v snap
 snap --version
 ```
+
+Expected current role split:
+
+| Binary / command | Use for |
+| --- | --- |
+| global `snap` from PATH, currently `/usr/local/bin/snap` | Workflow checkpoints only: `snap new ...`, `snap list`, rollback reference. |
+| `cargo run -- ...` | Testing current source behavior during development. |
+| `./target/debug/snap ...` | Testing debug build behavior when needed. |
+| `./target/release/snap ...` | Testing release-build behavior and final local validation. |
+
+Never use global `snap --help`, global `snap doctor`, or global `snap --version` as proof of current source behavior. Use source-built Snap for product validation:
+
+```bash
+cargo build --release
+./target/release/snap --help
+./target/release/snap doctor
+```
+
+Do not run install/update commands that would overwrite the global binary, including manual copies to `/usr/local/bin/snap` or any equivalent install step, unless the user explicitly approves it later.
 
 Because Snap currently stores snapshots through Git tags, do not use release-looking checkpoint labels such as `v7.3` or `v8.0` while working on Snap itself. Those labels can be confused with release tags and with the exact tag-model risk this plan wants to address.
 
@@ -185,6 +206,19 @@ snap new oss-s2-hygiene "OSS hygiene files"
 snap new oss-plan-codex "Codex OSS refactor master plan"
 ```
 
+After every sprint, use the same pattern:
+
+```bash
+snap new oss-sN-short-name "sprint N: short description"
+```
+
+Examples:
+
+```bash
+snap new oss-s0-baseline "sprint 0: baseline audit and safety rails"
+snap new oss-s1-readme "sprint 1: README positioning and public docs"
+```
+
 After every checkpoint:
 
 ```bash
@@ -192,7 +226,7 @@ snap list
 git status --short
 ```
 
-If `snap` resolves to the Canonical Snapcraft command on a Linux machine, use an explicit binary path for this project and document the conflict.
+If `snap` resolves to the Canonical Snapcraft command on a Linux machine, stop and document the conflict instead of installing over it.
 
 ## Baseline Findings
 

@@ -15,6 +15,8 @@ plan -> scoped change -> gates -> progress/audit update -> snap checkpoint -> ne
 
 Because this is the `snap` repo itself, checkpoint labels should avoid release-looking names such as `v7.3`. Use labels like `oss-s0-baseline`, `oss-s1-readme`, and `oss-plan-foundation` until the snapshot/tag model is safer.
 
+The global `snap` command is intentionally older and is used only as the stable checkpoint tool for this refactor. Do not replace or reinstall it from this repo during the refactor. Validate current source behavior with `cargo run -- ...`, `./target/debug/snap ...`, or `./target/release/snap ...`.
+
 ## Current State
 
 The refactor has not started runtime/code changes yet.
@@ -139,6 +141,32 @@ Checkpoint:
 
 ```bash
 snap new oss-audit-baseline "Complete OSS readiness baseline audit"
+```
+
+### Foundation - Global Snap Binary Rule
+
+Status: completed
+Snapshot: `oss-global-binary-rule`
+Description: Clarify global Snap checkpoint rule
+
+Completed:
+
+- Strengthened the master plan, audit, and progress log so future agents know the global `snap` binary is intentionally older and must be used only for workflow checkpoints.
+- Documented that the refactor must not replace, reinstall, overwrite, or upgrade `/usr/local/bin/snap`.
+- Documented that current project behavior must be validated with source-built Snap through `cargo run -- ...`, `./target/debug/snap ...`, or `./target/release/snap ...`.
+- Documented the per-sprint checkpoint pattern for this repo: `snap new oss-sN-short-name "sprint N: short description"`.
+
+Validation:
+
+| Command | Result |
+| --- | --- |
+| `git diff --check` | Passed |
+| Global/source-built binary wording scan | Passed |
+
+Checkpoint:
+
+```bash
+snap new oss-global-binary-rule "Clarify global Snap checkpoint rule"
 ```
 
 ## Next Up
