@@ -1,7 +1,7 @@
 use crate::utils::{
     create_tag_message, gather_metadata, get_snapshots, hash_metadata_blob,
-    metadata_blob_hash_for_snapshot, metadata_ref_name, pin_metadata_blob, run_command_with_env,
-    SnapMetadata, Snapshot, METADATA_REF_NAMESPACE,
+    metadata_blob_hash_for_snapshot, metadata_ref_name, pin_metadata_blob,
+    run_command_args_with_env, SnapMetadata, Snapshot, METADATA_REF_NAMESPACE,
 };
 use anyhow::{anyhow, Context, Result};
 use chrono::Local;
@@ -274,7 +274,7 @@ pub fn ensure_git_fast_preflight_for_write(allow_unborn_head: bool) -> Result<()
 
     let head = run_git(&["rev-parse", "--verify", "HEAD^{commit}"], None)?;
     let head_exists = head.success;
-    if !head_exists && !(allow_unborn_head && is_unborn_head_error(&head.stderr)) {
+    if !(head_exists || allow_unborn_head && is_unborn_head_error(&head.stderr)) {
         return Err(fast_health_error(
             "Git HEAD does not point to a valid commit.",
             Some(first_line(&head.stderr).as_str()),
@@ -296,8 +296,8 @@ pub fn ensure_git_fast_preflight_for_write(allow_unborn_head: bool) -> Result<()
             &["rev-parse", "--verify", &format!("{}^{{commit}}", ref_name)],
             None,
         )?;
-        if !branch_check.success
-            && !(allow_unborn_head && is_unborn_head_error(&branch_check.stderr))
+        if !(branch_check.success
+            || allow_unborn_head && is_unborn_head_error(&branch_check.stderr))
         {
             return Err(fast_health_error(
                 &format!(
@@ -659,7 +659,7 @@ fn collect_metadata_checks() -> Result<(Vec<MetadataBlobCheck>, Vec<String>, Opt
             continue;
         };
         used_hashes.insert(blob_hash.clone());
-        if metadata_count >= 100 && checks.len() > 0 && checks.len() % 100 == 0 {
+        if metadata_count >= 100 && !checks.is_empty() && checks.len() % 100 == 0 {
             eprintln!(
                 "[snap] Checked {}/{} snapshot metadata blob(s)...",
                 checks.len(),
@@ -807,8 +807,17 @@ fn repair_active_snapshot_metadata(tag: &str) -> Result<()> {
         env_vars.insert("GIT_COMMITTER_DATE", snapshot.timestamp.as_str());
     }
 
-    run_command_with_env(
-        &format!("git tag -a -f {} -F - {}", snapshot.tag, snapshot.full_id),
+    run_command_args_with_env(
+        "git",
+        &[
+            "tag",
+            "-a",
+            "-f",
+            &snapshot.tag,
+            "-F",
+            "-",
+            &snapshot.full_id,
+        ],
         Some(&tag_message),
         &env_vars,
     )
@@ -824,8 +833,17 @@ fn forget_snapshot_metadata(snapshot: &Snapshot) -> Result<()> {
         env_vars.insert("GIT_COMMITTER_DATE", snapshot.timestamp.as_str());
     }
 
-    run_command_with_env(
-        &format!("git tag -a -f {} -F - {}", snapshot.tag, snapshot.full_id),
+    run_command_args_with_env(
+        "git",
+        &[
+            "tag",
+            "-a",
+            "-f",
+            &snapshot.tag,
+            "-F",
+            "-",
+            &snapshot.full_id,
+        ],
         Some(&tag_message),
         &env_vars,
     )

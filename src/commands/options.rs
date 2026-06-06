@@ -7,11 +7,10 @@ use inquire::{Confirm, Select, Text};
 pub fn execute(_args: OptionsArgs) -> Result<()> {
     let mut config = load_config()?;
 
-    let options_map = vec![
+    let options_map = [
         ("showIds", "Controls if IDs are shown in lists"),
         ("confirm_command", "Asks for y/N on destructive actions"),
         ("orderBy", "Controls the sort order for 'snap list'"),
-        // --- START: NEW OPTION IN MAP ---
         (
             "editUpdatesTimestamp",
             "Controls if editing a snapshot updates its timestamp",
@@ -24,7 +23,6 @@ pub fn execute(_args: OptionsArgs) -> Result<()> {
             "trackMetadataOnlyChanges",
             "Treat empty dirs / hidden / read-only changes as snapshot changes",
         ),
-        // --- END: NEW OPTION IN MAP ---
     ];
 
     let display_options: Vec<String> = options_map
@@ -34,13 +32,11 @@ pub fn execute(_args: OptionsArgs) -> Result<()> {
                 "showIds" => config.options.show_ids.to_string(),
                 "confirm_command" => config.options.confirm_command.to_string(),
                 "orderBy" => format!("{:?}", config.options.order_by),
-                // --- START: DISPLAY LOGIC FOR NEW OPTION ---
                 "editUpdatesTimestamp" => config.options.edit_updates_timestamp.to_string(),
                 "listLimit" => config.options.list_limit.clone(),
                 "trackMetadataOnlyChanges" => {
                     config.options.track_metadata_only_changes.to_string()
                 }
-                // --- END: DISPLAY LOGIC FOR NEW OPTION ---
                 _ => "Unknown".to_string(),
             };
             format!(
@@ -101,7 +97,6 @@ pub fn execute(_args: OptionsArgs) -> Result<()> {
                 changed = true;
             }
         }
-        // --- START: UI LOGIC FOR NEW OPTION ---
         "editUpdatesTimestamp" => {
             let current = config.options.edit_updates_timestamp;
             let new = Confirm::new("Update a snapshot's timestamp when editing it?")
@@ -114,7 +109,6 @@ pub fn execute(_args: OptionsArgs) -> Result<()> {
                 changed = true;
             }
         }
-        // --- END: UI LOGIC FOR NEW OPTION ---
         "listLimit" => {
             let current = &config.options.list_limit;
             let validator = |input: &str| {
@@ -137,7 +131,6 @@ pub fn execute(_args: OptionsArgs) -> Result<()> {
                 changed = true;
             }
         }
-        // --- END: UI LOGIC FOR NEW OPTION ---
         "trackMetadataOnlyChanges" => {
             let current = config.options.track_metadata_only_changes;
             let new = Confirm::new("Treat metadata-only changes as snapshot changes?")
@@ -161,10 +154,7 @@ pub fn execute(_args: OptionsArgs) -> Result<()> {
     }
 
     save_config(&config)?;
-    println!(
-        "\n{}",
-        format!("[snap] Configuration saved successfully.").green()
-    );
+    println!("\n{}", "[snap] Configuration saved successfully.".green());
 
     Ok(())
 }

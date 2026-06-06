@@ -4,7 +4,7 @@ use crate::git_health::ensure_git_healthy_for_write;
 use crate::utils::{
     ask_yes_no, check_dirty, create_tag_message, find_snapshot, gather_metadata,
     get_active_commit_full, get_snapshots, hash_metadata_blob, load_metadata_for_snapshot,
-    pin_metadata_blob, pin_snapshot_metadata, run_command,
+    pin_metadata_blob, pin_snapshot_metadata, run_command, run_command_args,
 };
 use anyhow::{Context, Result};
 use colored::*;
@@ -67,13 +67,10 @@ pub fn execute(args: UpdateArgs) -> Result<()> {
         "\n{}",
         "[snap] Step 1/3: Scanning for new metadata...".cyan()
     );
-    // --- START: CORRECTED LINE ---
-    // Reuse the metadata we already gathered.
     let new_metadata_blob_hash = hash_metadata_blob(&current_metadata)?;
     if let Some(hash) = new_metadata_blob_hash.as_deref() {
         pin_metadata_blob(hash)?;
     }
-    // --- END: CORRECTED LINE ---
 
     println!(
         "{}",
@@ -100,8 +97,11 @@ pub fn execute(args: UpdateArgs) -> Result<()> {
         &active_snapshot.description,
         new_metadata_blob_hash.as_deref(),
     );
-    let tag_cmd = format!("git tag -a -f {} -F -", active_snapshot.tag);
-    run_command(&tag_cmd, Some(&new_tag_message))?;
+    run_command_args(
+        "git",
+        &["tag", "-a", "-f", &active_snapshot.tag, "-F", "-"],
+        Some(&new_tag_message),
+    )?;
 
     println!(
         "\n{}",

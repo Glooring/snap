@@ -64,12 +64,9 @@ pub fn execute(args: DiffArgs) -> Result<()> {
     all_attr_paths.extend(readonly_a.union(&readonly_b).cloned());
 
     for path in &all_attr_paths {
-        // --- START: THE FIX ---
-        // We pass `path` (which is a &String) directly, not `&path` (which is a &&String).
         if files_in_diff.contains(path) {
             continue;
         }
-        // --- END: THE FIX ---
 
         let hidden_changed = hidden_a.contains(path) != hidden_b.contains(path);
         let readonly_changed = readonly_a.contains(path) != readonly_b.contains(path);

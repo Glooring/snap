@@ -4,16 +4,11 @@ use std::env;
 use std::fs;
 use std::path::{Path, PathBuf};
 
-#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum SortOrder {
+    #[default]
     Timestamp,
     Label,
-}
-
-impl Default for SortOrder {
-    fn default() -> Self {
-        SortOrder::Timestamp
-    }
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -29,10 +24,8 @@ pub struct Options {
     pub confirm_command: bool,
     #[serde(default)]
     pub order_by: SortOrder,
-    // --- START: NEW TIMESTAMP OPTION ---
     #[serde(default = "default_bool_false")]
     pub edit_updates_timestamp: bool,
-    // --- END: NEW TIMESTAMP OPTION ---
     /// Whether metadata-only changes should create/update snapshots.
     #[serde(default = "default_bool_false")]
     pub track_metadata_only_changes: bool,
@@ -58,9 +51,7 @@ impl Default for SnapConfig {
                 show_ids: false,
                 confirm_command: true,
                 order_by: SortOrder::default(),
-                // --- START: SET DEFAULT FOR NEW OPTION ---
-                edit_updates_timestamp: false, // Default is NOT to update the timestamp
-                // --- END: SET DEFAULT FOR NEW OPTION ---
+                edit_updates_timestamp: false,
                 track_metadata_only_changes: false,
                 list_limit: default_list_limit(),
             },

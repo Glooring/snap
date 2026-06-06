@@ -38,7 +38,7 @@ cargo build --release
 ./target/release/snap doctor
 ```
 
-Strict Clippy with `-D warnings` is known baseline debt until the cleanup sprint owns it.
+Strict Clippy with `-D warnings` is expected to pass after Sprint 4 cleanup.
 
 ## Sensitive Areas
 

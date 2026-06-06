@@ -113,7 +113,7 @@ Planned safety improvements include restore dry-run, rescue snapshots before res
 - Snapshot labels are currently Git tags, so normal release tags and Snap snapshot tags can be confused until the tag/ref model is improved.
 - On many Linux systems, `snap` may already be Canonical Snapcraft. Check your PATH before installing this binary as `snap`.
 - Cross-platform CI, OSS maintainer files, and a root license file are planned in upcoming OSS-readiness sprints.
-- Strict Clippy with `-D warnings` is known baseline debt and is tracked for cleanup before strict CI enforcement.
+- Strict Clippy with `-D warnings` is expected to pass after the Sprint 4 cleanup.
 
 ## Why Not Just Git?
 

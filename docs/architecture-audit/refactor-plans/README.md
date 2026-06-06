@@ -17,3 +17,4 @@ Sprint plans are historical. The audit should remain the current source of truth
 - [Sprint 1 - README Positioning And Public Docs](sprint-1-readme-positioning-public-docs.md)
 - [Sprint 2 - OSS Hygiene Files](sprint-2-oss-hygiene-files.md)
 - [Sprint 3 - CI On Windows And Linux](sprint-3-ci-windows-linux.md)
+- [Sprint 4 - Source Cleanup And Command Hardening Audit](sprint-4-source-cleanup-command-audit.md)

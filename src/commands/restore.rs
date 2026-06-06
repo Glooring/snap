@@ -3,11 +3,12 @@ use crate::config::{load_config, SortOrder};
 use crate::git_health::{ensure_git_healthy_for_write, resolve_snapshot_commit};
 use crate::utils::{
     ask_yes_no, check_dirty, find_snapshot, format_snapshot_line, gather_metadata, get_snapshots,
-    load_metadata_for_snapshot, run_command,
+    load_metadata_for_snapshot, run_command, run_command_args,
 };
 use anyhow::{anyhow, Context, Result};
 use colored::*;
 use inquire::Select;
+use std::cmp::Reverse;
 use std::collections::HashSet;
 use std::env;
 use std::fs;
@@ -75,7 +76,7 @@ pub fn execute(args: RestoreArgs) -> Result<()> {
         "[snap] Restoring project files for snapshot".cyan(),
         snapshot_to_restore.tag
     );
-    run_command(&format!("git reset --hard {}", snapshot_commit), None)?;
+    run_command_args("git", &["reset", "--hard", &snapshot_commit], None)?;
 
     println!("{}", "[snap] Synchronizing metadata...".cyan());
 
@@ -91,9 +92,8 @@ pub fn execute(args: RestoreArgs) -> Result<()> {
 
     let cwd = env::current_dir()?;
 
-    // Reconcile empty directories
     let mut dirs_to_remove: Vec<_> = source_empty.difference(&target_empty).collect();
-    dirs_to_remove.sort_by(|a, b| b.len().cmp(&a.len()));
+    dirs_to_remove.sort_by_key(|path| Reverse(path.len()));
     for path_str in dirs_to_remove {
         let full_path = cwd.join(path_str);
         if full_path.exists() {

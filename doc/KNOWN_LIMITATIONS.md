@@ -37,4 +37,4 @@ The repository still needs standard public project files such as `AGENTS.md`, `C
 
 ## Strict Clippy
 
-Normal Clippy runs, but strict `cargo clippy --all-targets --all-features -- -D warnings` is known baseline debt. The cleanup is planned before strict CI enforcement.
+Strict `cargo clippy --all-targets --all-features -- -D warnings` is expected to pass after the Sprint 4 cleanup. Future changes should keep that baseline green.

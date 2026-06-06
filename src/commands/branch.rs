@@ -27,10 +27,7 @@ fn list() -> Result<()> {
 
     println!();
     println!("  {:<2} {:<28} {:<28} Status", "", "Branch", "Upstream");
-    println!(
-        "  {:<2} {:<28} {:<28} {}",
-        "", "------", "--------", "------"
-    );
+    println!("  {:<2} {:<28} {:<28} ------", "", "------", "--------");
     for branch in branches {
         let marker = if branch.current { "*" } else { " " };
         let upstream = branch.upstream.as_deref().unwrap_or("-");

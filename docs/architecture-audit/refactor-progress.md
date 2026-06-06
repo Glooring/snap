@@ -21,9 +21,9 @@ Agents are encouraged to test deeply with disposable local projects and, when re
 
 ## Current State
 
-Sprint 3 has completed the first CI baseline. The repository now has GitHub Actions CI for Ubuntu and Windows.
+Sprint 4 has completed source cleanup and command-construction audit. Strict Clippy now passes, patch-marker comments are gone from `Cargo.toml` and `src`, and the remaining command boundaries are documented.
 
-The next phase is Sprint 4: Source Cleanup and Command Hardening Audit.
+The next phase is Sprint 5: Restore, Doctor, and Purge Safety Plan.
 
 ## Entries
 
@@ -438,8 +438,60 @@ Checkpoint:
 snap new oss-s3-ci "sprint 3: Windows and Linux CI"
 ```
 
+### Sprint 4 - Source Cleanup and Command Hardening Audit
+
+Status: completed
+Snapshot: `oss-s4-cleanup`
+Description: Source cleanup and command audit
+
+Completed:
+
+- Created `docs/architecture-audit/refactor-plans/sprint-4-source-cleanup-command-audit.md`.
+- Linked the Sprint 4 plan from `docs/architecture-audit/refactor-plans/README.md`.
+- Removed temporary patch-marker comments from `Cargo.toml` and `src`.
+- Fixed the known Clippy warnings:
+  - `clippy::print_literal`
+  - `clippy::useless_format`
+  - `clippy::useless_vec`
+  - `clippy::unnecessary_sort_by`
+  - `clippy::derivable_impls`
+  - `clippy::nonminimal_bool`
+  - `clippy::len_zero`
+- Converted formatted Git command strings to explicit argv calls for snapshot tags, metadata refs, blob reads, commits, restore reset, delete tag, update tag, edit tag, and doctor repair tag rewrites.
+- Created `docs/architecture-audit/command-construction-audit-2026-06-07.md`.
+- Documented remaining dynamic command boundaries as intentional central helpers, GitHub CLI override, and release runtime override.
+
+Validation:
+
+| Command | Result |
+| --- | --- |
+| `git diff --check` | Passed |
+| `cargo fmt --check` | Passed |
+| `cargo clippy --all-targets --all-features` | Passed with no warnings |
+| `cargo clippy --all-targets --all-features -- -D warnings` | Passed |
+| `cargo test` | Passed, 96 integration tests |
+| `cargo build --release` | Passed |
+| `./target/release/snap --help` | Passed |
+| `./target/release/snap doctor` | Passed; repo healthy, 10 snapshot tags checked |
+| Patch-marker scan for `Cargo.toml` and `src` | Passed, no matches |
+| Formatted Git command scan | Passed, no `run_command(&format!(...))` matches |
+| Dynamic command boundary scan | Passed; remaining matches documented in command-construction audit |
+
+Known remaining gaps after Sprint 4:
+
+- Restore/doctor/purge safety features remain for Sprint 5.
+- Snapshot/tag ambiguity remains for Sprint 6.
+- Codex/AI-agent workflow docs remain for Sprint 7.
+- Linux command-name conflict and packaging metadata remain for Sprint 8.
+
+Checkpoint:
+
+```bash
+snap new oss-s4-cleanup "sprint 4: source cleanup and command audit"
+```
+
 ## Next Up
 
-Sprint 4 - Source Cleanup and Command Hardening Audit:
+Sprint 5 - Restore, Doctor, and Purge Safety Plan:
 
-- Clean temporary patch comments and address the known normal/strict Clippy warnings, then audit command-construction risks.
+- Specify and implement or track restore dry-run, rescue snapshot, doctor JSON/CI, exit codes, and expanded destructive-operation safety docs.

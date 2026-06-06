@@ -3,12 +3,12 @@ use crate::config::{load_config, SortOrder};
 use crate::git_health::ensure_git_healthy_for_write;
 use crate::utils::{
     create_tag_message, find_snapshot, format_snapshot_line, get_snapshots,
-    load_metadata_for_snapshot, pin_metadata_blob, run_command, run_command_with_env,
+    load_metadata_for_snapshot, pin_metadata_blob, run_command_args, run_command_args_with_env,
 };
 use anyhow::{anyhow, Context, Result};
 use colored::*;
 use inquire::Select;
-use std::collections::HashMap; // Keep HashMap import
+use std::collections::HashMap;
 use std::io::{self, Write};
 
 fn sanitize_tag_name(label: &str) -> String {
@@ -105,27 +105,29 @@ pub fn execute(args: EditArgs) -> Result<()> {
 
     let new_tag_message =
         create_tag_message(new_description_trimmed, metadata_blob_hash.as_deref());
-    let tag_cmd = format!(
-        "git tag -a -f {} -F - {}",
-        new_tag_name, snapshot_to_edit.full_id
-    );
-
-    // --- START: CORRECTED TIMESTAMP LOGIC ---
-    // Explicitly declare the HashMap's type to match the function signature.
     let mut env_vars: HashMap<&str, &str> = HashMap::new();
 
     if !config.options.edit_updates_timestamp {
-        // Now, the compiler knows to coerce `&snapshot_to_edit.timestamp` (a &String)
-        // into a `&str`, which matches the HashMap's value type.
         env_vars.insert("GIT_COMMITTER_DATE", &snapshot_to_edit.timestamp);
     }
 
-    run_command_with_env(&tag_cmd, Some(&new_tag_message), &env_vars)?;
-    // --- END: CORRECTED TIMESTAMP LOGIC ---
+    run_command_args_with_env(
+        "git",
+        &[
+            "tag",
+            "-a",
+            "-f",
+            &new_tag_name,
+            "-F",
+            "-",
+            &snapshot_to_edit.full_id,
+        ],
+        Some(&new_tag_message),
+        &env_vars,
+    )?;
 
     if new_tag_name != snapshot_to_edit.tag {
-        // Use the simpler run_command here, as no special environment is needed.
-        run_command(&format!("git tag -d {}", snapshot_to_edit.tag), None)?;
+        run_command_args("git", &["tag", "-d", &snapshot_to_edit.tag], None)?;
     }
 
     println!(

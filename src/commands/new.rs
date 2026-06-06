@@ -4,7 +4,7 @@ use crate::git_health::{ensure_git_healthy_for_write, run_git};
 use crate::utils::{
     check_dirty, create_tag_message, gather_metadata, get_active_commit_full,
     get_snapshots_pointing_at, hash_metadata_blob, load_metadata_for_snapshot, pin_metadata_blob,
-    pin_snapshot_metadata, run_command,
+    pin_snapshot_metadata, run_command, run_command_args,
 };
 use anyhow::{anyhow, Context, Result};
 use colored::*;
@@ -78,13 +78,10 @@ pub fn execute(args: NewArgs) -> Result<()> {
         "\n{}",
         "[snap] Step 1/4: Scanning for metadata (hidden files, empty dirs)...".cyan()
     );
-    // --- START: CORRECTED LINE ---
-    // Reuse the metadata we already gathered.
     let metadata_blob_hash = hash_metadata_blob(&current_metadata)?;
     if let Some(hash) = metadata_blob_hash.as_deref() {
         pin_metadata_blob(hash)?;
     }
-    // --- END: CORRECTED LINE ---
 
     println!("{}", "[snap] Step 2/4: Staging all files...".cyan());
     run_command("git add -A", None)?;
@@ -92,10 +89,7 @@ pub fn execute(args: NewArgs) -> Result<()> {
     println!("{}", "[snap] Step 3/4: Creating the commit...".cyan());
     let commit_msg = format!("Snapshot: {}", tag_name);
     // Use --allow-empty to create a commit even if only metadata changed.
-    run_command(
-        &format!("git commit --allow-empty -m \"{}\"", commit_msg),
-        None,
-    )?;
+    run_command_args("git", &["commit", "--allow-empty", "-m", &commit_msg], None)?;
 
     let full_id = get_active_commit_full()?.context("Failed to get new commit ID")?;
 
@@ -104,8 +98,11 @@ pub fn execute(args: NewArgs) -> Result<()> {
         "[snap] Step 4/4: Creating the annotated snapshot tag...".cyan()
     );
     let tag_message = create_tag_message(&description, metadata_blob_hash.as_deref());
-    let tag_cmd = format!("git tag -a {} -F -", tag_name);
-    run_command(&tag_cmd, Some(&tag_message))?;
+    run_command_args(
+        "git",
+        &["tag", "-a", &tag_name, "-F", "-"],
+        Some(&tag_message),
+    )?;
 
     let short_id = &full_id[..7];
     println!(

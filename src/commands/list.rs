@@ -71,7 +71,6 @@ pub fn execute(args: ListArgs) -> Result<()> {
         return Ok(());
     }
 
-    // --- START: SNAPSHOT LIST LIMIT LOGIC ---
     let mut truncated = false;
 
     if let Some(limit) = numeric_limit {
@@ -80,9 +79,6 @@ pub fn execute(args: ListArgs) -> Result<()> {
             truncated = true;
         }
     }
-    // --- END: SNAPSHOT LIST LIMIT LOGIC ---
-
-    // --- START: DYNAMIC COLUMN WIDTH CALCULATION ---
 
     const HEADER_ID: &str = "ID";
     const HEADER_LABEL: &str = "Label";
@@ -97,7 +93,6 @@ pub fn execute(args: ListArgs) -> Result<()> {
     let show_ids = config.options.show_ids;
     let show_branch_column = matches!(branch_mode, BranchListMode::AllBranches);
 
-    // 1. Find the maximum length of the data in each column.
     let max_label_len = snapshots
         .iter()
         .map(|s| s.snapshot.tag.len())
@@ -115,8 +110,6 @@ pub fn execute(args: ListArgs) -> Result<()> {
         .max()
         .unwrap_or(0);
 
-    // 2. Determine the actual column width (the data width without padding).
-    // --- FIX: Apply dynamic sizing to the ID column as well. ---
     let id_w = if show_ids {
         max(HEADER_ID.len(), SHORT_ID_LEN)
     } else {
@@ -131,7 +124,6 @@ pub fn execute(args: ListArgs) -> Result<()> {
     let desc_w = max(HEADER_DESC.len(), max_desc_len).min(MAX_DESC_WIDTH);
     let time_w = max(HEADER_TIME.len(), FORMATTED_TIME_LEN);
 
-    // 3. Determine the printing width, which includes padding.
     let id_print_w = if show_ids { id_w + COL_PADDING } else { 0 };
     let label_print_w = label_w + COL_PADDING;
     let branch_print_w = if show_branch_column {
@@ -142,9 +134,6 @@ pub fn execute(args: ListArgs) -> Result<()> {
     let desc_print_w = desc_w + COL_PADDING;
     let time_print_w = time_w;
 
-    // --- END: DYNAMIC COLUMN WIDTH CALCULATION ---
-
-    // Build the header string using the new dynamic widths.
     let mut header = "  ".to_string();
     let mut separator = "  ".to_string();
 
@@ -218,7 +207,7 @@ pub fn execute(args: ListArgs) -> Result<()> {
         println!("{}", line);
     }
     if truncated {
-        println!("  {}", format!("...").dimmed());
+        println!("  {}", "...".dimmed());
     }
 
     println!();

@@ -1,5 +1,5 @@
 use crate::cli::DeleteArgs;
-use crate::config::{load_config, SortOrder}; // Import SortOrder
+use crate::config::{load_config, SortOrder};
 use crate::git_health::{
     collect_health_report, ensure_git_healthy_for_write, resolve_snapshot_commit, run_git,
     run_git_success,
@@ -27,16 +27,14 @@ pub fn execute(args: DeleteArgs) -> Result<()> {
         no_backup,
     } = args;
 
-    let mut snapshots = get_snapshots()?; // Make the list mutable
+    let mut snapshots = get_snapshots()?;
     if snapshots.is_empty() {
         return Err(anyhow!("No snapshots found to delete."));
     }
 
-    // --- START: NEW SORTING LOGIC ---
     if config.options.order_by == SortOrder::Label {
         snapshots.sort_by(|a, b| b.tag.cmp(&a.tag));
     }
-    // --- END: NEW SORTING LOGIC ---
 
     let selected_interactively = id_or_label.is_none();
     let snapshot_to_delete = match id_or_label {
@@ -44,7 +42,6 @@ pub fn execute(args: DeleteArgs) -> Result<()> {
             .cloned()
             .with_context(|| format!("Snapshot \"{}\" not found.", key)),
         None => {
-            // This list of choices will now be sorted according to the user's preference
             let choices: Vec<String> = snapshots
                 .iter()
                 .map(|s| format_snapshot_line(s, config.options.show_ids))

@@ -7,7 +7,7 @@ use std::collections::HashMap;
 use std::env;
 use std::io::{self, Write};
 
-use std::path::Path; // Corrected: Removed unused PathBuf
+use std::path::Path;
 use std::process::{Command, Stdio};
 use walkdir::{DirEntry, WalkDir};
 
@@ -223,19 +223,14 @@ pub fn gather_metadata() -> Result<SnapMetadata> {
             all_dirs.push(path.to_path_buf());
         }
 
-        // --- START OF COMPILER FIX ---
-        // Correctly handle the `walkdir::Error` type returned by `entry.metadata()`
         let metadata = match entry.metadata() {
             Ok(m) => m,
             Err(e) => {
-                // `e` is a `walkdir::Error`. Check if it's an IO error we can ignore.
                 if let Some(io_err) = e.io_error() {
                     if io_err.kind() == io::ErrorKind::NotFound {
-                        // This is a transient file that was deleted during the scan. It's safe to ignore.
                         continue;
                     }
                 }
-                // For any other kind of error, warn the user and skip this entry.
                 eprintln!(
                     "{} Could not read metadata for '{}': {}. Skipping.",
                     "[snap] Warning:".yellow(),
@@ -245,7 +240,6 @@ pub fn gather_metadata() -> Result<SnapMetadata> {
                 continue;
             }
         };
-        // --- END OF COMPILER FIX ---
 
         let relative_path = path
             .strip_prefix(&root)
@@ -302,11 +296,8 @@ pub fn metadata_ref_name(hash: &str) -> String {
 }
 
 pub fn pin_metadata_blob(hash: &str) -> Result<()> {
-    run_command(
-        &format!("git update-ref {} {}", metadata_ref_name(hash), hash),
-        None,
-    )
-    .with_context(|| format!("Failed to pin metadata blob '{}'", hash))?;
+    run_command_args("git", &["update-ref", &metadata_ref_name(hash), hash], None)
+        .with_context(|| format!("Failed to pin metadata blob '{}'", hash))?;
     Ok(())
 }
 
@@ -350,7 +341,7 @@ pub fn load_metadata_for_snapshot(snapshot: &Snapshot) -> Result<SnapMetadata> {
     };
 
     let json_content =
-        run_command(&format!("git cat-file blob {}", blob_hash), None).with_context(|| {
+        run_command_args("git", &["cat-file", "blob", &blob_hash], None).with_context(|| {
             format!(
                 "Snapshot \"{}\" references metadata blob '{}', but snap could not read it.\nThis usually happens after manual Git prune/GC removed an unpinned snap metadata blob.\nRun `snap doctor --repair` to repair safe cases.",
                 snapshot.tag, blob_hash
