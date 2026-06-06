@@ -21,9 +21,9 @@ Agents are encouraged to test deeply with disposable local projects and, when re
 
 ## Current State
 
-Sprint 10 has completed community feedback readiness. The repo now has a community feedback doc, GitHub About/topics are set, six starter/hardening issues are open, and feedback post drafts invite real critique without artificial engagement asks.
+Sprint 11 has completed the local OpenAI application package. The package is ready as a local evidence bundle, but it should not be submitted until the OSS-readiness commits are pushed to `origin/main`; no GitHub release exists yet.
 
-The next phase is Sprint 11: OpenAI Application Package.
+The next phase is a maintainer decision: push the local OSS-readiness branch and decide whether to create a current release before submission.
 
 ## Entries
 
@@ -878,8 +878,80 @@ Checkpoint:
 snap new oss-s10-community "sprint 10: community feedback readiness"
 ```
 
+### Sprint 11 - OpenAI Application Package
+
+Status: completed locally; closure blocked on maintainer publication/release decision
+Snapshot: `oss-s11-application`
+Description: OpenAI application package
+
+Completed:
+
+- Created `docs/architecture-audit/refactor-plans/sprint-11-openai-application-package.md`.
+- Linked the Sprint 11 plan from `docs/architecture-audit/refactor-plans/README.md`.
+- Added `doc/OPENAI_APPLICATION_PACKAGE.md` with:
+  - ready-to-paste role, qualification, API-credit usage, and project-summary answers;
+  - local evidence checklist;
+  - live GitHub evidence checklist;
+  - current validation summary;
+  - honest gap disclosure;
+  - unsupported-claim list;
+  - final pre-submission checklist.
+- Linked the application package from README.
+- Confirmed local `main` is ahead of `origin/main`; the application package warns not to submit until the local OSS-readiness commits are pushed.
+- Confirmed `gh workflow list --repo Glooring/snap` returns no workflows because the CI workflow is still local/unpushed.
+- Confirmed no GitHub releases exist yet.
+- Did not push `main` and did not create a GitHub release, because those are explicit maintainer decisions.
+
+Validation:
+
+| Command | Result |
+| --- | --- |
+| `git status --branch --short` | Passed; local `main` was ahead of `origin/main` by 17 commits before the Sprint 11 checkpoint |
+| `gh repo view Glooring/snap --json nameWithOwner,description,repositoryTopics,isPrivate,url` | Passed; verified public repo, updated description, and 11 topics |
+| `gh issue list --repo Glooring/snap --state open --limit 20 --json number,title,labels,url` | Passed; verified issues #1-#6 |
+| `gh release list --repo Glooring/snap --limit 5 --json tagName,name,isDraft,isPrerelease,publishedAt,isLatest` | Passed; returned `[]` |
+| `gh workflow list --repo Glooring/snap` | Passed with no output; live GitHub workflow is not present until the local CI commit is pushed |
+| `git diff --check` | Passed |
+| Application/release wording scan | Passed; unsupported terms appear in the application package as limitations or do-not-claim language |
+| Placeholder/patch-marker scan | Passed; matches are historical audit/plan references only |
+| `cargo fmt --check` | Passed |
+| `cargo clippy --all-targets --all-features` | Passed with no warnings |
+| `cargo clippy --all-targets --all-features -- -D warnings` | Passed |
+| `cargo test` | Passed, 107 integration tests |
+| `cargo build --release` | Passed |
+| `./target/release/snap --help` | Passed; source-built help shows the current command surface |
+| `./target/release/snap doctor` | Passed; repo healthy, 17 snapshot tags checked before the Sprint 11 checkpoint |
+
+Metrics after Sprint 11:
+
+| Area | Result |
+| --- | ---: |
+| `src/**/*.rs` files | 33 |
+| `tests/**/*.rs` files | 1 |
+| `doc/*.md` files | 21 |
+| `docs/**/*.md` tracked audit files | 17 |
+| `src` Rust LOC | 6,790 |
+| `tests` Rust LOC | 3,113 |
+| `doc` Markdown LOC | 6,053 |
+| `docs` audit Markdown LOC | 3,958 |
+
+Known remaining gaps after Sprint 11:
+
+- Local OSS-readiness commits are not pushed to `origin/main`; public GitHub README/docs/CI are stale until a maintainer approves pushing.
+- No current GitHub release exists.
+- Live GitHub CI workflow is not visible until the local `.github/workflows/ci.yml` commit is pushed.
+- External community feedback is not available yet beyond maintainer-created issues.
+- Checksum automation, alternate Linux binary naming, namespaced snapshot refs, and `cargo audit` remain follow-up work.
+
+Checkpoint:
+
+```bash
+snap new oss-s11-application "sprint 11: OpenAI application package"
+```
+
 ## Next Up
 
-Sprint 11 - OpenAI Application Package:
+Closure follow-up - Public push and release decision:
 
-- Prepare final application answers and closure evidence from the now-polished public repo.
+- Push local OSS-readiness commits only with maintainer approval.
+- Decide whether a current GitHub release is required before application submission.

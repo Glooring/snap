@@ -176,6 +176,7 @@ During this repository's OSS-readiness refactor, source behavior is validated wi
 - [Performance methodology](doc/PERFORMANCE.md)
 - [Cross-platform notes](doc/CROSS_PLATFORM.md)
 - [Community feedback readiness](doc/COMMUNITY_FEEDBACK.md)
+- [OpenAI application package](doc/OPENAI_APPLICATION_PACKAGE.md)
 
 Existing deeper technical notes:
 
