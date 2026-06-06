@@ -175,6 +175,7 @@ During this repository's OSS-readiness refactor, source behavior is validated wi
 - [Known limitations](doc/KNOWN_LIMITATIONS.md)
 - [Performance methodology](doc/PERFORMANCE.md)
 - [Cross-platform notes](doc/CROSS_PLATFORM.md)
+- [Community feedback readiness](doc/COMMUNITY_FEEDBACK.md)
 
 Existing deeper technical notes:
 

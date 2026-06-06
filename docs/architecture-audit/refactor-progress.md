@@ -21,9 +21,9 @@ Agents are encouraged to test deeply with disposable local projects and, when re
 
 ## Current State
 
-Sprint 9 has completed the cross-platform and performance proof sprint. The repo now has performance methodology docs, cross-platform support notes, optional benchmark scripts, targeted path/metadata edge-case tests, conservative CLI help language, and no tracked historical prompt dumps.
+Sprint 10 has completed community feedback readiness. The repo now has a community feedback doc, GitHub About/topics are set, six starter/hardening issues are open, and feedback post drafts invite real critique without artificial engagement asks.
 
-The next phase is Sprint 10: Community Feedback.
+The next phase is Sprint 11: OpenAI Application Package.
 
 ## Entries
 
@@ -792,8 +792,94 @@ Checkpoint:
 snap new oss-s9-platform "sprint 9: cross-platform and performance proof"
 ```
 
+### Sprint 10 - Community Feedback
+
+Status: completed
+Snapshot: `oss-s10-community`
+Description: Community feedback readiness
+
+Completed:
+
+- Created `docs/architecture-audit/refactor-plans/sprint-10-community-feedback.md`.
+- Linked the Sprint 10 plan from `docs/architecture-audit/refactor-plans/README.md`.
+- Added `doc/COMMUNITY_FEEDBACK.md` with:
+  - GitHub About description;
+  - recommended topics;
+  - good-first issue candidates;
+  - safety/hardening issue candidates;
+  - feedback post drafts;
+  - real feedback signals to seek and artificial signals to avoid.
+- Updated README public-doc links for community feedback readiness.
+- Updated the real GitHub `Glooring/snap` About description to:
+  - `Git-powered local checkpoint CLI for risky refactors, AI-agent edits, experiments, and beginner-friendly project history.`
+- Set GitHub topics:
+  - `ai-assisted-coding`
+  - `cli`
+  - `codex`
+  - `developer-tools`
+  - `git`
+  - `linux`
+  - `rust`
+  - `snapshot`
+  - `version-control`
+  - `windows`
+  - `wsl2`
+- Created good-first issues:
+  - <https://github.com/Glooring/snap/issues/1> - Document Windows and WSL2 benchmark results
+  - <https://github.com/Glooring/snap/issues/2> - Add a tiny demo fixture for beginner docs
+  - <https://github.com/Glooring/snap/issues/3> - Improve release checksum instructions
+- Created safety/release hardening issues:
+  - <https://github.com/Glooring/snap/issues/4> - Design namespaced snapshot refs migration
+  - <https://github.com/Glooring/snap/issues/5> - Automate release checksums
+  - <https://github.com/Glooring/snap/issues/6> - Audit snap-aware push/pull tag refspecs
+- Created no disposable GitHub sandbox repositories.
+
+Validation:
+
+| Command | Result |
+| --- | --- |
+| `gh auth status` | Passed; authenticated as `Glooring` |
+| `gh repo view Glooring/snap --json nameWithOwner,description,repositoryTopics,isPrivate,url` | Passed; verified public repo, updated description, and 11 topics |
+| `gh issue list --repo Glooring/snap --state open --limit 20 --json number,title,labels,url` | Passed; verified issues #1-#6 |
+| `git diff --check` | Passed |
+| `cargo fmt --check` | Passed |
+| `cargo clippy --all-targets --all-features` | Passed with no warnings |
+| `cargo clippy --all-targets --all-features -- -D warnings` | Passed |
+| `cargo test` | Passed, 107 integration tests |
+| `cargo build --release` | Passed |
+| `./target/release/snap --help` | Passed; source-built help shows the current command surface |
+| `./target/release/snap doctor` | Passed; repo healthy, 16 snapshot tags checked before the Sprint 10 checkpoint |
+| Community feedback/readiness scan | Passed; artificial engagement terms are framed as things to avoid |
+| `gh release list --repo Glooring/snap --limit 5 --json tagName,name,isDraft,isPrerelease,publishedAt,isLatest` | Passed; returned `[]`, so release creation remains a Sprint 11 input |
+
+Metrics after Sprint 10:
+
+| Area | Result |
+| --- | ---: |
+| `src/**/*.rs` files | 33 |
+| `tests/**/*.rs` files | 1 |
+| `doc/*.md` files | 20 |
+| `docs/**/*.md` tracked audit files | 16 |
+| `src` Rust LOC | 6,790 |
+| `tests` Rust LOC | 3,113 |
+| `doc` Markdown LOC | 5,911 |
+| `docs` audit Markdown LOC | 3,775 |
+
+Known remaining gaps after Sprint 10:
+
+- A current release still needs to exist and be referenced before closure.
+- OpenAI/Codex application answers need a final evidence-backed package.
+- Real feedback is now possible through issues, but external community responses are not yet available.
+- Checksum automation, alternate Linux binary naming, and namespaced snapshot refs remain normal issue-tracked follow-ups.
+
+Checkpoint:
+
+```bash
+snap new oss-s10-community "sprint 10: community feedback readiness"
+```
+
 ## Next Up
 
-Sprint 10 - Community Feedback:
+Sprint 11 - OpenAI Application Package:
 
-- Prepare public repo metadata/topics, good-first/safety issues, and feedback materials without artificial hype.
+- Prepare final application answers and closure evidence from the now-polished public repo.
