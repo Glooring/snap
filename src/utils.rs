@@ -13,6 +13,8 @@ use walkdir::{DirEntry, WalkDir};
 
 pub const METADATA_REF_KEY: &str = "Snap-Metadata-Ref";
 pub const METADATA_REF_NAMESPACE: &str = "refs/snap-metadata";
+pub const SNAPSHOT_MARKER_KEY: &str = "Snap-Snapshot";
+pub const SNAPSHOT_MARKER_VALUE: &str = "true";
 
 #[derive(Debug, Clone)]
 pub struct Snapshot {
@@ -32,7 +34,7 @@ pub struct SnapMetadata {
 }
 
 const SNAPSHOT_REF_FORMAT: &str =
-    "%(refname:short)%00%(*objectname)%00%(taggerdate:iso-strict)%00%(contents)%00";
+    "%(refname:short)%00%(*objectname)%00%(taggerdate:iso-strict)%00%(contents)%00%(*contents:subject)%00";
 
 pub fn run_command(cmd_str: &str, input: Option<&str>) -> Result<String> {
     run_command_with_env(cmd_str, input, &HashMap::new())
@@ -147,24 +149,33 @@ fn get_snapshots_from_for_each_ref(args: Vec<String>) -> Result<Vec<Snapshot>> {
 
 fn parse_snapshot_records(output: &str) -> Vec<Snapshot> {
     let metadata_key_with_colon = format!("{}:", METADATA_REF_KEY);
+    let marker_key_with_colon = format!("{}:", SNAPSHOT_MARKER_KEY);
     let fields: Vec<&str> = output.split('\0').collect();
     let mut snapshots = Vec::new();
     let mut index = 0;
 
-    while index + 3 < fields.len() {
+    while index + 4 < fields.len() {
         let tag = fields[index].trim_start_matches('\n').trim();
         let full_id = fields[index + 1].trim();
         let timestamp = fields[index + 2].trim();
         let raw_message = fields[index + 3].trim_end_matches('\n').to_string();
-        index += 4;
+        let commit_subject = fields[index + 4].trim();
+        index += 5;
 
         if tag.is_empty() || full_id.is_empty() {
             continue;
         }
 
+        if !is_snap_snapshot_tag(tag, &raw_message, Some(commit_subject)) {
+            continue;
+        }
+
         let description = raw_message
             .lines()
-            .take_while(|line| !line.starts_with(&metadata_key_with_colon))
+            .take_while(|line| {
+                !line.starts_with(&metadata_key_with_colon)
+                    && !line.starts_with(&marker_key_with_colon)
+            })
             .collect::<Vec<_>>()
             .join("\n")
             .trim()
@@ -303,20 +314,57 @@ pub fn pin_metadata_blob(hash: &str) -> Result<()> {
 
 pub fn create_tag_message(description: &str, blob_hash: Option<&str>) -> String {
     let desc = description.trim();
-    let Some(hash) = blob_hash else {
-        return desc.to_string();
-    };
-
-    let metadata_line = format!("{}: {}", METADATA_REF_KEY, hash);
-
+    let mut control_lines = vec![format!(
+        "{}: {}",
+        SNAPSHOT_MARKER_KEY, SNAPSHOT_MARKER_VALUE
+    )];
+    if let Some(hash) = blob_hash {
+        control_lines.push(format!("{}: {}", METADATA_REF_KEY, hash));
+    }
+    let controls = control_lines.join("\n");
     if desc.is_empty() {
-        metadata_line
+        controls
     } else {
-        format!("{}\n\n{}", desc, metadata_line)
+        format!("{}\n\n{}", desc, controls)
     }
 }
 
+pub fn is_snap_snapshot_tag(
+    tag: &str,
+    raw_tag_message: &str,
+    commit_subject: Option<&str>,
+) -> bool {
+    has_snapshot_marker(raw_tag_message)
+        || metadata_blob_hash_from_message(raw_tag_message).is_some()
+        || commit_subject
+            .and_then(legacy_snapshot_label_from_commit_subject)
+            .map(|label| label == tag)
+            .unwrap_or(false)
+}
+
+pub fn has_snapshot_marker(raw_tag_message: &str) -> bool {
+    let marker_line = format!("{}:", SNAPSHOT_MARKER_KEY);
+    raw_tag_message.lines().any(|line| {
+        let line = line.trim();
+        line.strip_prefix(&marker_line)
+            .map(|value| value.trim().eq_ignore_ascii_case(SNAPSHOT_MARKER_VALUE))
+            .unwrap_or(false)
+    })
+}
+
+fn legacy_snapshot_label_from_commit_subject(subject: &str) -> Option<&str> {
+    subject
+        .trim()
+        .strip_prefix("Snapshot:")
+        .map(str::trim)
+        .filter(|label| !label.is_empty())
+}
+
 pub fn get_blob_hash_from_message(raw_message: &str) -> Option<String> {
+    metadata_blob_hash_from_message(raw_message)
+}
+
+fn metadata_blob_hash_from_message(raw_message: &str) -> Option<String> {
     raw_message
         .lines()
         .find(|line| line.starts_with(METADATA_REF_KEY))

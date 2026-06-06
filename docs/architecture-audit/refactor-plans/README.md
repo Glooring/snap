@@ -19,3 +19,4 @@ Sprint plans are historical. The audit should remain the current source of truth
 - [Sprint 3 - CI On Windows And Linux](sprint-3-ci-windows-linux.md)
 - [Sprint 4 - Source Cleanup And Command Hardening Audit](sprint-4-source-cleanup-command-audit.md)
 - [Sprint 5 - Restore, Doctor, And Purge Safety Plan](sprint-5-restore-doctor-purge-safety.md)
+- [Sprint 6 - Snapshot Tags And Refs Decision](sprint-6-snapshot-tags-refs-decision.md)

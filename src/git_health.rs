@@ -1,5 +1,5 @@
 use crate::utils::{
-    create_tag_message, gather_metadata, get_snapshots, hash_metadata_blob,
+    create_tag_message, gather_metadata, get_snapshots, hash_metadata_blob, is_snap_snapshot_tag,
     metadata_blob_hash_for_snapshot, metadata_ref_name, pin_metadata_blob,
     run_command_args_with_env, SnapMetadata, Snapshot, METADATA_REF_NAMESPACE,
 };
@@ -496,7 +496,7 @@ fn collect_snapshot_checks() -> Result<(Vec<SnapshotCheck>, Option<String>)> {
             "for-each-ref",
             "refs/tags",
             "--sort=-taggerdate",
-            "--format=%(refname:short)%00%(objectname)%00%(objecttype)%00%(*objectname)%00%(*objecttype)%00%(taggerdate:iso-strict)%00",
+            "--format=%(refname:short)%00%(objectname)%00%(objecttype)%00%(*objectname)%00%(*objecttype)%00%(taggerdate:iso-strict)%00%(contents)%00%(*contents:subject)%00",
         ],
         None,
     )?;
@@ -506,23 +506,29 @@ fn collect_snapshot_checks() -> Result<(Vec<SnapshotCheck>, Option<String>)> {
     }
 
     let fields: Vec<_> = tags.stdout.split('\0').collect();
-    let tag_count = fields.len() / 6;
+    let tag_count = fields.len() / 8;
     if tag_count >= 100 {
         eprintln!("[snap] Checking {} snapshot tag(s)...", tag_count);
     }
 
     let mut snapshots = Vec::new();
     let mut index = 0;
-    while index + 5 < fields.len() {
+    while index + 7 < fields.len() {
         let tag = fields[index].trim_start_matches('\n').trim();
         let object_hash = fields[index + 1].trim();
         let object_type = fields[index + 2].trim();
         let peeled_hash = fields[index + 3].trim();
         let peeled_type = fields[index + 4].trim();
         let timestamp = fields[index + 5].trim();
-        index += 6;
+        let raw_message = fields[index + 6].trim_end_matches('\n');
+        let commit_subject = fields[index + 7].trim();
+        index += 8;
 
         if tag.is_empty() {
+            continue;
+        }
+
+        if !is_snap_snapshot_tag(tag, raw_message, Some(commit_subject)) {
             continue;
         }
 

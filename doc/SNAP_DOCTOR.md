@@ -15,7 +15,7 @@ snap doctor
 - empty Git object/ref files;
 - `git status`;
 - `HEAD` and current branch health;
-- snapshot tag validity;
+- Snap-compatible snapshot tag validity;
 - Snap metadata blobs referenced by snapshot tags;
 - metadata pin refs under `refs/snap-metadata/*`;
 - active versus historical metadata problems.
@@ -79,3 +79,5 @@ Run `snap doctor`:
 - when Snap reports Git health errors.
 
 For deeper manual repair guidance, see `doc/REPAIR_GIT_ERRORS.md` and `doc/GIT_HEALTH_STABILIZATION.md`.
+
+Doctor ignores ordinary release tags that are not marked as Snap snapshots, do not carry Snap metadata, and do not match the legacy Snap commit-subject pattern.

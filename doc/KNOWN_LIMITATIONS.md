@@ -14,7 +14,9 @@ Snap uses Git for storage and history. If Git is missing or the repository is co
 
 Snap snapshots are currently represented as Git tags. This keeps snapshots visible and portable, but it can confuse normal release tags with Snap snapshot tags.
 
-Until the tag/ref model is improved, avoid routine checkpoint labels that look like releases, such as `v1.2.3`.
+New Snap-created tags include `Snap-Snapshot: true`, and Snap snapshot views filter to marked tags, metadata-bearing tags, and legacy Snap-style tags. Ordinary release tags are no longer treated as Snap snapshots.
+
+Until a namespaced ref model is designed, avoid routine checkpoint labels that look like releases, such as `v1.2.3`.
 
 ## Linux Command Name Conflict
 
@@ -24,7 +26,7 @@ On many Linux systems, `snap` already means Canonical Snapcraft. Check your PATH
 
 The roadmap tracks:
 
-- moving snapshots away from ordinary Git tag names;
+- deciding whether to move snapshots away from ordinary Git tag names;
 - broader cross-platform destructive-operation tests;
 - packaging and command-name conflict decisions for Linux systems where `snap` already means Snapcraft.
 

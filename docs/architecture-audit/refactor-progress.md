@@ -21,9 +21,9 @@ Agents are encouraged to test deeply with disposable local projects and, when re
 
 ## Current State
 
-Sprint 5 has completed restore, doctor, and purge safety work. Restore dry-run and rescue snapshots are implemented, doctor JSON/CI modes are available, purge safety docs are current, and destructive behavior changes are covered by integration and local smoke tests.
+Sprint 6 has completed the marker-first snapshot tag decision. New source-built snapshots write `Snap-Snapshot: true`, snapshot discovery filters ordinary release tags, legacy Snap-created tags remain visible, and namespaced refs are deferred until a dedicated migration sprint.
 
-The next phase is Sprint 6: Snapshot Tags/Refs Decision.
+The next phase is Sprint 7: Codex/AI-Agent Workflow Docs.
 
 ## Entries
 
@@ -535,7 +535,6 @@ Source-built sandbox smoke test:
 
 Known remaining gaps after Sprint 5:
 
-- Snapshot/tag ambiguity remains for Sprint 6.
 - Codex/AI-agent workflow docs remain for Sprint 7.
 - Linux command-name conflict and packaging metadata remain for Sprint 8.
 - Historical prompt dumps still contain stale placeholders and old snippets; handle in a later docs cleanup if they remain public.
@@ -546,8 +545,63 @@ Checkpoint:
 snap new oss-s5-safety "sprint 5: restore doctor purge safety"
 ```
 
+### Sprint 6 - Snapshot Tags and Refs Decision
+
+Status: completed
+Snapshot: `oss-s6-snapshot-model`
+Description: Snapshot refs and tag model
+
+Completed:
+
+- Created `docs/architecture-audit/refactor-plans/sprint-6-snapshot-tags-refs-decision.md`.
+- Linked the Sprint 6 plan from `docs/architecture-audit/refactor-plans/README.md`.
+- Recorded the marker-first decision: new source-built Snap snapshot tags include `Snap-Snapshot: true`.
+- Kept existing storage on ordinary Git tags for compatibility; did not move snapshots to `refs/tags/snap/*` or `refs/snapshots/*`.
+- Added compatibility filtering so Snap treats tags as snapshots only when they are marked, carry `Snap-Metadata-Ref`, or match the legacy `Snapshot: <tag-label>` commit-subject pattern.
+- Updated `snap list`, `status`, `diff`, `restore`, `delete`, `edit`, `update`, metadata loading, and doctor snapshot scanning through shared discovery behavior.
+- Updated README, known limitations, and doctor docs to describe marker-first filtering and deferred namespace migration.
+- Added integration tests for marked new snapshots, ignored plain release tags, legacy unmarked Snap tags, ignored non-commit release tags, and many plain-tag doctor scanning.
+- Created no GitHub sandbox repositories because Sprint 6 did not touch remote or visibility behavior.
+
+Validation:
+
+| Command | Result |
+| --- | --- |
+| `git diff --check` | Passed |
+| `cargo fmt --check` | Passed |
+| `cargo clippy --all-targets --all-features` | Passed with no warnings |
+| `cargo clippy --all-targets --all-features -- -D warnings` | Passed |
+| `cargo test` | Passed, 105 integration tests |
+| `cargo build --release` | Passed |
+| `./target/release/snap --help` | Passed |
+| `./target/release/snap list` | Passed; legacy checkpoints remain visible |
+| `./target/release/snap doctor` | Passed; repo healthy, 12 snapshot tags checked |
+
+Source-built sandbox smoke test:
+
+- Created disposable repo: `/tmp/snap-agent-smoke-s6-CAPvOe`.
+- Used only `/home/glooring/projects/snap/target/release/snap` for product behavior.
+- Exercised `init`, `new`, tag-message inspection, plain release tag creation, legacy unmarked Snap-style tag creation, `list`, `doctor --json`, and `doctor --ci`.
+- Verified `s6-one` contained `Snap-Snapshot: true`, `snap list` showed `s6-one` and `legacy-one`, `snap list` did not show `release-1`, doctor JSON reported `"snapshot_count": 2`, and doctor CI passed.
+- Removed the sandbox after the test.
+- No external GitHub sandbox repositories were created.
+
+Known remaining gaps after Sprint 6:
+
+- Namespaced snapshot refs remain deferred; a future migration command/design should own `refs/tags/snap/*` or `refs/snapshots/*` if the project moves beyond marker-first tags.
+- Push/pull/sync still use the current all-tags behavior; remote refspec changes belong with a future namespace migration.
+- Codex/AI-agent workflow docs remain for Sprint 7.
+- Linux command-name conflict and packaging metadata remain for Sprint 8.
+- Historical prompt dumps still contain stale placeholders and old snippets; handle in a later docs cleanup if they remain public.
+
+Checkpoint:
+
+```bash
+snap new oss-s6-snapshot-model "sprint 6: snapshot refs and tag model"
+```
+
 ## Next Up
 
-Sprint 6 - Snapshot Tags/Refs Decision:
+Sprint 7 - Codex/AI-Agent Workflow Docs:
 
-- Decide whether Snap snapshots stay on ordinary `refs/tags` short term or move toward namespaced refs, and document/implement the migration path or issue.
+- Add focused Codex/AI-agent workflow docs and examples that build on the now-documented safety model, restore rescue behavior, doctor automation, and marker-first snapshot tags.

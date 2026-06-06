@@ -89,10 +89,11 @@ Snap stores data inside the project Git repository:
 - project files are stored as normal Git commits;
 - snapshot labels are annotated Git tags;
 - snapshot descriptions live in tag messages;
+- new snapshot tag messages include `Snap-Snapshot: true`;
 - empty-directory, hidden-file, and read-only metadata is serialized as Git blobs;
 - metadata blobs are pinned under `refs/snap-metadata/<hash>` so Git garbage collection keeps them reachable.
 
-This keeps the working directory clean and makes snapshots portable across Windows, Linux, and WSL2. It also means Snap snapshots are currently visible as Git tags. Until the tag model is improved, avoid using release-looking snapshot labels such as `v1.0` for routine checkpoints.
+This keeps the working directory clean and makes snapshots portable across Windows, Linux, and WSL2. It also means Snap snapshots are currently visible as Git tags. Snap filters snapshot views to marked tags, metadata-bearing tags, and legacy Snap-style tags, so ordinary release tags are not listed as Snap snapshots. Until a future namespace migration is designed, avoid using release-looking snapshot labels such as `v1.0` for routine checkpoints.
 
 ## Safety Model
 
@@ -108,13 +109,13 @@ Snap is designed around explicit local operations:
 - `snap delete` removes a snapshot tag only after confirmation.
 - `snap delete --purge` is the disk-reclaiming path. It pins remaining metadata, creates a targeted bundle backup by default, asks for stronger confirmation, and then runs Git cleanup.
 
-Remaining safety roadmap work includes the snapshot tag/ref model decision and broader packaging/name-conflict guidance.
+Remaining roadmap work includes a future namespaced snapshot-ref migration decision and broader packaging/name-conflict guidance.
 
 ## Known Limitations
 
 - Snap is local-first. It is not a cloud backup service.
 - Snap uses Git. If Git is missing or the repository is badly corrupted, run `snap doctor` first and follow the repair guidance.
-- Snapshot labels are currently Git tags, so normal release tags and Snap snapshot tags can be confused until the tag/ref model is improved.
+- Snapshot labels are currently Git tags. Snap now marks new snapshot tags and filters ordinary release tags out of snapshot views, but a future namespaced ref model is still undecided.
 - On many Linux systems, `snap` may already be Canonical Snapcraft. Check your PATH before installing this binary as `snap`.
 - Cross-platform CI and core OSS maintainer files are present; packaging and command-name conflict work remains planned.
 - Strict Clippy with `-D warnings` is expected to pass after the Sprint 4 cleanup.

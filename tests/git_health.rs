@@ -317,6 +317,18 @@ fn metadata_hash_for_tag_optional(dir: &Path, tag: &str) -> Option<String> {
         .map(ToString::to_string)
 }
 
+fn tag_message_for_tag(dir: &Path, tag: &str) -> String {
+    let ref_name = format!("refs/tags/{}", tag);
+    git(dir, &["for-each-ref", "--format=%(contents)", &ref_name])
+}
+
+fn create_legacy_snapshot_tag(dir: &Path, label: &str, file_name: &str, content: &str) {
+    fs::write(dir.join(file_name), content).expect("write legacy fixture");
+    git(dir, &["add", "-A"]);
+    git(dir, &["commit", "-m", &format!("Snapshot: {}", label)]);
+    git(dir, &["tag", "-a", label, "-m", "legacy snap snapshot"]);
+}
+
 fn write_snap_config(dir: &Path, track_metadata_only_changes: bool) {
     fs::write(
         dir.join(".snapconfig"),
@@ -453,6 +465,96 @@ fn new_pins_metadata_blob() {
     let hash = metadata_hash_for_tag(temp.path(), "v1");
     assert!(metadata_blob_exists(temp.path(), &hash));
     assert!(metadata_ref_exists(temp.path(), &hash));
+}
+
+#[test]
+fn new_marks_snapshot_tags_and_hides_marker_from_description() {
+    let temp = assert_fs::TempDir::new().expect("tempdir");
+    init_snap_repo(temp.path());
+    create_snapshot(temp.path(), "v1", "file.txt", "one");
+
+    let tag_message = tag_message_for_tag(temp.path(), "v1");
+    assert!(tag_message.contains("Snap-Snapshot: true"));
+
+    snap_cmd(temp.path())
+        .arg("list")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("v1"))
+        .stdout(predicate::str::contains("test snapshot"))
+        .stdout(predicate::str::contains("Snap-Snapshot").not());
+}
+
+#[test]
+fn plain_release_tags_are_not_snapshots() {
+    let temp = assert_fs::TempDir::new().expect("tempdir");
+    init_snap_repo(temp.path());
+    create_snapshot(temp.path(), "v1", "file.txt", "one");
+    git(
+        temp.path(),
+        &["tag", "-a", "release-1", "-m", "release tag"],
+    );
+
+    snap_cmd(temp.path())
+        .arg("list")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("v1"))
+        .stdout(predicate::str::contains("release-1").not());
+
+    let assert = snap_cmd(temp.path())
+        .args(["doctor", "--json"])
+        .assert()
+        .success();
+    let stdout = String::from_utf8(assert.get_output().stdout.clone()).expect("utf8 stdout");
+    let value: serde_json::Value = serde_json::from_str(&stdout).expect("doctor json");
+    assert_eq!(value["summary"]["snapshot_count"], 1);
+}
+
+#[test]
+fn legacy_unmarked_snap_tags_remain_visible() {
+    let temp = assert_fs::TempDir::new().expect("tempdir");
+    init_snap_repo(temp.path());
+    create_legacy_snapshot_tag(temp.path(), "legacy-one", "legacy.txt", "one");
+
+    let tag_message = tag_message_for_tag(temp.path(), "legacy-one");
+    assert!(!tag_message.contains("Snap-Snapshot: true"));
+
+    snap_cmd(temp.path())
+        .arg("list")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("legacy-one"))
+        .stdout(predicate::str::contains("legacy snap snapshot"));
+}
+
+#[test]
+fn doctor_ignores_plain_release_tag_that_points_to_blob() {
+    let temp = assert_fs::TempDir::new().expect("tempdir");
+    init_snap_repo(temp.path());
+    create_snapshot(temp.path(), "v1", "file.txt", "one");
+    fs::write(temp.path().join("release.txt"), "release").expect("release fixture");
+    let blob = git(temp.path(), &["hash-object", "-w", "release.txt"]);
+    git(
+        temp.path(),
+        &[
+            "tag",
+            "-a",
+            "release-blob",
+            "-m",
+            "release blob",
+            blob.trim(),
+        ],
+    );
+
+    snap_cmd(temp.path())
+        .arg("doctor")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains(
+            "Snapshot tags: 1 checked, 0 invalid",
+        ))
+        .stdout(predicate::str::contains("release-blob").not());
 }
 
 #[test]
@@ -858,7 +960,7 @@ fn doctor_detects_detached_head() {
 }
 
 #[test]
-fn doctor_handles_many_snapshot_tags_without_windows_command_line_overflow() {
+fn doctor_handles_many_plain_tags_without_windows_command_line_overflow() {
     let temp = assert_fs::TempDir::new().expect("tempdir");
     init_snap_repo(temp.path());
     create_snapshot(temp.path(), "v1", "file.txt", "one");
@@ -869,7 +971,7 @@ fn doctor_handles_many_snapshot_tags_without_windows_command_line_overflow() {
         .assert()
         .success()
         .stdout(predicate::str::contains(
-            "Snapshot tags: 951 checked, 0 invalid",
+            "Snapshot tags: 1 checked, 0 invalid",
         ));
 }
 
