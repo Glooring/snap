@@ -3,7 +3,7 @@
 Status: draft master plan  
 Target repo: `Glooring/snap`  
 Local path: `/home/glooring/projects/snap`  
-Prepared from: Synthedu refactor workflow, Snap OSS roadmap, and current repo baseline  
+Prepared from: copied local reference inputs, Snap OSS roadmap, and current repo baseline  
 Date: 2026-06-06
 
 ## Purpose
@@ -20,13 +20,15 @@ This document is the master plan. It should guide the next implementation sprint
 
 This plan merges four inputs.
 
-1. Synthedu refactor workflow:
-   - Source: `/home/glooring/projects/synthedu/docs/architecture-audit/refactor-workflow.md`
+1. Reusable refactor workflow:
+   - Local ignored copy: `docs/architecture-audit/reference-inputs/refactor-workflow.md`
+   - Original source: Synthedu architecture-audit workflow documentation.
    - Key loop: `plan -> scoped change -> full gates -> progress/audit update -> snap -> next up`
    - Lesson: small sprints with named Snap checkpoints made a long-running refactor reviewable and reversible.
 
 2. Snap OSS roadmap:
-   - Source: `/home/glooring/projects/synthedu/doc/ignore/ROADMAP_SNAP_CODEX_OSS.md`
+   - Local ignored copy: `docs/architecture-audit/reference-inputs/ROADMAP_SNAP_CODEX_OSS.md`
+   - Original source: private planning roadmap imported from the Synthedu workspace.
    - Key direction: improve positioning, OSS hygiene, CI, safety docs, code cleanup, tag model, Codex workflow, packaging, and community feedback.
 
 3. Current Snap repo baseline:
@@ -45,6 +47,8 @@ This plan merges four inputs.
    - OpenAI describes relevant signals as active maintenance, usage or ecosystem importance, issue triage, PR review, release management, and maintainer workflows.
 
 Before application submission, verify the official page again because program wording and criteria can change.
+
+The copied reference inputs are intentionally ignored by Git. This committed plan and the current audit must stay self-contained so the public Snap repo does not depend on private absolute paths from another project.
 
 ## Product Positioning
 
@@ -109,15 +113,16 @@ Do not continue sprints only to reduce LOC. Continue only when a sprint improves
 
 ## Recommended Snap Refactor Files
 
-Sprint 0 should create the operational documents inside the Snap repo:
+The operational documents for this refactor live under `docs/architecture-audit/`:
 
-- `doc/refactor-progress.md`: official sprint-by-sprint journal.
-- `doc/refactor-plans/`: historical plans for individual sprints.
-- `doc/OSS_READINESS_AUDIT.md`: current audit/status, risk register, metrics, and next recommendation.
+- `docs/architecture-audit/refactor-progress.md`: official sprint-by-sprint journal.
+- `docs/architecture-audit/refactor-plans/`: historical plans for individual sprints.
+- `docs/architecture-audit/agent-efficiency-platform-health-audit-2026-06-06.md`: current audit/status, risk register, metrics, and next recommendation.
+- `docs/architecture-audit/reference-inputs/`: local ignored copies of imported planning references.
 
 This master plan should remain at:
 
-- `doc/CODEX_OSS_REFACTOR_PLAN.md`
+- `docs/architecture-audit/CODEX_OSS_REFACTOR_PLAN.md`
 
 The plan is strategic. The progress log is operational. The audit is the current source of truth for status and risk.
 
@@ -216,7 +221,7 @@ The repo still needs OSS-readiness work:
 
 | Sprint | Title | Goal | Acceptance |
 | --- | --- | --- | --- |
-| 0 | Baseline audit and safety rails | Create Snap-native progress/audit docs, capture metrics, define checkpoint labels, and run baseline gates. | `doc/refactor-progress.md`, `doc/OSS_READINESS_AUDIT.md`, and `doc/refactor-plans/` exist; gates and warnings are recorded; first checkpoint is created. |
+| 0 | Baseline audit and safety rails | Create Snap-native progress/audit docs, capture metrics, define checkpoint labels, and run baseline gates. | `docs/architecture-audit/refactor-progress.md`, the current architecture audit, and `docs/architecture-audit/refactor-plans/` exist; gates and warnings are recorded; first checkpoint is created. |
 | 1 | README positioning and docs rewrite | Make the first 10 seconds of the repo explain Snap clearly. | README has strong headline, AI-agent workflow, beginner workflow, CLI-first rationale, "Why not Git", safety model, known limitations, and `snap doctor` prominence. |
 | 2 | OSS hygiene files | Make the repo look maintained and easy to contribute to. | Add `AGENTS.md`, `CONTRIBUTING.md`, `SECURITY.md`, `CHANGELOG.md`, `SUPPORT.md`, PR template, and issue templates. |
 | 3 | CI and release quality baseline | Prove the project can be maintained across platforms. | GitHub Actions runs `cargo fmt --check`, `cargo clippy`, and `cargo test` on Ubuntu and Windows; README shows CI status. |
@@ -235,9 +240,9 @@ The repo still needs OSS-readiness work:
 
 Create the working documents before making broad changes:
 
-- `doc/refactor-progress.md`
-- `doc/refactor-plans/README.md`
-- `doc/OSS_READINESS_AUDIT.md`
+- `docs/architecture-audit/refactor-progress.md`
+- `docs/architecture-audit/refactor-plans/README.md`
+- `docs/architecture-audit/agent-efficiency-platform-health-audit-2026-06-06.md`
 
 Record:
 
@@ -579,9 +584,9 @@ Do not continue the refactor only to polish endlessly. Once these criteria are m
 
 Start with Sprint 0:
 
-1. Create `doc/refactor-progress.md`.
-2. Create `doc/refactor-plans/README.md`.
-3. Create `doc/OSS_READINESS_AUDIT.md`.
+1. Update `docs/architecture-audit/refactor-progress.md`.
+2. Create `docs/architecture-audit/refactor-plans/README.md`.
+3. Update `docs/architecture-audit/agent-efficiency-platform-health-audit-2026-06-06.md`.
 4. Run baseline gates.
 5. Record exact warnings and risks.
 6. Create checkpoint:
