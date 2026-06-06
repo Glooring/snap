@@ -66,6 +66,6 @@ The OSS-readiness roadmap still tracks safety work that is larger than Sprint 5:
 
 - moving snapshots away from ordinary Git tag names;
 - broader cross-platform destructive-operation tests;
-- a packaging/name-conflict strategy for systems where `snap` already means Snapcraft.
+- checksum automation and any future alternate Linux binary-name decision.
 
 Run `snap doctor`, keep important work pushed or backed up, and avoid using Snap as your only backup strategy.

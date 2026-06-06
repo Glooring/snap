@@ -176,21 +176,24 @@ In WSL:
 ```bash
 cd /path/to/snap
 cargo build --release
-cp target/release/snap ~/.local/bin/snap
+mkdir -p ~/.local/bin
+cp target/release/snap ~/.local/bin/gitsnap
 ```
 
 Verify:
 
 ```bash
-which snap
-snap doctor
+command -v gitsnap
+gitsnap doctor
 ```
 
-If `which snap` points to a Windows path such as `/mnt/c/.../snap.exe`, WSL is still using the Windows binary. Prefer a native Linux binary such as:
+If `command -v snap` points to a Windows path such as `/mnt/c/.../snap.exe`, WSL is still using the Windows binary. Prefer a native Linux binary with a conflict-safe local name such as:
 
 ```text
-/home/<user>/.local/bin/snap
+/home/<user>/.local/bin/gitsnap
 ```
+
+See `doc/INSTALLATION.md` for the full Linux/WSL2 command-name conflict policy.
 
 ## Current limitations
 

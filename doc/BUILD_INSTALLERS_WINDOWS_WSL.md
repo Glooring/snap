@@ -1,6 +1,8 @@
 # Build and install Snap on Windows and WSL
 
-This document explains the release/build flow for the `snap` CLI after the Git-health stabilization changes.
+This document explains the maintainer release/build flow for the `snap` CLI after the Git-health stabilization changes.
+
+For user-facing install paths, checksum verification, and the Linux command-name conflict policy, see `doc/INSTALLATION.md`.
 
 For the complete list of newer Git/GitHub workflow commands added to `snap`, see
 `doc/FRIENDLY_GIT_WORKFLOW_IMPLEMENTED.md`.
@@ -14,6 +16,8 @@ There are two targets:
 - **WSL/Linux release artifacts**
   - `release-github/vX.Y.Z/snap-vX.Y.Z-linux-x86_64`
   - `release-github/vX.Y.Z/snap-vX.Y.Z-linux-x86_64.tar.gz`
+- **Checksums**
+  - `release-github/vX.Y.Z/SHA256SUMS.txt`
 
 ## 1. Automated GitHub release assets
 
@@ -35,13 +39,23 @@ bash ./scripts/release-linux.sh
 
 The scripts do not delete artifacts from the other platform. Re-running one script only overwrites that script's own files in the release folder.
 
-After both platform scripts have produced the five files, upload them to a draft GitHub Release with:
+After both platform scripts have produced the five binary/archive files, generate `SHA256SUMS.txt` in the release folder before publishing:
+
+```bash
+cd release-github/vX.Y.Z
+sha256sum snap-vX.Y.Z-* > SHA256SUMS.txt
+sha256sum -c SHA256SUMS.txt
+```
+
+On Windows PowerShell, use `Get-FileHash -Algorithm SHA256` if `sha256sum` is not available.
+
+Upload the release assets to a draft GitHub Release with:
 
 ```powershell
 snap release upload
 ```
 
-`snap release upload` reads the same Cargo version, expects all five artifacts in `release-github/vX.Y.Z`, infers the GitHub repository from `origin`, and creates a draft release by default. Use `--repo owner/repo` if `origin` is not a GitHub URL, `--publish` only when you want to publish immediately, and `--clobber` only for an intentional retry against an existing release.
+`snap release upload` reads the same Cargo version, expects the five platform artifacts in `release-github/vX.Y.Z`, infers the GitHub repository from `origin`, and creates a draft release by default. If checksum upload automation has not been added yet, attach `SHA256SUMS.txt` manually before publishing. Use `--repo owner/repo` if `origin` is not a GitHub URL, `--publish` only when you want to publish immediately, and `--clobber` only for an intentional retry against an existing release.
 
 To inspect the latest GitHub Releases from the same repository:
 
@@ -230,28 +244,34 @@ cargo test
 cargo build --release
 ```
 
-Install the Linux binary:
+Check whether `snap` is already Canonical Snapcraft:
 
 ```bash
-sudo cp target/release/snap /usr/local/bin/snap
-sudo chmod +x /usr/local/bin/snap
+command -v snap || true
+snap version 2>/dev/null || true
 ```
 
-Verify:
+If `snap` is already taken, install the same binary under a conflict-safe local name:
 
 ```bash
-which snap
+mkdir -p "$HOME/.local/bin"
+install -m 0755 target/release/snap "$HOME/.local/bin/gitsnap"
+command -v gitsnap
+gitsnap --version
+gitsnap doctor
+```
+
+If you intentionally want this project to be the `snap` command and no system package already depends on Canonical Snapcraft in your PATH, use a user-controlled PATH directory rather than overwriting package-manager-owned files:
+
+```bash
+mkdir -p "$HOME/.local/bin"
+install -m 0755 target/release/snap "$HOME/.local/bin/snap"
+command -v snap
 snap --version
 snap doctor
 ```
 
-Expected `which snap`:
-
-```text
-/usr/local/bin/snap
-```
-
-If it points to `/mnt/c/.../snap.exe`, WSL is still using the Windows binary. Put `/usr/local/bin` earlier in PATH or remove the Windows path entry from the WSL PATH.
+If `command -v snap` points to `/mnt/c/.../snap.exe`, WSL is still using the Windows binary. Prefer the native Linux binary through `gitsnap`, or put the intended WSL path earlier in PATH.
 
 ## 5. Optional Linux archive
 
@@ -336,10 +356,11 @@ wsl -d Ubuntu-22.04
 cd /mnt/d/Projects/snap
 cargo test
 cargo build --release
-sudo cp target/release/snap /usr/local/bin/snap
-which snap
-snap --version
-snap doctor
+mkdir -p "$HOME/.local/bin"
+install -m 0755 target/release/snap "$HOME/.local/bin/gitsnap"
+command -v gitsnap
+gitsnap --version
+gitsnap doctor
 ```
 
 ## 7. Notes from the latest build

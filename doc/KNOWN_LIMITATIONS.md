@@ -20,7 +20,11 @@ Until a namespaced ref model is designed, avoid routine checkpoint labels that l
 
 ## Linux Command Name Conflict
 
-On many Linux systems, `snap` already means Canonical Snapcraft. Check your PATH before installing this project as `snap`. The packaging/name-conflict strategy is still planned.
+On many Linux systems, `snap` already means Canonical Snapcraft. Check your PATH before installing this project as `snap`.
+
+The current strategy is documented in [Installation and release assets](INSTALLATION.md): keep the project and built binary named `Snap`/`snap` for now, but use a conflict-safe local filename such as `gitsnap` on Linux or WSL2 when Canonical Snapcraft already owns `snap`.
+
+A future packaging decision may add an official alternate Linux binary name. That would need a separate decision record and compatibility plan.
 
 ## Safety Work Still Planned
 
@@ -28,7 +32,7 @@ The roadmap tracks:
 
 - deciding whether to move snapshots away from ordinary Git tag names;
 - broader cross-platform destructive-operation tests;
-- packaging and command-name conflict decisions for Linux systems where `snap` already means Snapcraft.
+- automating release checksums and deciding whether to publish an official alternate Linux binary name.
 
 Restore dry-run, restore rescue snapshots, doctor JSON/CI modes, documented doctor exit behavior, stricter command-construction cleanup, Windows/Linux CI, and core OSS hygiene files are present after the Sprint 1-5 OSS-readiness work.
 

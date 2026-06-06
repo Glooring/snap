@@ -7,15 +7,15 @@
 | Repository | `Glooring/snap` |
 | Local path | `/home/glooring/projects/snap` |
 | Audit date | `2026-06-06` |
-| Last refreshed | `2026-06-07T01:27:18+03:00` during Sprint 7 |
+| Last refreshed | `2026-06-07T01:37:34+03:00` during Sprint 8 |
 | Branch inspected | `main` |
-| Commit inspected | `d0460ca72a057e4c29c8f9bb03e24f47684d4cc1` before Sprint 7 Codex docs edits |
+| Commit inspected | `f2fec2b17a4a314f6c9fe0c7af0b5f8acddce947` before Sprint 8 packaging docs edits |
 | Current audit path | `docs/architecture-audit/agent-efficiency-oss-readiness-audit-2026-06-06.md` |
 | Master plan | `docs/architecture-audit/CODEX_OSS_REFACTOR_PLAN.md` |
 | Progress log | `docs/architecture-audit/refactor-progress.md` |
 | Historical sprint plans | `docs/architecture-audit/refactor-plans/` |
 | Local ignored references | `docs/architecture-audit/reference-inputs/` |
-| Scope | Current OSS-readiness status after Sprint 7 Codex and AI-agent workflow docs. Runtime behavior was validated with source-built Snap only. |
+| Scope | Current OSS-readiness status after Sprint 8 packaging/install/name-conflict docs and metadata cleanup. Runtime behavior was validated with source-built Snap only. |
 
 ## 2. Executive Verdict
 
@@ -42,21 +42,21 @@ The refactor should therefore be an **OSS-readiness and maintainer-quality progr
 | Command / inspection | Result | Meaning |
 | --- | --- | --- |
 | `git rev-parse --abbrev-ref HEAD` | `main` | Current working branch. |
-| `git rev-parse HEAD` | `d0460ca72a057e4c29c8f9bb03e24f47684d4cc1` | Starting commit before Sprint 7 Codex docs edits. |
-| `git log --oneline -8` | `oss-s6-snapshot-model`, `oss-s5-safety`, `oss-s4-cleanup`, `oss-s3-ci`, `oss-s2-hygiene`, `oss-s1-readme`, `oss-s0-baseline`, `oss-sandbox-test-policy` | OSS-readiness planning has named Snap checkpoints. |
-| `git status --short` | Clean before Sprint 7 Codex docs edits | Repo was clean after the Sprint 6 checkpoint. |
+| `git rev-parse HEAD` | `f2fec2b17a4a314f6c9fe0c7af0b5f8acddce947` | Starting commit before Sprint 8 packaging docs edits. |
+| `git log --oneline -8` | `oss-s7-codex`, `oss-s6-snapshot-model`, `oss-s5-safety`, `oss-s4-cleanup`, `oss-s3-ci`, `oss-s2-hygiene`, `oss-s1-readme`, `oss-s0-baseline` | OSS-readiness planning has named Snap checkpoints. |
+| `git status --short` | Clean before Sprint 8 packaging docs edits | Repo was clean after the Sprint 7 checkpoint. |
 | `rustc --version` | `rustc 1.95.0 (59807616e 2026-04-14)` | Rust toolchain used for Sprint 0 validation. |
 | `cargo --version` | `cargo 1.95.0 (f2d3ce0bd 2026-03-21)` | Cargo toolchain used for Sprint 0 validation. |
 | `git diff --check` | Passed | Whitespace gate is clean. |
 | `cargo fmt --check` | Passed | Rust formatting is clean. |
-| `cargo clippy --all-targets --all-features` | Passed with no warnings in Sprint 6 | Sprint 7 was docs-only; no Rust changed. |
-| `cargo clippy --all-targets --all-features -- -D warnings` | Passed in Sprint 6 | Sprint 7 was docs-only; strict Clippy baseline remains expected. |
+| `cargo clippy --all-targets --all-features` | Passed with no warnings in Sprint 8 | Clippy remains clean after packaging metadata/docs changes. |
+| `cargo clippy --all-targets --all-features -- -D warnings` | Passed in Sprint 8 | Strict Clippy remains green. |
 | `cargo test` | Passed, 105 tests | Test suite is fast and substantial. |
 | `cargo build --release` | Passed | Release build works locally. |
 | `cargo run -- --help` | Passed | Source-built debug binary exposes the modern broad command surface. |
 | `cargo run -- doctor` | Passed | Source-built debug binary sees the repo as healthy. |
 | `./target/release/snap --help` | Passed | Source-built release binary exposes the modern broad command surface. |
-| `./target/release/snap doctor` | Passed | Current source-built release binary sees the repo as healthy with 13 snapshot tags checked; this is the correct behavior baseline for the project. |
+| `./target/release/snap doctor` | Passed | Current source-built release binary sees the repo as healthy with 14 snapshot tags checked; this is the correct behavior baseline for the project. |
 | Source-built sandbox smoke tests | Passed in Sprint 0 and Sprint 5 | Disposable local repos exercised baseline snapshot behavior plus restore dry-run/rescue, doctor JSON/CI, and purge backup behavior. |
 | README positioning | Sprint 1 completed | README now leads with Git-powered local checkpoints, AI-agent edits, risky refactors, beginner workflows, safety, limitations, and source command surface. |
 | Public docs | Sprint 1 completed | Added focused docs for AI-agent workflow, beginner workflow, why not Git, safety model, `snap doctor`, and known limitations. |
@@ -72,10 +72,11 @@ The refactor should therefore be an **OSS-readiness and maintainer-quality progr
 | Snapshot marker decision | Sprint 6 completed | New source-built snapshots include `Snap-Snapshot: true`; legacy Snap tags remain compatible. |
 | Release tag filtering | Sprint 6 completed | Snapshot discovery and doctor ignore ordinary release tags that are not Snap-compatible. |
 | Codex workflow docs | Sprint 7 completed | Added `doc/CODEX_WORKFLOW.md`, `doc/CODEX_TASKS.md`, refreshed AI-agent docs, README links, and AGENTS guidance. |
+| Packaging/install docs | Sprint 8 completed | Added `doc/INSTALLATION.md`, refreshed installer/build notes, documented checksums and Canonical Snapcraft conflict strategy, and cleaned packaging metadata. |
 | `cargo audit` | Not installed | Security audit is not available locally yet; add later if desired. |
 | Root OSS file inspection | 7 standard files found | Sprint 2 added the expected root hygiene files. |
 | `.github` inspection | 5 files found | Issue/PR templates and CI workflow exist. |
-| Temporary/placeholder scan | Open findings | `Packager.toml` and old prompt dumps still need a later public-doc cleanup decision. |
+| Temporary/placeholder scan | Open historical findings | Active packaging metadata/docs are clean; old prompt/performance docs still need a later public-doc cleanup decision. |
 | Command construction scan | Sprint 4 partially addressed | Obvious formatted Git commands are hardened; remaining dynamic boundaries are documented. |
 | Snapshot metadata scan | Marker-first model | Snapshot discovery still scans `refs/tags`, but filters to marked, metadata-bearing, or legacy Snap-style tags; metadata uses `Snap-Metadata-Ref` and `refs/snap-metadata`. |
 
@@ -100,15 +101,15 @@ cargo run -- doctor
 `cargo test` result:
 
 ```text
-96 passed; 0 failed; 0 ignored
+105 passed; 0 failed; 0 ignored
 ```
 
 `./target/release/snap doctor` result summary:
 
 ```text
 Git repository looks healthy.
-Snapshot tags: 10 checked, 0 invalid
-Snapshot metadata: 10 checked, 0 active invalid, 0 historical invalid, 0 unpinned
+Snapshot tags: 14 checked, 0 invalid
+Snapshot metadata: 14 checked, 0 active invalid, 0 historical invalid, 0 unpinned
 ```
 
 Sprint 0 also ran one disposable local smoke test using only the source-built release binary at `/home/glooring/projects/snap/target/release/snap`. The sandbox was `/tmp/snap-agent-smoke-s0-hwmvPg` and was removed after validation. It exercised `git init`, an initial commit, `snap init`, two `snap new` calls, `snap list`, `snap diff`, `snap doctor`, and `snap restore s0-first`. Restore verified that `app.txt` returned to `first` and `extra.txt` was removed.
@@ -347,6 +348,35 @@ Results:
 - targeted Codex/AI-agent docs scan passed and found expected safety terms plus the explicit warning against broad destructive `--yes` behavior.
 - No GitHub sandbox repositories were created because Sprint 7 was documentation-only.
 
+### 4.11 Sprint 8 Packaging/Name Conflict Validation
+
+Sprint 8 changed packaging metadata and public install/release docs. It ran:
+
+```bash
+git diff --check
+cargo fmt --check
+cargo clippy --all-targets --all-features
+cargo clippy --all-targets --all-features -- -D warnings
+cargo test
+cargo build --release
+./target/release/snap --help
+./target/release/snap doctor
+```
+
+Results:
+
+- `git diff --check` passed.
+- `cargo fmt --check` passed.
+- normal Clippy passed with no warnings.
+- strict Clippy passed with `-D warnings`.
+- `cargo test` passed, 105 integration tests.
+- `cargo build --release` passed.
+- source-built top-level help passed.
+- source-built release doctor reported a healthy repo with 14 snapshot tags and 14 metadata refs checked.
+- active packaging placeholder scan passed with no `com.yourname`, `Your Name`, `you@example`, `blazing fast`, stale planned-conflict wording, or dangerous `sudo cp target/release/snap` examples in active packaging docs.
+- packaging policy scan passed and found Canonical Snapcraft warnings, `command -v snap`, `gitsnap`, `SHA256SUMS.txt`, release asset names, Windows Program Files path, and WSL2 guidance.
+- No GitHub sandbox repositories were created because Sprint 8 did not touch remote or visibility behavior.
+
 ## 5. Repository Metrics Snapshot
 
 ### 5.1 File Counts
@@ -355,8 +385,8 @@ Results:
 | --- | ---: |
 | `src/**/*.rs` | 33 |
 | `tests/**/*.rs` | 1 |
-| `doc/*.md` | 16 after adding Codex workflow docs |
-| `docs/**/*.md` | 13 after adding the Sprint 7 plan |
+| `doc/*.md` | 17 after adding installation/release-assets docs |
+| `docs/**/*.md` | 14 after adding the Sprint 8 plan |
 | `.github` tracked files | 5 |
 | Standard OSS root files found | 7 |
 
@@ -376,8 +406,8 @@ Standard OSS root files checked:
 | --- | ---: |
 | `src` Rust | 6,786 after Sprint 6 marker/filtering changes |
 | `tests` Rust | 2,932 after Sprint 6 snapshot/tag tests |
-| `doc` Markdown/text | 5,419 after Sprint 7 Codex docs |
-| `docs` audit Markdown | 3,126 after Sprint 7 plan/progress/audit updates |
+| `doc` Markdown/text | 5,604 after Sprint 8 install/release docs |
+| `docs` audit Markdown | 3,241 after Sprint 8 plan/progress/audit updates |
 
 ### 5.3 Largest Operational Files
 
@@ -390,17 +420,17 @@ Standard OSS root files checked:
 | 5 | `src/commands/doctor.rs` | 565 | User-facing diagnosis/repair/automation UI; must stay read-only unless repair is explicit. |
 | 6 | `src/cli.rs` | 438 | Public command contract and help text. |
 | 7 | `src/utils.rs` | 459 | Snapshot discovery, marker filtering, metadata, and command helpers; central to tag/ref migration. |
-| 8 | `src/commands/delete.rs` | 380 | Destructive snapshot/purge workflow. |
-| 9 | `src/commands/list.rs` | 318 | Snapshot discovery/presentation, affected by future tag filtering. |
+| 8 | `src/commands/delete.rs` | 377 | Destructive snapshot/purge workflow. |
+| 9 | `src/commands/list.rs` | 307 | Snapshot discovery/presentation, affected by future tag filtering. |
 | 10 | `src/commands/remote.rs` | 304 | GitHub CLI and destructive remote operations. |
 | 11 | `src/github.rs` | 282 | GitHub CLI integration and release parsing. |
-| 12 | `src/commands/branch.rs` | 207 | Branch workflow wrapper. |
-| 13 | `src/commands/options.rs` | 170 | Global Snap options persistence. |
-| 14 | `src/commands/edit.rs` | 156 | Tag/message rewrite behavior. |
+| 12 | `src/commands/branch.rs` | 204 | Branch workflow wrapper. |
+| 13 | `src/commands/options.rs` | 160 | Global Snap options persistence. |
+| 14 | `src/commands/edit.rs` | 158 | Tag/message rewrite behavior. |
 | 15 | `src/commands/restore.rs` | 324 | Destructive restore workflow with dry-run/rescue behavior. |
-| 16 | `src/commands/new.rs` | 136 | Snapshot creation, labels, tags, metadata pinning. |
-| 17 | `src/commands/update.rs` | 133 | Snapshot amend/update and tag rewrite behavior. |
-| 18 | `src/commands/diff.rs` | 123 | Snapshot comparison, important for AI-agent workflow. |
+| 16 | `src/commands/update.rs` | 133 | Snapshot amend/update and tag rewrite behavior. |
+| 17 | `src/commands/new.rs` | 133 | Snapshot creation, labels, tags, metadata pinning. |
+| 18 | `src/commands/diff.rs` | 120 | Snapshot comparison, important for AI-agent workflow. |
 
 ## 6. Product And CLI Baseline
 
@@ -554,14 +584,22 @@ Existing packaging/release assets:
 - `wix/main.wxs`
 - `wix/License.rtf`
 - `README_INSTALLER.md`
+- `doc/INSTALLATION.md`
 - `doc/BUILD_INSTALLERS_WINDOWS_WSL.md`
 
-Open packaging issues:
+Sprint 8 packaging updates:
 
-- `Packager.toml` still uses placeholder identifier `com.yourname.snap`.
-- Cargo license is `MIT`, but no root `LICENSE`/`LICENSE.md` file was found.
-- Linux command-name conflict with Canonical `snap` is not yet handled as a clear install policy.
-- Release docs should explain checksums and artifact provenance.
+- `Packager.toml` now uses `io.github.glooring.snap` instead of the placeholder identifier.
+- Cargo package description now avoids the unmeasured `blazing fast` claim.
+- `doc/INSTALLATION.md` documents Windows, Linux, and WSL2 install paths.
+- Linux/WSL2 docs keep the project/binary name as `snap` while recommending a local conflict-safe filename such as `gitsnap` when Canonical Snapcraft already owns `snap`.
+- Release docs explain versioned artifact names and require SHA-256 checksums through `SHA256SUMS.txt`.
+- `README_INSTALLER.md` is now a compatibility pointer to current install/release docs.
+
+Remaining packaging issues:
+
+- Checksum generation/upload is documented but not automated in release scripts or `snap release upload`.
+- Any official alternate Linux binary name needs a separate decision record and compatibility plan.
 
 ## 9. OSS Readiness Gaps
 
@@ -626,13 +664,14 @@ Do not leave placeholder GitHub links in public docs before application.
 | CI missing | High | Addressed in Sprint 3 | `.github/workflows/ci.yml` runs Ubuntu/Windows fmt, normal Clippy, tests, release build, source-built help, and source-built doctor. | Monitor first GitHub run |
 | Strict Clippy fails | Medium | Addressed in Sprint 4 | `cargo clippy --all-targets --all-features -- -D warnings` now passes. | Monitor in CI |
 | Temporary patch comments remain | Medium | Addressed in Sprint 4 | Patch-marker comments removed from `Cargo.toml` and `src`. | Monitor for recurrence |
-| Placeholder packaging identifier | Medium | Open | `Packager.toml` has `com.yourname.snap`. | Sprint 8 |
+| Placeholder packaging identifier | Medium | Addressed in Sprint 8 | `Packager.toml` now uses `io.github.glooring.snap`. | Monitor for drift |
 | Public historical prompt noise | Medium | Open | `doc/prompt-2.txt` contains `your-username` and old snippets. | Later docs cleanup |
 | Snapshot tags can mix with release tags | High | Partially addressed in Sprint 6 | New Snap tags carry `Snap-Snapshot: true`, discovery filters ordinary release tags, and legacy Snap tags remain visible. Namespaced refs remain deferred. | Future namespace migration |
-| Linux command-name conflict | High | Open | Project/binary name `snap` conflicts with Canonical Snapcraft on many Linux systems. | Sprint 8 |
+| Linux command-name conflict | High | Documented in Sprint 8 | Project/binary name `snap` can conflict with Canonical Snapcraft; docs now require PATH checks and offer `gitsnap` as a local conflict-safe filename. | Future alternate-name decision |
 | Command construction needs hardening | High | Partially addressed in Sprint 4 | Obvious formatted Git commands converted to argv; remaining dynamic boundaries documented. | Follow-up as needed |
 | Safety docs are fragmented | High | Addressed in Sprint 5 | README, `doc/SAFETY_MODEL.md`, `doc/SNAP_DOCTOR.md`, and `doc/KNOWN_LIMITATIONS.md` now cover restore dry-run/rescue, doctor JSON/CI, exit behavior, purge backups, reachability refusal, and final health checks. | Monitor for drift |
-| Global checkpoint binary differs from source help | Medium | Open | `/usr/local/bin/snap --help` lacks newer commands while `target/release/snap --help` has them. This is intentional for now but must not affect product validation. | Sprint 8/release |
+| Global checkpoint binary differs from source help | Medium | Documented | `/usr/local/bin/snap` remains checkpoint-only during this refactor; install docs avoid replacing it and source-built validation remains required. | Monitor until release/install decision |
+| Checksum automation missing | Medium | Open | Docs require `SHA256SUMS.txt`, but release scripts/upload do not automate checksum creation/upload yet. | Release automation follow-up |
 | Security audit tooling absent | Low | Open | `cargo audit` not installed. | Later OSS hygiene |
 
 ## 11. Command Safety Findings
@@ -722,7 +761,7 @@ Until then, this repo should avoid release-looking checkpoint labels like `v7.3`
 
 ### 13.3 Target Agent Experience
 
-After Sprint 0-5, a new agent should quickly know:
+After Sprint 0-8, a new agent should quickly know:
 
 - Snap's product identity;
 - which commands are destructive;
@@ -746,9 +785,9 @@ After Sprint 0-5, a new agent should quickly know:
 ### 14.2 Weak Areas
 
 - Global checkpoint binary help does not match current source help; this is acceptable only if tests use source-built Snap.
-- Packaging metadata has placeholders.
+- Packaging metadata placeholders are cleaned, but checksum automation is still manual.
 - Snapshot tags still share ordinary Git tag namespace.
-- Linux command-name conflict remains unresolved.
+- Linux command-name conflict is documented, but the official binary is still named `snap`; any alternate Linux binary name remains a future decision.
 - Historical prompt dumps are still tracked and noisy.
 
 ## 15. Recommended Validation Contract
@@ -892,7 +931,7 @@ Reason: those look like release tags and reinforce the current snapshot/tag ambi
 | 5 | Restore/Doctor/Purge Safety Plan | Completed in Sprint 5: restore dry-run/rescue, doctor JSON/CI, documented exit behavior, purge safety docs, and local smoke coverage. |
 | 6 | Snapshot Tags/Refs Decision | Completed in Sprint 6: marker-first tag messages, compatibility filtering, release-tag exclusion, and deferred namespace migration decision. |
 | 7 | Codex/AI-Agent Workflow Docs | Completed in Sprint 7: Codex workflow docs, task recipes, README links/examples, AI-agent doc refresh, and AGENTS safety guidance. |
-| 8 | Packaging/Name Conflict | Makes installation honest and practical. |
+| 8 | Packaging/Name Conflict | Completed in Sprint 8: install/release docs, checksums plan, conflict-safe Linux/WSL guidance, and packaging metadata cleanup. |
 | 9 | Cross-Platform and Performance Proof | Replaces broad claims with evidence. |
 | 10 | Community Feedback | Produces real OSS signals without artificial hype. |
 | 11 | OpenAI Application Package | Submit only after claims are visible and verifiable. |
@@ -907,7 +946,7 @@ Close the OSS-readiness refactor when all are true:
 - CI runs on Windows and Linux.
 - `cargo fmt`, clippy, tests, release build, and doctor are green.
 - Strict Clippy is green.
-- Temporary patch comments are cleaned; placeholder packaging metadata remains for Sprint 8.
+- Temporary patch comments are cleaned; placeholder packaging metadata is cleaned.
 - Snapshot/tag ambiguity is mitigated by marker-first filtering or has a concrete namespace migration issue.
 - Linux name conflict is documented.
 - Packaging/release docs explain artifacts and checksums.
@@ -920,14 +959,14 @@ Do not continue refactoring only for aesthetics. Once these criteria are met, mo
 
 ## 19. Next Recommendation
 
-Proceed to Sprint 8: Packaging/Name Conflict.
+Proceed to Sprint 9: Cross-Platform and Performance Proof.
 
-Sprint 8 should:
+Sprint 9 should:
 
-- document install paths for Windows, Linux, and WSL2;
-- decide how public docs handle the Canonical Snapcraft `snap` command conflict;
-- document release asset names, verification, and checksum expectations;
-- clean or track placeholder packaging metadata such as `Packager.toml`;
-- avoid replacing the maintainer's global `/usr/local/bin/snap` during validation.
+- replace broad cross-platform/performance claims with measured methodology;
+- add or document benchmark scripts for representative snapshot, metadata, doctor, diff, and restore workflows;
+- add or plan tests for paths with spaces, Unicode paths, nested empty directories, and hidden/readonly metadata where the platform supports them;
+- document what is actually verified on Windows, Linux, and WSL2;
+- keep source-built Snap validation separate from the global checkpoint binary.
 
-After Sprint 8, move to Sprint 9: Cross-Platform and Performance Proof.
+After Sprint 9, move to Sprint 10: Community Feedback.

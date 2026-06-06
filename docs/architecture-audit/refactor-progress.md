@@ -21,9 +21,9 @@ Agents are encouraged to test deeply with disposable local projects and, when re
 
 ## Current State
 
-Sprint 7 has completed the Codex and AI-agent workflow documentation. The repo now has dedicated Codex workflow/task docs, README links/examples, refreshed AI-agent guidance, and AGENTS instructions that reflect current source-built validation and safety surfaces.
+Sprint 8 has completed the packaging, install, and Linux command-name conflict documentation. The repo now has a central installation/release-assets doc, refreshed Windows/WSL build notes, conflict-safe Linux/WSL guidance, checksum expectations, and cleaned packaging metadata.
 
-The next phase is Sprint 8: Packaging/Name Conflict.
+The next phase is Sprint 9: Cross-Platform and Performance Proof.
 
 ## Entries
 
@@ -642,8 +642,69 @@ Checkpoint:
 snap new oss-s7-codex "sprint 7: Codex and AI-agent workflow docs"
 ```
 
+### Sprint 8 - Packaging and Name Conflict
+
+Status: completed
+Snapshot: `oss-s8-packaging`
+Description: Packaging and name conflict docs
+
+Completed:
+
+- Created `docs/architecture-audit/refactor-plans/sprint-8-packaging-name-conflict.md`.
+- Linked the Sprint 8 plan from `docs/architecture-audit/refactor-plans/README.md`.
+- Added `doc/INSTALLATION.md` with release asset names, checksum expectations, Windows install paths, Linux install paths, WSL2 notes, and binary verification commands.
+- Updated README Installation/Public Docs links to point to the central install/release-assets doc.
+- Updated `doc/BUILD_INSTALLERS_WINDOWS_WSL.md` so maintainer release docs include `SHA256SUMS.txt` expectations and conflict-safe Linux/WSL install examples using `gitsnap`.
+- Updated `doc/KNOWN_LIMITATIONS.md`, `doc/SAFETY_MODEL.md`, and `doc/GIT_HEALTH_STABILIZATION.md` to reflect the documented Linux command-name conflict policy.
+- Replaced the placeholder `Packager.toml` identifier with `io.github.glooring.snap`.
+- Replaced Cargo's unmeasured `blazing fast` package description with a conservative local-checkpoint description.
+- Reduced `README_INSTALLER.md` to a compatibility pointer so stale installer scaffolding no longer carries placeholder metadata.
+- Kept the project and built binary named `Snap`/`snap`; `gitsnap` is documented only as a local conflict-safe filename workaround.
+- Created no GitHub sandbox repositories because Sprint 8 did not touch remote or visibility behavior.
+
+Validation:
+
+| Command | Result |
+| --- | --- |
+| `git diff --check` | Passed |
+| `cargo fmt --check` | Passed |
+| `cargo clippy --all-targets --all-features` | Passed with no warnings |
+| `cargo clippy --all-targets --all-features -- -D warnings` | Passed |
+| `cargo test` | Passed, 105 integration tests |
+| `cargo build --release` | Passed |
+| `./target/release/snap --help` | Passed |
+| `./target/release/snap doctor` | Passed; repo healthy, 14 snapshot tags checked |
+| Public packaging placeholder scan | Passed; no `com.yourname`, `Your Name`, `you@example`, `blazing fast`, stale planned-conflict wording, or dangerous `sudo cp target/release/snap` examples in the active packaging docs |
+| Packaging policy scan | Passed; README/install/build docs include Canonical Snapcraft warning, `command -v snap`, `gitsnap`, `SHA256SUMS.txt`, release asset names, Windows Program Files path, and WSL2 guidance |
+
+Metrics after Sprint 8 docs:
+
+| Area | Result |
+| --- | ---: |
+| `src/**/*.rs` files | 33 |
+| `tests/**/*.rs` files | 1 |
+| `doc/*.md` files | 17 |
+| `docs/**/*.md` tracked audit files | 14 |
+| `src` Rust LOC | 6,786 |
+| `tests` Rust LOC | 2,932 |
+| `doc` Markdown LOC | 5,604 |
+| `docs` audit Markdown LOC | 3,241 |
+
+Known remaining gaps after Sprint 8:
+
+- Checksum generation/upload is documented but not automated in release scripts or `snap release upload`.
+- The official Linux binary name remains `snap`; `gitsnap` is only a documented local workaround. Any official alternate Linux binary name needs a separate decision record.
+- Namespaced snapshot refs remain deferred; a future migration command/design should own `refs/tags/snap/*` or `refs/snapshots/*` if the project moves beyond marker-first tags.
+- Historical prompt/performance docs still contain old wording and placeholders; handle in a later docs cleanup if they remain public.
+
+Checkpoint:
+
+```bash
+snap new oss-s8-packaging "sprint 8: packaging and name conflict docs"
+```
+
 ## Next Up
 
-Sprint 8 - Packaging/Name Conflict:
+Sprint 9 - Cross-Platform and Performance Proof:
 
-- Document install paths, release asset naming, verification, checksums plan, WSL2 notes, and the Canonical Snapcraft command-name conflict.
+- Replace broad performance/cross-platform claims with methodology, scripts or issues, and path/metadata edge-case validation.

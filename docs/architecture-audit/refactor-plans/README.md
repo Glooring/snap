@@ -21,3 +21,4 @@ Sprint plans are historical. The audit should remain the current source of truth
 - [Sprint 5 - Restore, Doctor, And Purge Safety Plan](sprint-5-restore-doctor-purge-safety.md)
 - [Sprint 6 - Snapshot Tags And Refs Decision](sprint-6-snapshot-tags-refs-decision.md)
 - [Sprint 7 - Codex And AI-Agent Workflow Docs](sprint-7-codex-ai-agent-workflow-docs.md)
+- [Sprint 8 - Packaging And Name Conflict](sprint-8-packaging-name-conflict.md)

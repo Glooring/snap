@@ -110,7 +110,7 @@ Snap is designed around explicit local operations:
 - `snap delete` removes a snapshot tag only after confirmation.
 - `snap delete --purge` is the disk-reclaiming path. It pins remaining metadata, creates a targeted bundle backup by default, asks for stronger confirmation, and then runs Git cleanup.
 
-Remaining roadmap work includes a future namespaced snapshot-ref migration decision and broader packaging/name-conflict guidance.
+Remaining roadmap work includes a future namespaced snapshot-ref migration decision, checksum automation, and a possible alternate Linux binary-name decision.
 
 ## Known Limitations
 
@@ -118,7 +118,7 @@ Remaining roadmap work includes a future namespaced snapshot-ref migration decis
 - Snap uses Git. If Git is missing or the repository is badly corrupted, run `snap doctor` first and follow the repair guidance.
 - Snapshot labels are currently Git tags. Snap now marks new snapshot tags and filters ordinary release tags out of snapshot views, but a future namespaced ref model is still undecided.
 - On many Linux systems, `snap` may already be Canonical Snapcraft. Check your PATH before installing this binary as `snap`.
-- Cross-platform CI and core OSS maintainer files are present; packaging and command-name conflict work remains planned.
+- Cross-platform CI, core OSS maintainer files, and packaging/name-conflict docs are present; checksum automation and an alternate Linux binary-name decision remain planned.
 - Strict Clippy with `-D warnings` is expected to pass after the Sprint 4 cleanup.
 
 ## Why Not Just Git?
@@ -146,7 +146,7 @@ Snap is built for repeated developer workflows. A CLI works well in terminals, e
 
 ## Installation
 
-Release packaging is still being polished. For now, use the release assets when available or build from source.
+See [Installation and release assets](doc/INSTALLATION.md) for Windows, Linux, and WSL2 install paths, release asset names, checksum expectations, and binary verification.
 
 On Linux, be careful with the command name. `snap` may already refer to Canonical Snapcraft. Do not overwrite an existing system command unless you intentionally choose that installation strategy.
 
@@ -164,6 +164,7 @@ During this repository's OSS-readiness refactor, source behavior is validated wi
 
 ## Public Docs
 
+- [Installation and release assets](doc/INSTALLATION.md)
 - [AI-agent workflow](doc/AI_AGENT_WORKFLOW.md)
 - [Codex workflow](doc/CODEX_WORKFLOW.md)
 - [Codex task recipes](doc/CODEX_TASKS.md)

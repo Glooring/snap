@@ -2,7 +2,7 @@
 
 name           = "snap"
 product-name   = "Snap"
-identifier     = "com.yourname.snap"
+identifier     = "io.github.glooring.snap"
 version        = "7.2.0"
 out-dir        = "dist"
 
