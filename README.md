@@ -29,12 +29,13 @@ snap new before-agent-edit "before AI-assisted refactor"
 # Run your editor, Codex, migration, or experiment.
 snap new after-agent-edit "after AI-assisted refactor"
 snap diff before-agent-edit after-agent-edit
-snap doctor
+snap doctor --json --ci
 ```
 
 If the result is wrong, restore the earlier checkpoint:
 
 ```bash
+snap restore before-agent-edit --dry-run
 snap restore before-agent-edit
 ```
 
@@ -164,6 +165,8 @@ During this repository's OSS-readiness refactor, source behavior is validated wi
 ## Public Docs
 
 - [AI-agent workflow](doc/AI_AGENT_WORKFLOW.md)
+- [Codex workflow](doc/CODEX_WORKFLOW.md)
+- [Codex task recipes](doc/CODEX_TASKS.md)
 - [Beginner workflow](doc/BEGINNER_WORKFLOW.md)
 - [Why not just Git](doc/WHY_NOT_GIT.md)
 - [Safety model](doc/SAFETY_MODEL.md)

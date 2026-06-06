@@ -33,6 +33,7 @@ For runtime/code changes, run:
 git diff --check
 cargo fmt --check
 cargo clippy --all-targets --all-features
+cargo clippy --all-targets --all-features -- -D warnings
 cargo test
 cargo build --release
 ./target/release/snap doctor
@@ -40,14 +41,17 @@ cargo build --release
 
 Strict Clippy with `-D warnings` is expected to pass after Sprint 4 cleanup.
 
+For Codex or other AI-agent workflows, see `doc/CODEX_WORKFLOW.md` and `doc/CODEX_TASKS.md`.
+
 ## Sensitive Areas
 
 Be extra careful in:
 
 - restore and delete flows;
+- restore dry-run and rescue snapshot behavior;
 - purge behavior and bundle backups;
-- `snap doctor` and Git health repair;
-- snapshot metadata and `refs/snap-metadata/*`;
+- `snap doctor`, `doctor --json --ci`, and Git health repair;
+- snapshot markers, snapshot metadata, and `refs/snap-metadata/*`;
 - command execution boundaries;
 - branch, remote, GitHub, and release helpers;
 - path handling across Windows, Linux, and WSL2.

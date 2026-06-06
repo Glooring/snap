@@ -21,9 +21,9 @@ Agents are encouraged to test deeply with disposable local projects and, when re
 
 ## Current State
 
-Sprint 6 has completed the marker-first snapshot tag decision. New source-built snapshots write `Snap-Snapshot: true`, snapshot discovery filters ordinary release tags, legacy Snap-created tags remain visible, and namespaced refs are deferred until a dedicated migration sprint.
+Sprint 7 has completed the Codex and AI-agent workflow documentation. The repo now has dedicated Codex workflow/task docs, README links/examples, refreshed AI-agent guidance, and AGENTS instructions that reflect current source-built validation and safety surfaces.
 
-The next phase is Sprint 7: Codex/AI-Agent Workflow Docs.
+The next phase is Sprint 8: Packaging/Name Conflict.
 
 ## Entries
 
@@ -590,7 +590,6 @@ Known remaining gaps after Sprint 6:
 
 - Namespaced snapshot refs remain deferred; a future migration command/design should own `refs/tags/snap/*` or `refs/snapshots/*` if the project moves beyond marker-first tags.
 - Push/pull/sync still use the current all-tags behavior; remote refspec changes belong with a future namespace migration.
-- Codex/AI-agent workflow docs remain for Sprint 7.
 - Linux command-name conflict and packaging metadata remain for Sprint 8.
 - Historical prompt dumps still contain stale placeholders and old snippets; handle in a later docs cleanup if they remain public.
 
@@ -600,8 +599,51 @@ Checkpoint:
 snap new oss-s6-snapshot-model "sprint 6: snapshot refs and tag model"
 ```
 
+### Sprint 7 - Codex and AI-Agent Workflow Docs
+
+Status: completed
+Snapshot: `oss-s7-codex`
+Description: Codex and AI-agent workflow docs
+
+Completed:
+
+- Created `docs/architecture-audit/refactor-plans/sprint-7-codex-ai-agent-workflow-docs.md`.
+- Linked the Sprint 7 plan from `docs/architecture-audit/refactor-plans/README.md`.
+- Added `doc/CODEX_WORKFLOW.md` with before/during/after Codex workflow, rollback, and non-interactive boundaries.
+- Added `doc/CODEX_TASKS.md` with recipes for refactors, dependency upgrades, formatter sweeps, generated-code migrations, release prep, docs-only edits, and CI/doctor triage.
+- Refreshed `doc/AI_AGENT_WORKFLOW.md` to point to the Codex docs and use `doctor --json --ci`, `restore --dry-run`, rescue snapshots, and `Snap-Snapshot: true` tag markers.
+- Updated README quick workflow and public-doc links for Codex.
+- Updated `AGENTS.md` with strict Clippy in the standard checks and current AI-agent/safety-sensitive surfaces.
+- Documented that read-only automation is encouraged, while destructive prompt bypasses such as broad `--yes` behavior need a separate safeguarded design.
+- Created no GitHub sandbox repositories because Sprint 7 was documentation-only and did not touch remote or visibility behavior.
+
+Validation:
+
+| Command | Result |
+| --- | --- |
+| `git diff --check` | Passed |
+| `cargo fmt --check` | Passed |
+| `cargo test` | Passed, 105 integration tests |
+| `cargo build --release` | Passed |
+| `./target/release/snap --help` | Passed |
+| `./target/release/snap doctor` | Passed; repo healthy, 13 snapshot tags checked |
+| Codex/AI-agent docs scan | Passed; expected `Codex`, `AI-agent`, `doctor --json --ci`, `restore --dry-run`, `Snap-Snapshot`, and `--yes` safeguard text found |
+
+Known remaining gaps after Sprint 7:
+
+- Linux command-name conflict and packaging metadata remain for Sprint 8.
+- Namespaced snapshot refs remain deferred; a future migration command/design should own `refs/tags/snap/*` or `refs/snapshots/*` if the project moves beyond marker-first tags.
+- Push/pull/sync still use the current all-tags behavior; remote refspec changes belong with a future namespace migration.
+- Historical prompt dumps still contain stale placeholders and old snippets; handle in a later docs cleanup if they remain public.
+
+Checkpoint:
+
+```bash
+snap new oss-s7-codex "sprint 7: Codex and AI-agent workflow docs"
+```
+
 ## Next Up
 
-Sprint 7 - Codex/AI-Agent Workflow Docs:
+Sprint 8 - Packaging/Name Conflict:
 
-- Add focused Codex/AI-agent workflow docs and examples that build on the now-documented safety model, restore rescue behavior, doctor automation, and marker-first snapshot tags.
+- Document install paths, release asset naming, verification, checksums plan, WSL2 notes, and the Canonical Snapcraft command-name conflict.

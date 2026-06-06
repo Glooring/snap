@@ -20,3 +20,4 @@ Sprint plans are historical. The audit should remain the current source of truth
 - [Sprint 4 - Source Cleanup And Command Hardening Audit](sprint-4-source-cleanup-command-audit.md)
 - [Sprint 5 - Restore, Doctor, And Purge Safety Plan](sprint-5-restore-doctor-purge-safety.md)
 - [Sprint 6 - Snapshot Tags And Refs Decision](sprint-6-snapshot-tags-refs-decision.md)
+- [Sprint 7 - Codex And AI-Agent Workflow Docs](sprint-7-codex-ai-agent-workflow-docs.md)
