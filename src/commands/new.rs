@@ -1,0 +1,136 @@
+use crate::cli::NewArgs;
+use crate::config::load_config;
+use crate::git_health::{ensure_git_healthy_for_write, run_git};
+use crate::utils::{
+    check_dirty, create_tag_message, gather_metadata, get_active_commit_full,
+    get_snapshots_pointing_at, hash_metadata_blob, load_metadata_for_snapshot, pin_metadata_blob,
+    pin_snapshot_metadata, run_command,
+};
+use anyhow::{anyhow, Context, Result};
+use colored::*;
+
+fn sanitize_tag_name(label: &str) -> String {
+    label
+        .trim()
+        .replace(char::is_whitespace, "-")
+        .chars()
+        .filter(|c| c.is_alphanumeric() || *c == '-' || *c == '.' || *c == '_')
+        .collect()
+}
+
+pub fn execute(args: NewArgs) -> Result<()> {
+    ensure_git_healthy_for_write(true)?;
+
+    let tag_name = sanitize_tag_name(&args.label);
+    let include_metadata_only = args.include_metadata_only;
+    let config = load_config()?;
+
+    let tag_ref = format!("refs/tags/{}", tag_name);
+    if run_git(&["show-ref", "--verify", "--quiet", &tag_ref], None)?.success {
+        return Err(anyhow!(
+            "A snapshot with the label \"{}\" already exists.",
+            tag_name
+        ));
+    }
+
+    // Check for both file changes (Git) and metadata changes.
+    let git_has_changes = check_dirty()?;
+    let current_metadata = gather_metadata()?;
+
+    let old_metadata = match get_active_commit_full()? {
+        Some(id) => {
+            let active_snapshot = get_snapshots_pointing_at(&id)?.into_iter().next();
+            if let Some(active_snapshot) = active_snapshot.as_ref() {
+                let metadata = load_metadata_for_snapshot(active_snapshot)?;
+                pin_snapshot_metadata(active_snapshot)?;
+                metadata
+            } else {
+                // Not a snapshot commit, so treat as having no prior metadata for comparison.
+                Default::default()
+            }
+        }
+        None => {
+            // No commits yet, so no prior metadata.
+            Default::default()
+        }
+    };
+
+    let metadata_has_changes = current_metadata != old_metadata;
+    let should_track_metadata_only =
+        config.options.track_metadata_only_changes || include_metadata_only;
+
+    // Only exit if there are absolutely no changes.
+    if !git_has_changes && !metadata_has_changes {
+        println!(
+            "{}",
+            "[snap] No changes to commit. Working tree is clean.\n".yellow()
+        );
+        return Ok(());
+    }
+    if !git_has_changes && metadata_has_changes && !should_track_metadata_only {
+        print_metadata_only_ignored("snapshots");
+        return Ok(());
+    }
+
+    let description = args.description.join(" ");
+
+    println!(
+        "\n{}",
+        "[snap] Step 1/4: Scanning for metadata (hidden files, empty dirs)...".cyan()
+    );
+    // --- START: CORRECTED LINE ---
+    // Reuse the metadata we already gathered.
+    let metadata_blob_hash = hash_metadata_blob(&current_metadata)?;
+    if let Some(hash) = metadata_blob_hash.as_deref() {
+        pin_metadata_blob(hash)?;
+    }
+    // --- END: CORRECTED LINE ---
+
+    println!("{}", "[snap] Step 2/4: Staging all files...".cyan());
+    run_command("git add -A", None)?;
+
+    println!("{}", "[snap] Step 3/4: Creating the commit...".cyan());
+    let commit_msg = format!("Snapshot: {}", tag_name);
+    // Use --allow-empty to create a commit even if only metadata changed.
+    run_command(
+        &format!("git commit --allow-empty -m \"{}\"", commit_msg),
+        None,
+    )?;
+
+    let full_id = get_active_commit_full()?.context("Failed to get new commit ID")?;
+
+    println!(
+        "{}",
+        "[snap] Step 4/4: Creating the annotated snapshot tag...".cyan()
+    );
+    let tag_message = create_tag_message(&description, metadata_blob_hash.as_deref());
+    let tag_cmd = format!("git tag -a {} -F -", tag_name);
+    run_command(&tag_cmd, Some(&tag_message))?;
+
+    let short_id = &full_id[..7];
+    println!(
+        "\n{} [{}] {}",
+        "[snap] New snapshot created:".green(),
+        short_id,
+        tag_name.bold()
+    );
+
+    println!();
+    Ok(())
+}
+
+fn print_metadata_only_ignored(noun: &str) {
+    println!(
+        "{}",
+        "[snap] Only snap metadata changed (empty dirs / hidden / read-only attributes).".yellow()
+    );
+    println!(
+        "{}",
+        format!(
+            "[snap] Metadata-only {} are disabled. Enable `trackMetadataOnlyChanges` in `snap options` or rerun with `--include-metadata-only`.",
+            noun
+        )
+        .yellow()
+    );
+    println!();
+}

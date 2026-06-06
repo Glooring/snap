@@ -1,0 +1,7 @@
+/target
+/release-github/
+/snap-linux-x86_64
+/snap-setup*.exe
+*.msi
+*.pdb
+/.local-docs/

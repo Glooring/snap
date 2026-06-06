@@ -1,0 +1,10 @@
+# Packager.toml
+
+name           = "snap"
+product-name   = "Snap"
+identifier     = "com.yourname.snap"
+version        = "7.2.0"
+out-dir        = "dist"
+
+before-packaging-command = "cargo build --release"
+targets = ["nsis", "msi"]
