@@ -17,6 +17,8 @@ Because this is the `snap` repo itself, checkpoint labels should avoid release-l
 
 The global `snap` command is intentionally older and is used only as the stable checkpoint tool for this refactor. Do not replace or reinstall it from this repo during the refactor. Validate current source behavior with `cargo run -- ...`, `./target/debug/snap ...`, or `./target/release/snap ...`.
 
+Agents are encouraged to test deeply with disposable local projects and, when relevant, disposable GitHub sandbox repositories. Use source-built Snap for those tests, use unique names, clean up external repos, and record commands/results in the sprint notes.
+
 ## Current State
 
 The refactor has not started runtime/code changes yet.
@@ -167,6 +169,32 @@ Checkpoint:
 
 ```bash
 snap new oss-global-binary-rule "Clarify global Snap checkpoint rule"
+```
+
+### Foundation - Sandbox Test Policy
+
+Status: completed
+Snapshot: `oss-sandbox-test-policy`
+Description: Document sandbox testing permission
+
+Completed:
+
+- Documented that agents should test as much real Snap behavior as practical.
+- Allowed disposable local projects and Git repositories for source-built Snap smoke/integration testing.
+- Allowed disposable GitHub sandbox repositories for remote/visibility tests when relevant, with unique names, cleanup, and progress-log documentation.
+- Repeated that global `snap` remains checkpoint-only and source-built Snap is required for product behavior tests.
+
+Validation:
+
+| Command | Result |
+| --- | --- |
+| `git diff --check` | Passed |
+| Sandbox/GitHub/source-built wording scan | Passed |
+
+Checkpoint:
+
+```bash
+snap new oss-sandbox-test-policy "Document sandbox testing permission"
 ```
 
 ## Next Up

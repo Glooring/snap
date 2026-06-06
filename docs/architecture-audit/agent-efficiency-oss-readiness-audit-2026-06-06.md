@@ -576,6 +576,44 @@ rg -n "format!\\(\"git |format!\\(\"gh |run_command\\(&format!" src
 rg -n "refs/tags|refs/snap|Snap-Snapshot|Snap-Metadata" src doc README.md docs/architecture-audit
 ```
 
+### 15.4 Sandbox And External Test Policy
+
+This project should be tested aggressively with source-built Snap. Agents are allowed and encouraged to create disposable projects, Git repositories, and filesystem scenarios to prove behavior.
+
+Preferred local sandbox pattern:
+
+```bash
+tmpdir="$(mktemp -d /tmp/snap-agent-smoke-XXXXXX)"
+cd "$tmpdir"
+git init
+/home/glooring/projects/snap/target/release/snap init
+```
+
+Good local smoke targets:
+
+- normal snapshot lifecycle: `init`, `new`, `list`, `diff`, `restore`;
+- dirty worktree restore warnings;
+- `delete` and `delete --purge` safety behavior;
+- `edit` and `update` tag/metadata behavior;
+- `doctor` healthy and intentionally damaged repositories;
+- branch workflows;
+- paths with spaces;
+- Unicode paths;
+- nested empty directories;
+- hidden/readonly metadata where the platform supports it;
+- release command dry/preflight behavior where dependencies are available.
+
+GitHub sandbox testing is allowed when relevant:
+
+- create disposable repositories only;
+- use a unique prefix such as `snap-agent-smoke-YYYYMMDD-HHMMSS`;
+- default to private repos unless testing public/private visibility;
+- never use an existing user repo as a test target;
+- delete the repo after testing, or record the leftover repo and reason in `refactor-progress.md`;
+- keep commands and results in the sprint notes.
+
+This permission is meant to make the project highly testable and agent-friendly. It does not change the global-binary rule: use global `snap` only for refactor checkpoints, and use source-built Snap for product tests.
+
 ## 16. Snapshot Discipline
 
 Use the stable globally installed Snap binary for refactor checkpoints only. The user intentionally keeps this global binary older for now.

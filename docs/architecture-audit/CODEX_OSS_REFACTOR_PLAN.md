@@ -228,6 +228,29 @@ git status --short
 
 If `snap` resolves to the Canonical Snapcraft command on a Linux machine, stop and document the conflict instead of installing over it.
 
+## Sandbox Testing Policy
+
+Agents should test as much real behavior as is practical. Snap is a CLI that mutates Git repositories and filesystem state, so isolated sandbox projects are the preferred validation method.
+
+Allowed and encouraged during the refactor:
+
+- create disposable local projects under `/tmp`, `target/`, or another clearly temporary workspace;
+- initialize Git repositories and run source-built Snap against them;
+- create files, nested folders, empty folders, paths with spaces, Unicode paths, hidden/readonly metadata, branches, tags, and dirty worktrees;
+- run source-built commands such as `./target/release/snap init`, `new`, `list`, `diff`, `restore`, `delete`, `edit`, `update`, `doctor`, `status`, `save`, `branch`, `remote`, and `release` where relevant;
+- use `cargo run -- ...`, `./target/debug/snap ...`, or `./target/release/snap ...` for product behavior tests.
+
+GitHub sandbox testing is allowed when a sprint touches remote/GitHub behavior:
+
+- use only disposable repositories in the user's GitHub account;
+- use a unique prefix such as `snap-agent-smoke-YYYYMMDD-HHMMSS`;
+- default to private repositories unless the specific test is about public/private visibility;
+- never target existing user repositories;
+- clean up created GitHub repositories at the end of the test, or document any leftover repo clearly in the progress log;
+- record the exact commands and outcomes in the sprint notes.
+
+Do not use the global `snap` binary for these behavior tests. The global binary is only the checkpoint tool for the refactor workflow.
+
 ## Baseline Findings
 
 The project is stronger than a simple personal script:
