@@ -1,6 +1,6 @@
 # Sprint 12 - Public CI And Contributor Triage
 
-Status: planned at sprint start
+Status: completed
 Sprint checkpoint: `oss-s12-public-ci`
 Date: 2026-06-07
 Scope: public CI repair after first push, contributor PR triage, and publication evidence refresh
@@ -65,6 +65,17 @@ gh pr view 8 --repo Glooring/snap --json number,title,state,mergeable,reviewDeci
 - Ask PR #7 to rebase on the updated `main` and avoid release-looking labels such as `v1`/`v2`.
 - Treat PR #8 as duplicate or superseded by #7 unless the author wants to take another good-first issue.
 - Do not merge either PR until the public CI baseline is green and the PR is adapted to the current docs.
+
+## Result
+
+- Public `main` now contains the OSS-readiness docs and CI workflow.
+- Local Snap checkpoint tags were not pushed to GitHub.
+- The first public CI run found a real Ubuntu workflow bug; the fix is pushed.
+- Public CI run `27084650490` passed on Ubuntu and Windows for commit `0b3918b035c68bb2a4db0767780d625233ae1e0f`.
+- PR #7 remains open as the active beginner-demo direction and needs a rebase/update.
+- PR #8 was closed as a duplicate of #7.
+- Issue #2 now records maintainer guidance for contributors.
+- No GitHub release was created in this sprint.
 
 ## Acceptance Criteria
 

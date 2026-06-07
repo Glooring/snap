@@ -21,9 +21,9 @@ Agents are encouraged to test deeply with disposable local projects and, when re
 
 ## Current State
 
-Sprint 11 has completed the local OpenAI application package. A closure follow-up also refreshed the package so it avoids hard-coded local SHAs/checkpoint labels and includes a maintainer publication runbook. The package should not be submitted until the OSS-readiness commits are pushed to `origin/main`; no GitHub release exists yet.
+Sprint 12 has pushed the OSS-readiness work to public `origin/main`, fixed the first live CI workflow failure, and triaged the first contributor activity. Public CI is green on Ubuntu and Windows at commit `0b3918b035c68bb2a4db0767780d625233ae1e0f`; local Snap checkpoint tags were not pushed. PR #7 is the active beginner-demo direction and needs a rebase/update, PR #8 was closed as a duplicate, and issue #2 now has maintainer guidance. No GitHub release exists yet.
 
-The next phase is a maintainer decision: push the local OSS-readiness branch and decide whether to create a current release before submission.
+The next phase is a maintainer decision: submit the application without claiming a release, or create a current GitHub release first with reviewed notes, artifacts, and checksums. Normal contributor work can continue through issue-driven maintenance.
 
 ## Entries
 
@@ -992,9 +992,87 @@ Checkpoint:
 snap new oss-s11-publish-runbook "sprint 11 follow-up: publication decision runbook"
 ```
 
+### Sprint 12 - Public CI and Contributor Triage
+
+Status: completed
+Snapshot: `oss-s12-public-ci`
+Description: Public CI repair and contributor triage
+
+Completed:
+
+- Created `docs/architecture-audit/refactor-plans/sprint-12-public-ci-contributor-triage.md`.
+- Linked the Sprint 12 plan from `docs/architecture-audit/refactor-plans/README.md`.
+- Pushed local `main` to `origin/main` without pushing local Snap checkpoint tags.
+- Verified public GitHub now shows the OSS-readiness README/docs/templates/workflow content.
+- Observed the first public CI run fail on Ubuntu during Rust component installation while Windows passed.
+- Fixed `.github/workflows/ci.yml` by using repeated `--component` flags for `rustfmt` and `clippy`.
+- Pushed the CI fix to `origin/main` without pushing local Snap checkpoint tags.
+- Verified public CI run `27084650490` passed on both Ubuntu and Windows for commit `0b3918b035c68bb2a4db0767780d625233ae1e0f`.
+- Triaged the first external contributor activity:
+  - PR #7 remains open as the preferred beginner-demo direction and was asked to rebase/update against current `main`.
+  - PR #8 was closed as a duplicate of #7.
+  - Issue #2 received maintainer guidance that #7 is the active direction and #1/#3 remain good first issues.
+- Recorded the early public signal conservatively: 4 forks and external issue/PR activity are positive interest, not broad adoption.
+- Confirmed no disposable GitHub sandbox repositories were created.
+- Confirmed no GitHub release was created.
+
+Validation:
+
+| Command / check | Result |
+| --- | --- |
+| `git push origin main` | Passed; pushed local OSS-readiness commits and then the CI fix to public `main` |
+| `git ls-remote --tags origin \| rg 'oss-'` | Passed; returned no matches, so local Snap checkpoint tags were not pushed |
+| First public CI run `27084524436` | Failed on Ubuntu at `Install Rust stable`; Windows passed |
+| First failure cause | `rustup toolchain install stable --profile minimal --component rustfmt clippy` parsed `clippy` as a toolchain on Ubuntu |
+| `git diff --check` | Passed before the CI-fix commit |
+| CI workflow scan | Passed; workflow now uses `--component rustfmt --component clippy` |
+| `cargo fmt --check` | Passed |
+| `cargo clippy --all-targets --all-features` | Passed with no warnings |
+| `cargo clippy --all-targets --all-features -- -D warnings` | Passed |
+| `cargo test` | Passed, 107 integration tests |
+| `cargo build --release` | Passed |
+| `./target/release/snap --help` | Passed; source-built help shows the current command surface |
+| `./target/release/snap doctor` | Passed; repo healthy, 19 snapshot tags checked before the Sprint 12 checkpoint |
+| Public CI run `27084650490` | Passed; Ubuntu job completed in 1m25s and Windows job completed in 3m32s |
+| Public CI annotation | Non-blocking GitHub Actions warning about Node.js 20 deprecation for `actions/cache@v4` and `actions/checkout@v4` |
+| `gh workflow list --repo Glooring/snap` | Passed; `CI` is active |
+| `gh release list --repo Glooring/snap --limit 5 --json tagName,name,isDraft,isPrerelease,publishedAt,isLatest` | Passed; returned `[]` |
+| `gh repo view Glooring/snap --json ...` | Passed; repo is public with 4 forks, 0 stars, 0 watchers, expected description, and 11 topics |
+| PR #7 triage | Passed; maintainer comment posted asking for rebase/update and non-release-looking demo labels |
+| PR #8 triage | Passed; closed as duplicate of #7 with contributor guidance |
+| Issue #2 triage | Passed; maintainer guidance posted and #1/#3 suggested for additional contributors |
+
+Metrics after Sprint 12:
+
+| Area | Result |
+| --- | ---: |
+| `src/**/*.rs` files | 33 |
+| `tests/**/*.rs` files | 1 |
+| `doc/*.md` files | 21 |
+| `docs/**/*.md` tracked audit files | 18 |
+| `src` Rust LOC | 6,790 |
+| `tests` Rust LOC | 3,113 |
+| `doc` Markdown LOC | 6,103 |
+| `docs` audit Markdown LOC | 4,389 |
+
+Known remaining gaps after Sprint 12:
+
+- No current GitHub release exists.
+- PR #7 needs a contributor rebase/update before review or merge.
+- PR checks are not yet meaningful for the stale PR branches until contributors update their branches.
+- Release checksum automation is still documented but not implemented.
+- Namespaced snapshot refs, alternate Linux binary naming, Windows/WSL2 benchmark evidence, Node 20 GitHub Actions deprecation, and `cargo audit` remain issue/backlog work.
+
+Checkpoint:
+
+```bash
+snap new oss-s12-public-ci "sprint 12: public CI and contributor triage"
+```
+
 ## Next Up
 
-Closure follow-up - Public push and release decision:
+Release/application decision and PR #7 follow-up:
 
-- Push local OSS-readiness commits only with maintainer approval.
-- Decide whether a current GitHub release is required before application submission.
+- Decide whether to submit the application without a release or create a current GitHub release first.
+- If creating a release, review notes, build artifacts, generate checksums, and publish deliberately.
+- Review PR #7 after the contributor rebases/adapts it to the current README/docs.

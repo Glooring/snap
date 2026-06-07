@@ -7,15 +7,15 @@
 | Repository | `Glooring/snap` |
 | Local path | `/home/glooring/projects/snap` |
 | Audit date | `2026-06-06` |
-| Last refreshed | `2026-06-07T02:16:38+03:00` during closure follow-up validation |
+| Last refreshed | `2026-06-07T09:19:09+03:00` during Sprint 12 public CI and contributor triage |
 | Branch inspected | `main` |
-| Commit inspected | `9b7cf3e061b7808b32eaa0a3b578580fde7aa6a5` before the Sprint 11 checkpoint |
+| Commit inspected | `0b3918b035c68bb2a4db0767780d625233ae1e0f` for the verified public CI run before the Sprint 12 documentation checkpoint |
 | Current audit path | `docs/architecture-audit/agent-efficiency-oss-readiness-audit-2026-06-06.md` |
 | Master plan | `docs/architecture-audit/CODEX_OSS_REFACTOR_PLAN.md` |
 | Progress log | `docs/architecture-audit/refactor-progress.md` |
 | Historical sprint plans | `docs/architecture-audit/refactor-plans/` |
 | Local ignored references | `docs/architecture-audit/reference-inputs/` |
-| Scope | Current OSS-readiness status after Sprint 11 local OpenAI application package preparation and closure publication-runbook refinement. Runtime behavior was validated with source-built Snap only. Public GitHub visibility remains blocked until local commits are pushed. |
+| Scope | Current OSS-readiness status after Sprint 12 public push, CI repair, and contributor triage. Runtime behavior was validated with source-built Snap only. Public GitHub visibility and CI are now live; release creation remains undecided. |
 
 ## 2. Executive Verdict
 
@@ -25,7 +25,7 @@ The strongest public positioning is:
 
 > Snap is a native Rust CLI for Git-powered local checkpoints before risky refactors, AI-agent edits, experiments, and release work. It also helps beginners stop copying entire project folders manually.
 
-The main risk is public readiness. A new user, contributor, or Codex/OpenAI reviewer should understand the value and safety model from the repository itself, without reading old prompt dumps or relying on private context.
+The main remaining risk is release/submission readiness, not basic repository readability. A new user, contributor, or Codex/OpenAI reviewer can now inspect the public README, docs, templates, CI workflow, issues, and application package. The project still needs a deliberate release decision and should not overstate early forks or first PRs as broad adoption.
 
 The refactor should therefore be an **OSS-readiness and maintainer-quality program**, not an open-ended code cleanup. The highest-value sequence is:
 
@@ -42,28 +42,28 @@ The refactor should therefore be an **OSS-readiness and maintainer-quality progr
 | Command / inspection | Result | Meaning |
 | --- | --- | --- |
 | `git rev-parse --abbrev-ref HEAD` | `main` | Current working branch. |
-| `git rev-parse HEAD` | `9b7cf3e061b7808b32eaa0a3b578580fde7aa6a5` | Starting commit before Sprint 11 application-package edits. |
-| `git log --oneline -8` | `oss-s10-community`, `oss-s9-platform`, `oss-s8-packaging`, `oss-s7-codex`, `oss-s6-snapshot-model`, `oss-s5-safety`, `oss-s4-cleanup`, `oss-s3-ci` | OSS-readiness planning has named Snap checkpoints. |
-| `git status --short` | Clean before Sprint 11 edits | Repo was clean after the Sprint 10 checkpoint. |
-| `git status --branch --short` | `main...origin/main [ahead 17]` before Sprint 11 checkpoint | Local OSS-readiness commits are not pushed to GitHub yet. |
+| `git rev-parse HEAD` | `0b3918b035c68bb2a4db0767780d625233ae1e0f` | Public CI-fix commit before the Sprint 12 documentation checkpoint. |
+| `git log --oneline -8` | includes `Fix public CI Rust component install` and `oss-s11-publish-runbook` | OSS-readiness work is now on public `main`; local Snap checkpoint tags remain local. |
+| `git status --short` | Clean before Sprint 12 documentation refresh | Repo was clean after the CI-fix push and public triage. |
+| `git status --branch --short` | `main...origin/main` before Sprint 12 documentation refresh | Local `main` was synced with public `origin/main` after the CI-fix push. |
 | `rustc --version` | `rustc 1.95.0 (59807616e 2026-04-14)` | Rust toolchain used for Sprint 0 validation. |
 | `cargo --version` | `cargo 1.95.0 (f2d3ce0bd 2026-03-21)` | Cargo toolchain used for Sprint 0 validation. |
 | `git diff --check` | Passed | Whitespace gate is clean. |
 | `cargo fmt --check` | Passed | Rust formatting is clean. |
-| `cargo clippy --all-targets --all-features` | Passed with no warnings in Sprint 9 | Clippy remains clean after docs, CLI help, and test changes. |
-| `cargo clippy --all-targets --all-features -- -D warnings` | Passed in Sprint 9 | Strict Clippy remains green. |
+| `cargo clippy --all-targets --all-features` | Passed with no warnings in Sprint 12 | Clippy remains clean after docs, CLI help, workflow, and test changes. |
+| `cargo clippy --all-targets --all-features -- -D warnings` | Passed in Sprint 12 | Strict Clippy remains green. |
 | `cargo test` | Passed, 107 tests | Test suite is fast and has new path/metadata edge-case coverage. |
 | `cargo build --release` | Passed | Release build works locally. |
 | `cargo run -- --help` | Passed | Source-built debug binary exposes the modern broad command surface. |
 | `cargo run -- doctor` | Passed | Source-built debug binary sees the repo as healthy. |
 | `./target/release/snap --help` | Passed | Source-built release binary exposes the modern broad command surface. |
-| `./target/release/snap doctor` | Passed | Current source-built release binary sees the repo as healthy with 17 snapshot tags checked before the Sprint 11 checkpoint; this is the correct behavior baseline for the project. |
+| `./target/release/snap doctor` | Passed | Current source-built release binary sees the repo as healthy with 19 snapshot tags checked before the Sprint 12 checkpoint; this is the correct behavior baseline for the project. |
 | Source-built sandbox smoke tests | Passed in Sprint 0 and Sprint 5 | Disposable local repos exercised baseline snapshot behavior plus restore dry-run/rescue, doctor JSON/CI, and purge backup behavior. |
 | README positioning | Sprint 1 completed | README now leads with Git-powered local checkpoints, AI-agent edits, risky refactors, beginner workflows, safety, limitations, and source command surface. |
 | Public docs | Sprint 1 completed | Added focused docs for AI-agent workflow, beginner workflow, why not Git, safety model, `snap doctor`, and known limitations. |
 | OSS root files | Sprint 2 completed | Added `AGENTS.md`, `CONTRIBUTING.md`, `SECURITY.md`, `CHANGELOG.md`, `SUPPORT.md`, `CODE_OF_CONDUCT.md`, and `LICENSE`. |
 | GitHub templates | Sprint 2 completed | Added PR template plus bug, feature, and doctor issue templates. |
-| CI workflow | Sprint 3 completed | Added `.github/workflows/ci.yml` for Ubuntu and Windows fmt, Clippy, tests, release build, source-built help, and source-built doctor. |
+| CI workflow | Sprint 12 verified live | `.github/workflows/ci.yml` is public and CI run `27084650490` passed on Ubuntu and Windows. |
 | Strict Clippy cleanup | Sprint 4 completed | Fixed the 9 baseline warnings and made `-D warnings` pass. |
 | Temporary patch comments | Sprint 4 completed | Removed patch-marker comments from `Cargo.toml` and `src`. |
 | Command construction audit | Sprint 4 completed | Added `docs/architecture-audit/command-construction-audit-2026-06-07.md` and converted obvious formatted Git commands to argv calls. |
@@ -75,10 +75,10 @@ The refactor should therefore be an **OSS-readiness and maintainer-quality progr
 | Codex workflow docs | Sprint 7 completed | Added `doc/CODEX_WORKFLOW.md`, `doc/CODEX_TASKS.md`, refreshed AI-agent docs, README links, and AGENTS guidance. |
 | Packaging/install docs | Sprint 8 completed | Added `doc/INSTALLATION.md`, refreshed installer/build notes, documented checksums and Canonical Snapcraft conflict strategy, and cleaned packaging metadata. |
 | Cross-platform/performance docs | Sprint 9 completed | Added performance methodology, cross-platform notes, benchmark scripts, and path/metadata edge-case tests. |
-| Community feedback readiness | Sprint 10 completed | GitHub About/topics are set, six starter/hardening issues are open, and feedback drafts avoid artificial engagement asks. |
-| OpenAI application package | Sprint 11 completed locally | `doc/OPENAI_APPLICATION_PACKAGE.md` contains ready-to-paste answers, evidence links, do-not-claim guidance, and public-visibility/release blockers. |
-| Publication decision runbook | Closure follow-up completed locally | The application package now avoids hard-coded local SHAs/checkpoint labels and records separate push-without-release vs release-required paths. |
-| Live GitHub workflow listing | None returned | `gh workflow list --repo Glooring/snap` returned no workflows because the CI workflow is still local until pushed. |
+| Community feedback readiness | Sprint 12 live signal | GitHub About/topics are set, six starter/hardening issues are open, the repo has 4 forks, issue #2 has external comments, PR #7 is open, and PR #8 was closed as duplicate. |
+| OpenAI application package | Sprint 12 public evidence prepared | `doc/OPENAI_APPLICATION_PACKAGE.md` contains ready-to-paste answers, evidence links, do-not-claim guidance, live CI evidence, and release gap disclosure. |
+| Publication decision runbook | Option A executed | Docs/CI were pushed without a release; local Snap checkpoint tags were not pushed by default. |
+| Live GitHub workflow listing | `CI` active | `gh workflow list --repo Glooring/snap` shows active workflow `CI`. |
 | GitHub releases | None returned | `gh release list --repo Glooring/snap --limit 5 --json tagName,name,isDraft,isPrerelease,publishedAt,isLatest` returned `[]`; release creation remains open. |
 | `cargo audit` | Not installed | Security audit is not available locally yet; add later if desired. |
 | Root OSS file inspection | 7 standard files found | Sprint 2 added the expected root hygiene files. |
@@ -97,6 +97,7 @@ The following gates are currently green:
 git diff --check
 cargo fmt --check
 cargo clippy --all-targets --all-features
+cargo clippy --all-targets --all-features -- -D warnings
 cargo test
 cargo build --release
 cargo run -- --help
@@ -115,8 +116,8 @@ cargo run -- doctor
 
 ```text
 Git repository looks healthy.
-Snapshot tags: 17 checked, 0 invalid
-Snapshot metadata: 17 checked, 0 active invalid, 0 historical invalid, 0 unpinned
+Snapshot tags: 19 checked, 0 invalid
+Snapshot metadata: 19 checked, 0 active invalid, 0 historical invalid, 0 unpinned
 ```
 
 Sprint 0 also ran one disposable local smoke test using only the source-built release binary at `/home/glooring/projects/snap/target/release/snap`. The sandbox was `/tmp/snap-agent-smoke-s0-hwmvPg` and was removed after validation. It exercised `git init`, an initial commit, `snap init`, two `snap new` calls, `snap list`, `snap diff`, `snap doctor`, and `snap restore s0-first`. Restore verified that `app.txt` returned to `first` and `extra.txt` was removed.
@@ -556,6 +557,53 @@ Results:
 - source-built top-level help passed and showed the current command surface.
 - source-built release doctor reported a healthy repo with 18 snapshot tags and 18 metadata refs checked before the follow-up checkpoint.
 
+### 4.16 Sprint 12 Public CI And Contributor Triage Validation
+
+Sprint 12 fixed the first public CI failure and triaged early contributor activity. It changed the GitHub Actions workflow and documentation only; it did not change Rust source, CLI behavior, snapshot metadata, release artifacts, or the global `/usr/local/bin/snap`.
+
+It ran:
+
+```bash
+git push origin main
+git ls-remote --tags origin | rg 'oss-'
+git diff --check
+rg -n "--component rustfmt --component clippy" .github/workflows/ci.yml
+cargo fmt --check
+cargo clippy --all-targets --all-features
+cargo clippy --all-targets --all-features -- -D warnings
+cargo test
+cargo build --release
+./target/release/snap --help
+./target/release/snap doctor
+gh run watch 27084650490 --repo Glooring/snap --exit-status
+gh workflow list --repo Glooring/snap
+gh release list --repo Glooring/snap --limit 5 --json tagName,name,isDraft,isPrerelease,publishedAt,isLatest
+gh repo view Glooring/snap --json nameWithOwner,description,repositoryTopics,isPrivate,url,forkCount,stargazerCount,watchers
+```
+
+Results:
+
+- local `main` was pushed to `origin/main`; local Snap checkpoint tags were not pushed.
+- initial public CI run `27084524436` found a real Ubuntu workflow failure in `Install Rust stable`; Windows passed.
+- the failure was caused by ambiguous `rustup` syntax: `clippy` was parsed as an extra toolchain when the workflow used one `--component` flag.
+- `.github/workflows/ci.yml` now installs Rust components with `--component rustfmt --component clippy`.
+- `git diff --check` passed.
+- `cargo fmt --check` passed.
+- normal Clippy passed with no warnings.
+- strict Clippy passed with `-D warnings`.
+- `cargo test` passed, 107 integration tests.
+- `cargo build --release` passed.
+- source-built top-level help passed and showed the current command surface.
+- source-built release doctor reported a healthy repo with 19 snapshot tags and 19 metadata refs checked before the Sprint 12 checkpoint.
+- public CI run `27084650490` passed on Ubuntu and Windows for commit `0b3918b035c68bb2a4db0767780d625233ae1e0f`.
+- GitHub Actions emitted a non-blocking Node.js 20 deprecation warning for `actions/cache@v4` and `actions/checkout@v4`.
+- `gh workflow list` shows active workflow `CI`.
+- `gh release list` returned `[]`; no GitHub release exists.
+- `gh repo view` verified the public repo, 4 forks, 0 stars, 0 watchers, the expected About description, and 11 topics.
+- PR #7 remains open as the preferred beginner-demo direction and was asked to rebase/update against current `main`.
+- PR #8 was closed as a duplicate of #7.
+- Issue #2 now records maintainer guidance and points additional contributors toward #1/#3.
+
 ## 5. Repository Metrics Snapshot
 
 ### 5.1 File Counts
@@ -564,8 +612,8 @@ Results:
 | --- | ---: |
 | `src/**/*.rs` | 33 |
 | `tests/**/*.rs` | 1 |
-| `doc/*.md` | 21 after adding the OpenAI application package |
-| `docs/**/*.md` | 17 after adding the Sprint 11 plan |
+| `doc/*.md` | 21 after Sprint 12 application-package refresh |
+| `docs/**/*.md` | 18 after adding the Sprint 12 plan |
 | `.github` tracked files | 5 |
 | Standard OSS root files found | 7 |
 
@@ -583,10 +631,10 @@ Standard OSS root files checked:
 
 | Area | LOC |
 | --- | ---: |
-| `src` Rust | 6,786 after Sprint 6 marker/filtering changes |
+| `src` Rust | 6,790 after Sprint 12 docs/CI publication |
 | `tests` Rust | 3,113 after Sprint 9 path/metadata tests |
-| `doc` Markdown/text | 6,097 after publication runbook follow-up |
-| `docs` audit Markdown | 4,150 after publication runbook follow-up |
+| `doc` Markdown/text | 6,103 after Sprint 12 application-package refresh |
+| `docs` audit Markdown | 4,389 after Sprint 12 progress/audit refresh |
 
 ### 5.3 Largest Operational Files
 
@@ -841,7 +889,7 @@ Do not reintroduce prompt dumps or placeholder GitHub links in public docs befor
 | --- | --- | --- | --- | --- |
 | Public positioning is unclear | High | Addressed in Sprint 1 | README now leads with Git-powered local checkpoints, AI-agent edits, risky refactors, beginner workflows, and safety docs. | Monitor for drift |
 | OSS hygiene files missing | High | Addressed in Sprint 2 | Standard root files and issue/PR templates now exist. | Monitor for drift |
-| CI missing | High | Addressed in Sprint 3 | `.github/workflows/ci.yml` runs Ubuntu/Windows fmt, normal Clippy, tests, release build, source-built help, and source-built doctor. | Monitor first GitHub run |
+| CI missing | High | Addressed in Sprint 12 | `.github/workflows/ci.yml` is public and CI run `27084650490` passed Ubuntu/Windows fmt, Clippy, tests, release build, source-built help, and source-built doctor. | Monitor future CI |
 | Strict Clippy fails | Medium | Addressed in Sprint 4 | `cargo clippy --all-targets --all-features -- -D warnings` now passes. | Monitor in CI |
 | Temporary patch comments remain | Medium | Addressed in Sprint 4 | Patch-marker comments removed from `Cargo.toml` and `src`. | Monitor for recurrence |
 | Placeholder packaging identifier | Medium | Addressed in Sprint 8 | `Packager.toml` now uses `io.github.glooring.snap`. | Monitor for drift |
@@ -850,14 +898,15 @@ Do not reintroduce prompt dumps or placeholder GitHub links in public docs befor
 | Linux command-name conflict | High | Documented in Sprint 8 | Project/binary name `snap` can conflict with Canonical Snapcraft; docs now require PATH checks and offer `gitsnap` as a local conflict-safe filename. | Future alternate-name decision |
 | Command construction needs hardening | High | Partially addressed in Sprint 4 | Obvious formatted Git commands converted to argv; remaining dynamic boundaries documented. | Follow-up as needed |
 | Safety docs are fragmented | High | Addressed in Sprint 5 | README, `doc/SAFETY_MODEL.md`, `doc/SNAP_DOCTOR.md`, and `doc/KNOWN_LIMITATIONS.md` now cover restore dry-run/rescue, doctor JSON/CI, exit behavior, purge backups, reachability refusal, and final health checks. | Monitor for drift |
-| Community metadata and starter issues missing | Medium | Addressed in Sprint 10 | GitHub About/topics are set and issues #1-#6 are open with good-first, documentation, enhancement, and help-wanted labels. | Monitor community feedback |
-| Local OSS-readiness commits not pushed | High | Open | Local `main` was ahead of `origin/main` by 17 commits before the Sprint 11 checkpoint; public GitHub README/docs/CI remain stale until pushed. | Maintainer push decision |
-| Live GitHub CI absent | High | Open | `gh workflow list --repo Glooring/snap` returned no workflows because the workflow file is only local. | Push local commits, then verify CI |
-| External community feedback not yet available | Medium | Open | The repo can now receive feedback, but external usage reports and comments are not available yet. | Normal issue-driven maintenance |
+| Community metadata and starter issues missing | Medium | Addressed in Sprint 12 | GitHub About/topics are set, issues #1-#6 are open, the repo has 4 forks, issue #2 has external comments, PR #7 is active, and PR #8 was closed as duplicate. | Monitor community feedback |
+| Public OSS-readiness branch publication | High | Addressed in Sprint 12 | Local `main` was pushed to `origin/main`; checkpoint tags were intentionally not pushed. | Keep tag policy explicit |
+| Live GitHub CI signal | High | Addressed in Sprint 12 | `gh workflow list --repo Glooring/snap` shows active `CI`; public run `27084650490` passed on Ubuntu and Windows. | Monitor future CI |
+| External community feedback remains early | Medium | Partially addressed in Sprint 12 | Early external interest exists: 4 forks, issue #2 comments, PR #7, and duplicate PR #8. This is not broad adoption. | Normal issue-driven maintenance |
 | Current GitHub release missing | Medium | Open | `gh release list --repo Glooring/snap --limit 5 --json tagName,name,isDraft,isPrerelease,publishedAt,isLatest` returned `[]`. | Maintainer release decision |
-| OpenAI/Codex application package not assembled | Medium | Addressed locally in Sprint 11 | `doc/OPENAI_APPLICATION_PACKAGE.md` contains ready-to-paste answers and evidence, but should not be submitted until the public repo is updated. | Push/release decision |
+| OpenAI/Codex application package evidence | Medium | Addressed in Sprint 12 | `doc/OPENAI_APPLICATION_PACKAGE.md` contains ready-to-paste answers, public CI evidence, contributor-signal caveats, and release gap disclosure. | Submit if no release required, or create release first |
 | Global checkpoint binary differs from source help | Medium | Documented | `/usr/local/bin/snap` remains checkpoint-only during this refactor; install docs avoid replacing it and source-built validation remains required. | Monitor until release/install decision |
 | Checksum automation missing | Medium | Open | Docs require `SHA256SUMS.txt`, but release scripts/upload do not automate checksum creation/upload yet. | Release automation follow-up |
+| GitHub Actions Node 20 deprecation | Low | Open | Public CI passed, but GitHub annotates `actions/cache@v4` and `actions/checkout@v4` for Node.js 20 deprecation. | Workflow maintenance follow-up |
 | Security audit tooling absent | Low | Open | `cargo audit` not installed. | Later OSS hygiene |
 
 ## 11. Command Safety Findings
@@ -947,7 +996,7 @@ Until then, this repo should avoid release-looking checkpoint labels like `v7.3`
 
 ### 13.3 Target Agent Experience
 
-After Sprint 0-11, a new agent should quickly know:
+After Sprint 0-12, a new agent should quickly know:
 
 - Snap's product identity;
 - which commands are destructive;
@@ -959,7 +1008,8 @@ After Sprint 0-11, a new agent should quickly know:
 - how restore dry-run/rescue and doctor JSON/CI modes behave.
 - how to run local benchmark scripts and interpret performance results cautiously.
 - how the public repo metadata, starter issues, and feedback request materials are framed.
-- how the application package should be submitted only after local commits are pushed and release status is decided.
+- how public CI and contributor triage were handled after publication.
+- how the application package should be submitted only after the release requirement is decided.
 
 ## 14. CLI Health Assessment
 
@@ -972,7 +1022,9 @@ After Sprint 0-11, a new agent should quickly know:
 - Source help, README, and safety docs now describe the current restore/doctor safety surface.
 - Performance and cross-platform docs now explain what is measured, what is CI-backed, and what still needs platform-specific release evidence.
 - GitHub About/topics and starter issues now give contributors concrete entry points.
-- The OpenAI application package is locally assembled with honest gap disclosure.
+- Public CI passes on Ubuntu and Windows.
+- Early external contributor interest exists and has been triaged.
+- The OpenAI application package is public-evidence-ready if no current release is required.
 
 ### 14.2 Weak Areas
 
@@ -982,8 +1034,8 @@ After Sprint 0-11, a new agent should quickly know:
 - Linux command-name conflict is documented, but the official binary is still named `snap`; any alternate Linux binary name remains a future decision.
 - Windows and WSL2 benchmark-script runs still need to be recorded from those platforms before making release-specific performance claims.
 - There are no GitHub releases yet.
-- Local OSS-readiness commits are not yet pushed, so public README/docs/CI are stale.
-- The OpenAI/Codex package is not submission-ready until the public repo catches up.
+- PR #7 needs a contributor rebase/update before review or merge.
+- GitHub Actions reports a non-blocking Node.js 20 deprecation warning for `actions/cache@v4` and `actions/checkout@v4`.
 
 ## 15. Recommended Validation Contract
 
@@ -1130,6 +1182,7 @@ Reason: those look like release tags and reinforce the current snapshot/tag ambi
 | 9 | Cross-Platform and Performance Proof | Completed in Sprint 9: performance methodology, cross-platform notes, benchmark scripts, edge-case tests, conservative CLI help, and prompt cleanup. |
 | 10 | Community Feedback | Completed in Sprint 10: community feedback doc, GitHub About/topics, six starter/hardening issues, and feedback drafts without artificial engagement asks. |
 | 11 | OpenAI Application Package | Completed locally in Sprint 11: answer drafts, evidence checklist, do-not-claim guidance, and push/release blockers are documented. |
+| 12 | Public CI and Contributor Triage | Completed in Sprint 12: OSS-readiness commits are public, CI is green on Ubuntu/Windows, early PR/issue activity was triaged, and release remains the main open submission decision. |
 
 ## 18. Closure Criteria
 
@@ -1152,22 +1205,21 @@ Close the OSS-readiness refactor when all are true:
 
 Do not continue refactoring only for aesthetics. Once these criteria are met, move remaining work into normal issue-driven maintenance.
 
-Sprint 11 closure status:
+Sprint 12 closure status:
 
-- Most local repository-readiness criteria are met in the local branch.
-- The public GitHub repo is not yet caught up because local `main` is ahead of `origin/main`.
+- Public repository-readiness criteria are mostly met: README/docs/templates are public, CI is live and green, and early external issue/PR activity exists.
 - A current release does not exist.
-- The refactor should pause for maintainer publication/release decisions before application submission.
+- PR #7 is the active beginner-demo contribution path and needs a contributor update before review or merge.
+- The application package can be submitted if a current release is not required; otherwise release prep is the next deliberate sprint.
 
 ## 19. Next Recommendation
 
-Pause local refactor sprints and make a maintainer publication decision.
+Make a maintainer release/application decision.
 
 Required before application submission:
 
-- push local OSS-readiness commits to `origin/main` if the maintainer wants the prepared README/docs/CI/package evidence public;
-- verify GitHub shows the updated README, docs, templates, CI workflow, and application package;
 - decide whether to create a current release with validated artifacts and `SHA256SUMS.txt`, or explicitly submit without claiming a release;
 - rerun source-built validation after any publication or release changes.
+- keep PR #7 as normal issue-driven contributor work unless the contributor updates it.
 
-Do not continue local-only refactoring for aesthetics. Remaining feature work should move to normal GitHub issues unless the maintainer approves the publication/release path.
+Do not continue local-only refactoring for aesthetics. Remaining feature work should move to normal GitHub issues unless the maintainer approves release preparation.

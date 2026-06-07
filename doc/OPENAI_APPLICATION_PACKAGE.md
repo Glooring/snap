@@ -1,27 +1,29 @@
 # OpenAI Application Package
 
-Status: prepared locally, not submitted
-Last refreshed: 2026-06-07T02:16:38+03:00
+Status: public evidence prepared, not submitted
+Last refreshed: 2026-06-07T06:19:09Z after public CI and contributor triage
 Repository: <https://github.com/Glooring/snap>
 
-This package intentionally does not rely on a hard-coded local commit SHA or checkpoint label. Before submission, run `git rev-parse HEAD` and verify that the public GitHub repository shows the same content after publication.
+This package intentionally does not rely on a hard-coded local commit SHA or checkpoint label. Before submission, run `git rev-parse HEAD` and verify that the public GitHub repository shows the same content.
 
 ## Submission Readiness
 
-Do not submit this package as public evidence until the local OSS-readiness commits are pushed to `origin/main`.
+The OSS-readiness commits are now public on `origin/main`, and the public CI workflow has passed on Ubuntu and Windows.
 
 Current state:
 
-- local `main` is ahead of `origin/main`;
+- local `main` is synced with `origin/main` at `0b3918b035c68bb2a4db0767780d625233ae1e0f` before the Sprint 12 documentation checkpoint;
 - GitHub About description and topics are live;
 - GitHub issues #1-#6 are live;
-- local README/docs/CI/community package changes are not fully visible on GitHub until pushed;
-- `gh workflow list --repo Glooring/snap` returned no workflows, because the CI workflow is still local;
+- public README/docs/CI/community package changes are visible on GitHub;
+- `gh workflow list --repo Glooring/snap` shows active workflow `CI`;
+- public CI run `27084650490` passed on Ubuntu and Windows for commit `0b3918b035c68bb2a4db0767780d625233ae1e0f`;
+- early public interest exists: 4 forks, issue #2 comments, PR #7 open, and PR #8 closed as duplicate;
 - `gh release list --repo Glooring/snap --limit 5 --json tagName,name,isDraft,isPrerelease,publishedAt,isLatest` returned `[]`.
 
 Recommended submission decision:
 
-- Ready to submit after pushing the local OSS-readiness commits if a public release is not required.
+- Ready to submit if a public release is not required by the application.
 - If the application requires a current release, create one only after a maintainer release decision, validated artifacts, checked release notes, and `SHA256SUMS.txt`.
 
 ## Ready-To-Paste Answers
@@ -87,10 +89,14 @@ Live GitHub evidence already visible:
 | Safety/hardening issue #4 | <https://github.com/Glooring/snap/issues/4> |
 | Safety/hardening issue #5 | <https://github.com/Glooring/snap/issues/5> |
 | Safety/hardening issue #6 | <https://github.com/Glooring/snap/issues/6> |
+| Active CI workflow | `CI`, active |
+| Latest verified CI run | <https://github.com/Glooring/snap/actions/runs/27084650490>, passed on Ubuntu and Windows |
+| Fork count | 4 |
+| External contributor activity | Issue #2 comments, PR #7 open, PR #8 closed as duplicate |
 
 ## Current Validation Evidence
 
-Sprint 11 validation completed with:
+Sprint 12 validation completed with:
 
 ```text
 git diff --check: passed
@@ -101,32 +107,33 @@ cargo test: passed, 107 integration tests
 cargo build --release: passed
 ./target/release/snap --help: passed
 ./target/release/snap doctor: passed
+public CI run 27084650490: passed on Ubuntu and Windows
 ```
 
-Before the Sprint 11 checkpoint, source-built doctor reported:
+Before the Sprint 12 checkpoint, source-built doctor reported:
 
 ```text
-Snapshot tags: 17 checked, 0 invalid
-Snapshot metadata: 17 checked, 0 active invalid, 0 historical invalid, 0 unpinned
-Latest valid snapshot: oss-s10-community
+Snapshot tags: 19 checked, 0 invalid
+Snapshot metadata: 19 checked, 0 active invalid, 0 historical invalid, 0 unpinned
+Latest valid snapshot: oss-s11-publish-runbook
 ```
 
 ## Honest Gaps To Disclose
 
-- Local OSS-readiness commits are not yet pushed to `origin/main`.
 - No GitHub release exists yet.
-- No external community feedback is available yet beyond the maintainer-created issues.
+- External activity is early interest, not adoption: 4 forks, one active PR direction, one duplicate PR, and issue comments.
+- PR #7 needs a rebase/update before review or merge.
 - Release checksum automation is documented but not implemented.
 - Snapshot tags use a marker-first filter, but a namespaced snapshot-ref migration is deferred to issue #4.
 - Snap still uses the `snap` binary name; Linux/WSL2 docs explain the Canonical Snapcraft conflict and suggest a local `gitsnap` filename when needed.
+- GitHub Actions reports a non-blocking Node.js 20 deprecation warning for `actions/cache@v4` and `actions/checkout@v4`.
 - `cargo audit` is not installed locally.
 
 ## Do Not Claim
 
 - Do not claim broad adoption or third-party production usage.
 - Do not claim a current release exists until one is published.
-- Do not claim live GitHub CI until the workflow is pushed and runs.
-- Do not claim external feedback has arrived.
+- Do not overstate early forks/comments/PRs as production use or broad community traction.
 - Do not claim universal or platform-wide speed improvements.
 - Do not use `blazing-fast`, `guaranteed`, or similar unsupported language.
 - Do not claim snapshot refs have been fully migrated away from ordinary Git tags.
@@ -134,9 +141,6 @@ Latest valid snapshot: oss-s10-community
 
 ## Final Pre-Submission Checklist
 
-- Push local OSS-readiness commits to `origin/main` only after maintainer approval.
-- Confirm GitHub shows the updated README, docs, workflow, templates, and package doc.
-- Confirm `gh workflow list --repo Glooring/snap` shows the CI workflow.
 - Decide whether a public release is required before submission.
 - If creating a release, build artifacts, generate `SHA256SUMS.txt`, check release notes, and publish deliberately.
 - Rerun source-built validation after any release/package changes.
@@ -144,11 +148,11 @@ Latest valid snapshot: oss-s10-community
 
 ## Publication Decision Runbook
 
-This section is a maintainer runbook. It records commands to run only after deciding to publish the local OSS-readiness work.
+This section is a maintainer runbook. Option A has now been executed for the docs/CI publication path; Option B remains available only if a current release is required before submission.
 
 ### Option A: Publish Docs And CI Without A Release
 
-Use this if the application does not require a current GitHub release:
+Executed on 2026-06-07 after maintainer approval:
 
 ```bash
 git status --branch --short
@@ -161,7 +165,7 @@ gh issue list --repo Glooring/snap --state open --limit 20
 
 Do not push all local Snap checkpoint tags by default. They are useful local refactor checkpoints but can clutter public GitHub tags and are not required for README/docs/CI evidence.
 
-After pushing, verify in a browser or with `gh` that GitHub shows:
+After pushing, GitHub was verified to show:
 
 - updated README positioning;
 - `doc/OPENAI_APPLICATION_PACKAGE.md`;
@@ -169,6 +173,8 @@ After pushing, verify in a browser or with `gh` that GitHub shows:
 - issue templates and PR template;
 - existing About description and topics;
 - issues #1-#6.
+
+Local Snap checkpoint tags were not pushed.
 
 ### Option B: Publish A Current Release
 
