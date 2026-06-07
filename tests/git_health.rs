@@ -1868,7 +1868,9 @@ fn top_help_includes_branch_snapshot_discovery() {
         .success()
         .stdout(predicate::str::contains("snap list --all-branches"))
         .stdout(predicate::str::contains("snap list --branch main"))
-        .stdout(predicate::str::contains("snap history --all-branches"));
+        .stdout(predicate::str::contains("snap history --all-branches"))
+        .stdout(predicate::str::contains("snap list --help"))
+        .stdout(predicate::str::contains("snap history --help"));
 }
 
 #[test]

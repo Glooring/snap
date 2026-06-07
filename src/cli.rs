@@ -18,6 +18,7 @@ Workflow groups:
   Remote/GitHub:     snap remote status | snap setup-repo owner/repo --private | snap delete-repo owner/repo
   Release:           snap release windows | snap release upload | snap release list
   Diagnostics:       snap doctor | snap doctor --json --ci | snap doctor --repair | snap options
+  Command help:      snap list --help | snap history --help | snap branch --help
   Learn by example:  snap examples
 ")]
 #[command(propagate_version = true)]
