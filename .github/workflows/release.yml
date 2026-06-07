@@ -129,14 +129,20 @@ jobs:
           rm -rf "$upload_dir"
           mkdir -p "$upload_dir"
 
-          while IFS= read -r -d '' file; do
+          mapfile -d '' assets < <(find release-assets -type f -print0)
+          if [ "${#assets[@]}" -eq 0 ]; then
+            echo "No release assets were downloaded." >&2
+            exit 1
+          fi
+
+          for file in "${assets[@]}"; do
             base="$(basename "$file")"
             if [ -e "$upload_dir/$base" ]; then
               echo "Duplicate release asset basename: $base" >&2
               exit 1
             fi
             cp "$file" "$upload_dir/$base"
-          done < <(find release-assets -type f -print0)
+          done
 
           test -f "$upload_dir/snap-${tag}-linux-x86_64"
           test -f "$upload_dir/snap-${tag}-linux-x86_64.tar.gz"
