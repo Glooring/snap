@@ -145,7 +145,7 @@ If `command -v snap` points to a Windows path such as `/mnt/c/.../snap.exe`, WSL
 
 For maintainer build commands, see [Windows and WSL installer build notes](BUILD_INSTALLERS_WINDOWS_WSL.md).
 
-Before publishing a release:
+Before publishing a release locally:
 
 ```bash
 cargo test
@@ -154,4 +154,11 @@ cargo build --release
 ./target/release/snap doctor
 ```
 
-Then prepare the platform assets, generate `SHA256SUMS.txt`, upload artifacts to a draft GitHub Release, and verify the published asset list before marking the release as public.
+The preferred public release path is the GitHub Actions release workflow:
+
+```bash
+gh workflow run release.yml --repo Glooring/snap -f tag=vX.Y.Z -f publish=true
+gh run watch <run-id> --repo Glooring/snap --exit-status
+```
+
+The workflow builds Linux and Windows assets on their target runners, generates `SHA256SUMS.txt`, creates the GitHub Release, and uploads all release assets. After publication, download the assets, verify checksums, and smoke-test the Linux binary from a disposable Git repository. Windows executable behavior is validated on the Windows runner during the workflow.

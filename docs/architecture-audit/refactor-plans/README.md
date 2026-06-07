@@ -26,3 +26,4 @@ Sprint plans are historical. The audit should remain the current source of truth
 - [Sprint 10 - Community Feedback](sprint-10-community-feedback.md)
 - [Sprint 11 - OpenAI Application Package](sprint-11-openai-application-package.md)
 - [Sprint 12 - Public CI And Contributor Triage](sprint-12-public-ci-contributor-triage.md)
+- [Sprint 13 - Current GitHub Release](sprint-13-current-release.md)

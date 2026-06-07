@@ -19,7 +19,33 @@ There are two targets:
 - **Checksums**
   - `release-github/vX.Y.Z/SHA256SUMS.txt`
 
-## 1. Automated GitHub release assets
+## 1. Preferred GitHub Actions release flow
+
+The preferred full release path is `.github/workflows/release.yml`. It builds and tests Linux assets on Ubuntu, builds and tests Windows assets on Windows, generates `SHA256SUMS.txt`, and creates the GitHub Release.
+
+For `v7.2.0`:
+
+```bash
+gh workflow run release.yml --repo Glooring/snap -f tag=v7.2.0 -f publish=true
+gh run list --repo Glooring/snap --workflow Release --limit 5
+gh run watch <run-id> --repo Glooring/snap --exit-status
+gh release view v7.2.0 --repo Glooring/snap --json tagName,name,isDraft,isPrerelease,publishedAt,isLatest
+```
+
+The workflow publishes:
+
+```text
+snap-v7.2.0-windows-x86_64.exe
+snap-v7.2.0-windows-x86_64-setup.exe
+snap-v7.2.0-windows-x86_64.msi
+snap-v7.2.0-linux-x86_64
+snap-v7.2.0-linux-x86_64.tar.gz
+SHA256SUMS.txt
+```
+
+After publication, download the release, verify checksums, run the Linux binary directly, and smoke-test it in a disposable Git repository. Windows executable behavior is validated by the Windows runner during the release workflow.
+
+## 2. Local release asset scripts
 
 Use these scripts when preparing files for GitHub Releases. They read the version from Cargo, create `release-github/vX.Y.Z`, run the full test suite, build the release binaries, and copy the final artifacts with versioned names.
 
@@ -73,7 +99,7 @@ WindowsTarget / LINUX_TARGET
 AppName / APP_NAME
 ```
 
-## 2. Manual Windows installer build
+## 3. Manual Windows installer build
 
 Run from Windows PowerShell or Command Prompt:
 
@@ -121,7 +147,7 @@ snap 7.2.0
 [snap] Git repository looks healthy.
 ```
 
-## 3. Which Windows installer to use
+## 4. Which Windows installer to use
 
 Keep only one Windows installation of `snap` in PATH. If `where snap` prints more than one path, Windows uses the first one and ignores the others unless the first path is removed.
 
@@ -207,7 +233,7 @@ This installer is produced by `snap.nsi`. It installs the executable and creates
 
 You can use `snap-setup.exe`, but it is mainly useful for distribution. On this machine it may recreate or update the `C:\Program Files\snap` installation, which can conflict with the preferred `D:\Apps\snap\bin` copy if both are in PATH.
 
-## 4. Build and install for WSL / Ubuntu
+## 5. Build and install for WSL / Ubuntu
 
 The Windows `.exe` and `.msi` are not the right artifacts for WSL. WSL should use a native Linux build.
 
