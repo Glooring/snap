@@ -1,0 +1,125 @@
+name: Release Smoke
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag to smoke-test, for example v7.2.0"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  linux:
+    name: Linux release smoke
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Download and verify release assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          tag="${{ inputs.tag }}"
+          assets_dir="$RUNNER_TEMP/release-assets"
+
+          mkdir -p "$assets_dir"
+          gh release download "$tag" --repo "$GITHUB_REPOSITORY" --dir "$assets_dir"
+
+          cd "$assets_dir"
+          test -f SHA256SUMS.txt
+          test -f "snap-${tag}-linux-x86_64"
+          test -f "snap-${tag}-linux-x86_64.tar.gz"
+          test -f "snap-${tag}-windows-x86_64.exe"
+          test -f "snap-${tag}-windows-x86_64-setup.exe"
+          test -f "snap-${tag}-windows-x86_64.msi"
+
+          sha256sum -c SHA256SUMS.txt
+          chmod +x "snap-${tag}-linux-x86_64"
+          "./snap-${tag}-linux-x86_64" --version
+          "./snap-${tag}-linux-x86_64" --help >/dev/null
+          tar -tzf "snap-${tag}-linux-x86_64.tar.gz" >/dev/null
+
+      - name: Smoke-test Linux binary in a disposable repository
+        run: |
+          set -euo pipefail
+          tag="${{ inputs.tag }}"
+          snap_bin="$RUNNER_TEMP/release-assets/snap-${tag}-linux-x86_64"
+          smoke_dir="$(mktemp -d "$RUNNER_TEMP/snap-release-smoke-XXXXXX")"
+
+          cd "$smoke_dir"
+          git init
+          git config user.email "snap-release-smoke@example.invalid"
+          git config user.name "Snap Release Smoke"
+
+          echo "one" > app.txt
+          git add app.txt
+          git commit -m "initial"
+
+          "$snap_bin" init
+          "$snap_bin" new release-start "release smoke start"
+          echo "two" >> app.txt
+          "$snap_bin" new release-update "release smoke update"
+          "$snap_bin" list
+          "$snap_bin" diff release-start release-update
+          "$snap_bin" restore release-start --dry-run
+          "$snap_bin" doctor
+
+  windows:
+    name: Windows release smoke
+    runs-on: windows-latest
+
+    steps:
+      - name: Download Windows release binary
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: powershell
+        run: |
+          $ErrorActionPreference = "Stop"
+          $tag = "${{ inputs.tag }}"
+          $assetsDir = Join-Path $env:RUNNER_TEMP "release-assets"
+
+          New-Item -ItemType Directory -Force -Path $assetsDir | Out-Null
+          gh release download $tag --repo $env:GITHUB_REPOSITORY --dir $assetsDir --pattern "snap-$tag-windows-x86_64.exe"
+
+          $exe = Join-Path $assetsDir "snap-$tag-windows-x86_64.exe"
+          if (!(Test-Path $exe)) {
+              throw "Expected Windows portable binary was not downloaded: $exe"
+          }
+
+          & $exe --version
+          & $exe --help | Out-Null
+
+      - name: Smoke-test Windows binary in a disposable repository
+        shell: powershell
+        run: |
+          $ErrorActionPreference = "Stop"
+          $tag = "${{ inputs.tag }}"
+          $assetsDir = Join-Path $env:RUNNER_TEMP "release-assets"
+          $snapBin = Join-Path $assetsDir "snap-$tag-windows-x86_64.exe"
+          $smokeDir = Join-Path $env:RUNNER_TEMP "snap-release-smoke"
+
+          if (Test-Path $smokeDir) {
+              Remove-Item -Recurse -Force $smokeDir
+          }
+          New-Item -ItemType Directory -Force -Path $smokeDir | Out-Null
+
+          Set-Location $smokeDir
+          git init
+          git config user.email "snap-release-smoke@example.invalid"
+          git config user.name "Snap Release Smoke"
+
+          "one" | Out-File -Encoding utf8 app.txt
+          git add app.txt
+          git commit -m "initial"
+
+          & $snapBin init
+          & $snapBin new release-start "release smoke start"
+          "two" | Out-File -Encoding utf8 -Append app.txt
+          & $snapBin new release-update "release smoke update"
+          & $snapBin list
+          & $snapBin diff release-start release-update
+          & $snapBin restore release-start --dry-run
+          & $snapBin doctor
