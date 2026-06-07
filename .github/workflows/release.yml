@@ -123,15 +123,28 @@ jobs:
           set -euo pipefail
           tag="${{ inputs.tag }}"
           notes_file="doc/releases/${tag#v}.md"
+          upload_dir="release-upload"
 
           test -f "$notes_file"
-          test -f "release-assets/snap-${tag}-linux-x86_64"
-          test -f "release-assets/snap-${tag}-linux-x86_64.tar.gz"
-          test -f "release-assets/snap-${tag}-windows-x86_64.exe"
-          test -f "release-assets/snap-${tag}-windows-x86_64-setup.exe"
-          test -f "release-assets/snap-${tag}-windows-x86_64.msi"
+          rm -rf "$upload_dir"
+          mkdir -p "$upload_dir"
 
-          cd release-assets
+          while IFS= read -r -d '' file; do
+            base="$(basename "$file")"
+            if [ -e "$upload_dir/$base" ]; then
+              echo "Duplicate release asset basename: $base" >&2
+              exit 1
+            fi
+            cp "$file" "$upload_dir/$base"
+          done < <(find release-assets -type f -print0)
+
+          test -f "$upload_dir/snap-${tag}-linux-x86_64"
+          test -f "$upload_dir/snap-${tag}-linux-x86_64.tar.gz"
+          test -f "$upload_dir/snap-${tag}-windows-x86_64.exe"
+          test -f "$upload_dir/snap-${tag}-windows-x86_64-setup.exe"
+          test -f "$upload_dir/snap-${tag}-windows-x86_64.msi"
+
+          cd "$upload_dir"
           sha256sum snap-${tag}-* > SHA256SUMS.txt
           sha256sum -c SHA256SUMS.txt
 
@@ -150,7 +163,7 @@ jobs:
 
           args=(
             release create "$tag"
-            release-assets/*
+            release-upload/*
             --target "$GITHUB_SHA"
             --title "snap $tag"
             --notes-file "$notes_file"
