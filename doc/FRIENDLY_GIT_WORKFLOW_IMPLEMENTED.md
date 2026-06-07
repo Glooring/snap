@@ -367,6 +367,15 @@ snap-vX.Y.Z-linux-x86_64
 snap-vX.Y.Z-linux-x86_64.tar.gz
 ```
 
+Artefacte macOS:
+
+```text
+snap-vX.Y.Z-macos-aarch64
+snap-vX.Y.Z-macos-aarch64.tar.gz
+snap-vX.Y.Z-macos-x86_64
+snap-vX.Y.Z-macos-x86_64.tar.gz
+```
+
 Folderul `release-github/` este ignorat de Git, ca artefactele binare sa nu fie
 commitate accidental.
 
@@ -394,6 +403,17 @@ snap release linux
 
 Intern foloseste `bash` si scriptul `scripts/release-linux.sh`.
 
+### `snap release macos`
+
+Ruleaza scriptul macOS pentru arhitectura nativa:
+
+```bash
+snap release macos
+```
+
+Intern foloseste `bash` si scriptul `scripts/release-macos.sh`. Pentru release-ul
+public complet, GitHub Actions construieste separat Apple Silicon si Intel macOS.
+
 ### `snap release all`
 
 Verifica runtime-urile pentru ambele platforme si ruleaza Windows apoi Linux.
@@ -412,8 +432,10 @@ Runnerul accepta env vars:
 ```text
 SNAP_RELEASE_WINDOWS_SCRIPT
 SNAP_RELEASE_LINUX_SCRIPT
+SNAP_RELEASE_MACOS_SCRIPT
 SNAP_RELEASE_POWERSHELL
 SNAP_RELEASE_BASH
+SNAP_RELEASE_MACOS_TARGET
 ```
 
 Acestea sunt utile pentru teste si medii custom, nu pentru workflow-ul normal.
@@ -422,7 +444,7 @@ Acestea sunt utile pentru teste si medii custom, nu pentru workflow-ul normal.
 
 ### `snap release upload`
 
-Uploadeaza cele 5 artefacte din `release-github/vX.Y.Z` catre GitHub Release.
+Uploadeaza artefactele Windows, Linux si macOS din `release-github/vX.Y.Z` catre GitHub Release.
 
 ```bash
 snap release upload
@@ -435,7 +457,7 @@ Comportament:
 
 - citeste versiunea din Cargo;
 - foloseste tagul `vX.Y.Z`;
-- cere existenta tuturor celor 5 artefacte;
+- cere existenta tuturor artefactelor Windows, Linux si macOS;
 - infereaza repo-ul GitHub din `origin`, daca `--repo` lipseste;
 - verifica `gh auth status`;
 - creeaza release draft implicit;
@@ -449,6 +471,7 @@ Workflow recomandat:
 ```bash
 snap release windows
 snap release linux
+snap release macos
 snap release upload
 ```
 
@@ -1279,7 +1302,7 @@ sa schimbi remote-ul, sau sa il stergi manual daca nu mai ai nevoie de el.
 
 ### 14.14 Release local
 
-Pentru release complet ai nevoie de cele 5 artefacte:
+Pentru release complet ai nevoie de artefactele Windows, Linux si macOS:
 
 ```text
 snap-vX.Y.Z-windows-x86_64.exe
@@ -1287,6 +1310,10 @@ snap-vX.Y.Z-windows-x86_64-setup.exe
 snap-vX.Y.Z-windows-x86_64.msi
 snap-vX.Y.Z-linux-x86_64
 snap-vX.Y.Z-linux-x86_64.tar.gz
+snap-vX.Y.Z-macos-aarch64
+snap-vX.Y.Z-macos-aarch64.tar.gz
+snap-vX.Y.Z-macos-x86_64
+snap-vX.Y.Z-macos-x86_64.tar.gz
 ```
 
 Pe Windows:
@@ -1298,11 +1325,11 @@ snap release windows
 Output tipic:
 
 ```text
-[snap] Release folder: release-github/v7.2.0
+[snap] Release folder: release-github/v7.2.2
 [snap] Expected Windows artifacts:
-  snap-v7.2.0-windows-x86_64.exe
-  snap-v7.2.0-windows-x86_64-setup.exe
-  snap-v7.2.0-windows-x86_64.msi
+  snap-v7.2.2-windows-x86_64.exe
+  snap-v7.2.2-windows-x86_64-setup.exe
+  snap-v7.2.2-windows-x86_64.msi
 ```
 
 Pe WSL/Linux:
@@ -1314,10 +1341,25 @@ snap release linux
 Output tipic:
 
 ```text
-[snap] Release folder: release-github/v7.2.0
+[snap] Release folder: release-github/v7.2.2
 [snap] Expected Linux artifacts:
-  snap-v7.2.0-linux-x86_64
-  snap-v7.2.0-linux-x86_64.tar.gz
+  snap-v7.2.2-linux-x86_64
+  snap-v7.2.2-linux-x86_64.tar.gz
+```
+
+Pe macOS:
+
+```bash
+snap release macos
+```
+
+Output tipic:
+
+```text
+[snap] Release folder: release-github/v7.2.2
+[snap] Expected GitHub release assets:
+  snap-v7.2.2-macos-aarch64
+  snap-v7.2.2-macos-aarch64.tar.gz
 ```
 
 `snap release all` ruleaza ambele scripturi doar daca mediul curent poate rula
@@ -1341,7 +1383,7 @@ snap release linux
 
 ### 14.15 Upload GitHub Release
 
-Dupa ce exista toate cele 5 artefacte:
+Dupa ce exista toate artefactele Windows, Linux si macOS:
 
 ```powershell
 snap release upload
@@ -1351,7 +1393,7 @@ Ce face:
 
 - citeste versiunea din Cargo;
 - cauta folderul `release-github/vX.Y.Z`;
-- verifica toate cele 5 artefacte;
+- verifica toate artefactele Windows, Linux si macOS;
 - infereaza repo-ul GitHub din `origin`;
 - verifica `gh auth status`;
 - creeaza draft release implicit.
@@ -1361,10 +1403,10 @@ Output tipic:
 ```text
 [snap] GitHub release upload
   Repository: Dan1579/snap
-  Release: v7.2.0
-  Folder: release-github\v7.2.0
+  Release: v7.2.2
+  Folder: release-github\v7.2.2
 [snap] Creating draft GitHub Release...
-[snap] Uploaded 5 release asset(s) for v7.2.0.
+[snap] Uploaded 9 release asset(s) for v7.2.2.
 ```
 
 Daca vrei publicare directa:
@@ -1540,7 +1582,7 @@ git merge --abort
 
 #### `Release artifact missing`
 
-`snap release upload` cere toate cele 5 artefacte. Ruleaza buildurile:
+`snap release upload` cere toate artefactele Windows, Linux si macOS. Ruleaza buildurile:
 
 ```powershell
 snap release windows
@@ -1550,6 +1592,12 @@ in WSL:
 
 ```bash
 snap release linux
+```
+
+pe macOS Apple Silicon si Intel:
+
+```bash
+snap release macos
 ```
 
 #### `a Cargo.lock must exist for this command`
@@ -1623,6 +1671,12 @@ In WSL:
 
 ```bash
 snap release linux
+```
+
+Pe macOS:
+
+```bash
+snap release macos
 ```
 
 Inapoi in Windows:

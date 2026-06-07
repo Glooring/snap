@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: "Release tag, for example v7.2.0"
+        description: "Release tag, for example v7.2.2"
         required: true
         type: string
       publish:
@@ -99,12 +99,92 @@ jobs:
             release-github/${{ inputs.tag }}/snap-${{ inputs.tag }}-windows-x86_64-setup.exe
             release-github/${{ inputs.tag }}/snap-${{ inputs.tag }}-windows-x86_64.msi
 
+  macos-aarch64:
+    name: macOS Apple Silicon assets
+    runs-on: macos-15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install Rust stable
+        run: |
+          rustup toolchain install stable --profile minimal
+          rustup default stable
+
+      - name: Validate release tag
+        run: |
+          set -euo pipefail
+          version="$(cargo pkgid | sed 's/.*#//')"
+          expected="v${version}"
+          if [ "${{ inputs.tag }}" != "$expected" ]; then
+            echo "Release tag '${{ inputs.tag }}' does not match Cargo version '$expected'." >&2
+            exit 1
+          fi
+
+      - name: Build macOS Apple Silicon release assets
+        env:
+          MACOS_TARGET: macos-aarch64
+        run: bash ./scripts/release-macos.sh
+
+      - name: Upload macOS Apple Silicon assets
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-aarch64-assets
+          if-no-files-found: error
+          path: |
+            release-github/${{ inputs.tag }}/snap-${{ inputs.tag }}-macos-aarch64
+            release-github/${{ inputs.tag }}/snap-${{ inputs.tag }}-macos-aarch64.tar.gz
+
+  macos-x86_64:
+    name: macOS Intel assets
+    runs-on: macos-15-intel
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install Rust stable
+        run: |
+          rustup toolchain install stable --profile minimal
+          rustup default stable
+
+      - name: Validate release tag
+        run: |
+          set -euo pipefail
+          version="$(cargo pkgid | sed 's/.*#//')"
+          expected="v${version}"
+          if [ "${{ inputs.tag }}" != "$expected" ]; then
+            echo "Release tag '${{ inputs.tag }}' does not match Cargo version '$expected'." >&2
+            exit 1
+          fi
+
+      - name: Build macOS Intel release assets
+        env:
+          MACOS_TARGET: macos-x86_64
+        run: bash ./scripts/release-macos.sh
+
+      - name: Upload macOS Intel assets
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-x86_64-assets
+          if-no-files-found: error
+          path: |
+            release-github/${{ inputs.tag }}/snap-${{ inputs.tag }}-macos-x86_64
+            release-github/${{ inputs.tag }}/snap-${{ inputs.tag }}-macos-x86_64.tar.gz
+
   publish:
     name: Publish GitHub Release
     runs-on: ubuntu-latest
     needs:
       - linux
       - windows
+      - macos-aarch64
+      - macos-x86_64
 
     steps:
       - name: Checkout
@@ -149,6 +229,10 @@ jobs:
           test -f "$upload_dir/snap-${tag}-windows-x86_64.exe"
           test -f "$upload_dir/snap-${tag}-windows-x86_64-setup.exe"
           test -f "$upload_dir/snap-${tag}-windows-x86_64.msi"
+          test -f "$upload_dir/snap-${tag}-macos-aarch64"
+          test -f "$upload_dir/snap-${tag}-macos-aarch64.tar.gz"
+          test -f "$upload_dir/snap-${tag}-macos-x86_64"
+          test -f "$upload_dir/snap-${tag}-macos-x86_64.tar.gz"
 
           cd "$upload_dir"
           sha256sum snap-${tag}-* > SHA256SUMS.txt

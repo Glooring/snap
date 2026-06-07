@@ -1,4 +1,4 @@
-# Build and install Snap on Windows and WSL
+# Build and install Snap on Windows, Linux, WSL, and macOS
 
 This document explains the maintainer release/build flow for the `snap` CLI after the Git-health stabilization changes.
 
@@ -7,7 +7,7 @@ For user-facing install paths, checksum verification, and the Linux command-name
 For the complete list of newer Git/GitHub workflow commands added to `snap`, see
 `doc/FRIENDLY_GIT_WORKFLOW_IMPLEMENTED.md`.
 
-There are two targets:
+There are three release target families:
 
 - **Windows release artifacts**
   - `release-github\vX.Y.Z\snap-vX.Y.Z-windows-x86_64.exe`
@@ -16,43 +16,52 @@ There are two targets:
 - **WSL/Linux release artifacts**
   - `release-github/vX.Y.Z/snap-vX.Y.Z-linux-x86_64`
   - `release-github/vX.Y.Z/snap-vX.Y.Z-linux-x86_64.tar.gz`
+- **macOS release artifacts**
+  - `release-github/vX.Y.Z/snap-vX.Y.Z-macos-aarch64`
+  - `release-github/vX.Y.Z/snap-vX.Y.Z-macos-aarch64.tar.gz`
+  - `release-github/vX.Y.Z/snap-vX.Y.Z-macos-x86_64`
+  - `release-github/vX.Y.Z/snap-vX.Y.Z-macos-x86_64.tar.gz`
 - **Checksums**
   - `release-github/vX.Y.Z/SHA256SUMS.txt`
 
 ## 1. Preferred GitHub Actions release flow
 
-The preferred full release path is `.github/workflows/release.yml`. It builds and tests Linux assets on Ubuntu, builds and tests Windows assets on Windows, generates `SHA256SUMS.txt`, and creates the GitHub Release.
+The preferred full release path is `.github/workflows/release.yml`. It builds and tests Linux assets on Ubuntu, builds and tests Windows assets on Windows, builds and tests macOS assets on Apple Silicon and Intel macOS runners, generates `SHA256SUMS.txt`, and creates the GitHub Release.
 
-For `v7.2.1`:
+For `v7.2.2`:
 
 ```bash
-gh workflow run release.yml --repo Glooring/snap -f tag=v7.2.1 -f publish=true
+gh workflow run release.yml --repo Glooring/snap -f tag=v7.2.2 -f publish=true
 gh run list --repo Glooring/snap --workflow Release --limit 5
 gh run watch <run-id> --repo Glooring/snap --exit-status
-gh release view v7.2.1 --repo Glooring/snap --json tagName,name,isDraft,isPrerelease,publishedAt,createdAt,url,assets,targetCommitish
+gh release view v7.2.2 --repo Glooring/snap --json tagName,name,isDraft,isPrerelease,publishedAt,createdAt,url,assets,targetCommitish
 ```
 
 The workflow publishes:
 
 ```text
-snap-v7.2.1-windows-x86_64.exe
-snap-v7.2.1-windows-x86_64-setup.exe
-snap-v7.2.1-windows-x86_64.msi
-snap-v7.2.1-linux-x86_64
-snap-v7.2.1-linux-x86_64.tar.gz
+snap-v7.2.2-windows-x86_64.exe
+snap-v7.2.2-windows-x86_64-setup.exe
+snap-v7.2.2-windows-x86_64.msi
+snap-v7.2.2-linux-x86_64
+snap-v7.2.2-linux-x86_64.tar.gz
+snap-v7.2.2-macos-aarch64
+snap-v7.2.2-macos-aarch64.tar.gz
+snap-v7.2.2-macos-x86_64
+snap-v7.2.2-macos-x86_64.tar.gz
 SHA256SUMS.txt
 ```
 
-After publication, download the release, verify checksums, run the Linux binary directly, and smoke-test it in a disposable Git repository. Windows executable behavior is validated by the Windows runner during the release workflow.
+After publication, download the release, verify checksums, run the Linux binary directly, and smoke-test it in a disposable Git repository. Windows and macOS executable behavior is validated by their target runners during the release workflow.
 
 For published releases, run the manual smoke workflow too:
 
 ```bash
-gh workflow run release-smoke.yml --repo Glooring/snap -f tag=v7.2.1
+gh workflow run release-smoke.yml --repo Glooring/snap -f tag=v7.2.2
 gh run watch <run-id> --repo Glooring/snap --exit-status
 ```
 
-The `v7.2.1` Linux asset is built on Ubuntu 24.04 and requires glibc 2.39 or newer. Older Linux distributions should build from source until a future release adds an older-glibc or static Linux target.
+The `v7.2.2` Linux asset is built on Ubuntu 24.04 and requires glibc 2.39 or newer. Older Linux distributions should build from source until a future release adds an older-glibc or static Linux target. The macOS binaries are unsigned and not notarized.
 
 ## 2. Local release asset scripts
 
@@ -72,9 +81,16 @@ cd /mnt/d/Projects/snap
 bash ./scripts/release-linux.sh
 ```
 
-The scripts do not delete artifacts from the other platform. Re-running one script only overwrites that script's own files in the release folder.
+From macOS:
 
-After both platform scripts have produced the five binary/archive files, generate `SHA256SUMS.txt` in the release folder before publishing:
+```bash
+cd ~/Projects/snap
+bash ./scripts/release-macos.sh
+```
+
+The scripts do not delete artifacts from the other platform. Re-running one script only overwrites that script's own files in the release folder. `scripts/release-macos.sh` builds the native Mac architecture only; use the GitHub Actions release workflow to produce both Apple Silicon and Intel macOS assets.
+
+After all platform scripts have produced the binary/archive files, generate `SHA256SUMS.txt` in the release folder before publishing:
 
 ```bash
 cd release-github/vX.Y.Z
@@ -90,7 +106,7 @@ Upload the release assets to a draft GitHub Release with:
 snap release upload
 ```
 
-`snap release upload` reads the same Cargo version, expects the five platform artifacts in `release-github/vX.Y.Z`, infers the GitHub repository from `origin`, and creates a draft release by default. If checksum upload automation has not been added yet, attach `SHA256SUMS.txt` manually before publishing. Use `--repo owner/repo` if `origin` is not a GitHub URL, `--publish` only when you want to publish immediately, and `--clobber` only for an intentional retry against an existing release.
+`snap release upload` reads the same Cargo version, expects the Windows, Linux, and macOS platform artifacts in `release-github/vX.Y.Z`, infers the GitHub repository from `origin`, and creates a draft release by default. If checksum upload automation has not been added yet, attach `SHA256SUMS.txt` manually before publishing. Use `--repo owner/repo` if `origin` is not a GitHub URL, `--publish` only when you want to publish immediately, and `--clobber` only for an intentional retry against an existing release.
 
 To inspect the latest GitHub Releases from the same repository:
 
@@ -104,7 +120,7 @@ The main settings are at the top of each script:
 
 ```text
 ReleaseRoot / RELEASE_ROOT
-WindowsTarget / LINUX_TARGET
+WindowsTarget / LINUX_TARGET / MACOS_TARGET
 AppName / APP_NAME
 ```
 
@@ -130,7 +146,7 @@ After the command finishes, verify the artifacts:
 
 ```powershell
 dir target\release\snap.exe
-dir target\wix\snap-7.2.1-x86_64.msi
+dir target\wix\snap-7.2.2-x86_64.msi
 dir snap-setup.exe
 ```
 
@@ -138,7 +154,7 @@ Expected files:
 
 ```text
 D:\Projects\snap\target\release\snap.exe
-D:\Projects\snap\target\wix\snap-7.2.1-x86_64.msi
+D:\Projects\snap\target\wix\snap-7.2.2-x86_64.msi
 D:\Projects\snap\snap-setup.exe
 ```
 
@@ -152,7 +168,7 @@ You can also verify the freshly built executable directly, without installing:
 Expected:
 
 ```text
-snap 7.2.1
+snap 7.2.2
 [snap] Git repository looks healthy.
 ```
 
@@ -209,7 +225,7 @@ If `C:\Program Files\snap\bin\snap.exe` also appears and you do not want to use 
 Use:
 
 ```text
-target\wix\snap-7.2.1-x86_64.msi
+target\wix\snap-7.2.2-x86_64.msi
 ```
 
 The WiX installer installs `snap.exe` under Program Files and includes PATH integration. This is the better installer for normal Windows installation and upgrades.
@@ -217,7 +233,7 @@ The WiX installer installs `snap.exe` under Program Files and includes PATH inte
 Install by double-clicking the MSI, or from an elevated terminal:
 
 ```powershell
-msiexec /i target\wix\snap-7.2.1-x86_64.msi
+msiexec /i target\wix\snap-7.2.2-x86_64.msi
 ```
 
 Then open a new terminal and verify:
@@ -373,7 +389,7 @@ snap doctor
 For a Program Files installer test instead:
 
 ```powershell
-msiexec /i target\wix\snap-7.2.1-x86_64.msi
+msiexec /i target\wix\snap-7.2.2-x86_64.msi
 ```
 
 Open a new terminal:
@@ -405,13 +421,13 @@ The latest Windows build produced:
 ```text
 D:\Projects\snap\snap-setup.exe
 D:\Projects\snap\target\release\snap.exe
-D:\Projects\snap\target\wix\snap-7.2.1-x86_64.msi
+D:\Projects\snap\target\wix\snap-7.2.2-x86_64.msi
 ```
 
 The freshly built Windows executable reported:
 
 ```text
-snap 7.2.1
+snap 7.2.2
 ```
 
 And `snap doctor` reported the repository as healthy.

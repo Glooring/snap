@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: "Release tag to smoke-test, for example v7.2.0"
+        description: "Release tag to smoke-test, for example v7.2.2"
         required: true
         type: string
 
@@ -35,12 +35,18 @@ jobs:
           test -f "snap-${tag}-windows-x86_64.exe"
           test -f "snap-${tag}-windows-x86_64-setup.exe"
           test -f "snap-${tag}-windows-x86_64.msi"
+          test -f "snap-${tag}-macos-aarch64"
+          test -f "snap-${tag}-macos-aarch64.tar.gz"
+          test -f "snap-${tag}-macos-x86_64"
+          test -f "snap-${tag}-macos-x86_64.tar.gz"
 
           sha256sum -c SHA256SUMS.txt
           chmod +x "snap-${tag}-linux-x86_64"
           "./snap-${tag}-linux-x86_64" --version
           "./snap-${tag}-linux-x86_64" --help >/dev/null
           tar -tzf "snap-${tag}-linux-x86_64.tar.gz" >/dev/null
+          tar -tzf "snap-${tag}-macos-aarch64.tar.gz" >/dev/null
+          tar -tzf "snap-${tag}-macos-x86_64.tar.gz" >/dev/null
 
       - name: Smoke-test Linux binary in a disposable repository
         run: |
@@ -125,3 +131,68 @@ jobs:
           & $snapBin diff release-start release-update
           & $snapBin restore release-start --dry-run
           & $snapBin doctor
+
+  macos:
+    name: macOS release smoke (${{ matrix.target }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-15
+            target: macos-aarch64
+          - os: macos-15-intel
+            target: macos-x86_64
+
+    steps:
+      - name: Download macOS release assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          tag="${{ inputs.tag }}"
+          target="${{ matrix.target }}"
+          assets_dir="$RUNNER_TEMP/release-assets"
+
+          mkdir -p "$assets_dir"
+          gh release download "$tag" --repo "$GITHUB_REPOSITORY" --dir "$assets_dir" --pattern "SHA256SUMS.txt"
+          gh release download "$tag" --repo "$GITHUB_REPOSITORY" --dir "$assets_dir" --pattern "snap-$tag-$target"
+          gh release download "$tag" --repo "$GITHUB_REPOSITORY" --dir "$assets_dir" --pattern "snap-$tag-$target.tar.gz"
+
+          cd "$assets_dir"
+          test -f SHA256SUMS.txt
+          test -f "snap-$tag-$target"
+          test -f "snap-$tag-$target.tar.gz"
+          awk -v file="snap-$tag-$target" '$2 == file' SHA256SUMS.txt | shasum -a 256 -c -
+          awk -v file="snap-$tag-$target.tar.gz" '$2 == file' SHA256SUMS.txt | shasum -a 256 -c -
+          chmod +x "snap-$tag-$target"
+          "./snap-$tag-$target" --version
+          "./snap-$tag-$target" --help >/dev/null
+          tar -tzf "snap-$tag-$target.tar.gz" >/dev/null
+
+      - name: Smoke-test macOS binary in a disposable repository
+        run: |
+          set -euo pipefail
+          tag="${{ inputs.tag }}"
+          target="${{ matrix.target }}"
+          snap_bin="$RUNNER_TEMP/release-assets/snap-$tag-$target"
+          smoke_dir="$(mktemp -d "$RUNNER_TEMP/snap-release-smoke-XXXXXX")"
+
+          cd "$smoke_dir"
+          git init
+          git config user.email "snap-release-smoke@example.invalid"
+          git config user.name "Snap Release Smoke"
+
+          echo "one" > app.txt
+          git add app.txt
+          git commit -m "initial"
+
+          "$snap_bin" init
+          echo "release start" >> app.txt
+          "$snap_bin" new release-start "release smoke start"
+          echo "two" >> app.txt
+          "$snap_bin" new release-update "release smoke update"
+          "$snap_bin" list
+          "$snap_bin" diff release-start release-update
+          "$snap_bin" restore release-start --dry-run
+          "$snap_bin" doctor

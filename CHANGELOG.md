@@ -6,6 +6,13 @@ This project is moving toward a clearer public release process. Until release au
 
 - No unreleased changes yet.
 
+## 7.2.2 - 2026-06-07
+
+- Added macOS release support for Apple Silicon and Intel portable binaries plus `.tar.gz` archives.
+- Added `snap release macos` for native macOS release asset generation.
+- Extended GitHub release automation and public release smoke tests to validate Linux, Windows, and macOS assets.
+- Added a realistic README demo GIF/MP4 generated from a disposable 382-file repository with 130 Snap snapshots.
+
 ## 7.2.1 - 2026-06-07
 
 - Added branch-aware discovery to top-level help, including direct hints for `snap list --help`, `snap history --help`, and `snap branch --help`.

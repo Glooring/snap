@@ -14,12 +14,16 @@ snap-vX.Y.Z-windows-x86_64-setup.exe
 snap-vX.Y.Z-windows-x86_64.msi
 snap-vX.Y.Z-linux-x86_64
 snap-vX.Y.Z-linux-x86_64.tar.gz
+snap-vX.Y.Z-macos-aarch64
+snap-vX.Y.Z-macos-aarch64.tar.gz
+snap-vX.Y.Z-macos-x86_64
+snap-vX.Y.Z-macos-x86_64.tar.gz
 SHA256SUMS.txt
 ```
 
-The Windows assets are built on Windows. The Linux assets are built on Ubuntu GitHub runners. The tar archive contains the same Linux binary as the standalone `snap-vX.Y.Z-linux-x86_64` asset.
+The Windows assets are built on Windows. The Linux assets are built on Ubuntu GitHub runners. The macOS assets are built on macOS GitHub runners for Apple Silicon and Intel. The tar archives contain the same binary as the matching standalone platform asset.
 
-For `v7.2.1`, the Linux binary is built on Ubuntu 24.04 and requires glibc 2.39 or newer. On older distributions, such as Ubuntu 22.04, build from source with `cargo build --release` until a future release adds an older-glibc or static Linux target.
+For `v7.2.2`, the Linux binary is built on Ubuntu 24.04 and requires glibc 2.39 or newer. On older distributions, such as Ubuntu 22.04, build from source with `cargo build --release` until a future release adds an older-glibc or static Linux target.
 
 ## Checksums
 
@@ -40,6 +44,12 @@ Get-Content .\SHA256SUMS.txt
 
 Compare the hash values before running a downloaded binary. The current release scripts build the platform artifacts; checksum publication remains part of the release checklist until it is automated.
 
+On macOS:
+
+```bash
+shasum -a 256 -c SHA256SUMS.txt
+```
+
 ## Verify A Binary
 
 Before installing, run the binary directly when possible.
@@ -57,12 +67,28 @@ chmod +x ./snap-vX.Y.Z-linux-x86_64
 ./snap-vX.Y.Z-linux-x86_64 --help
 ```
 
+macOS Apple Silicon:
+
+```bash
+chmod +x ./snap-vX.Y.Z-macos-aarch64
+./snap-vX.Y.Z-macos-aarch64 --help
+```
+
+macOS Intel:
+
+```bash
+chmod +x ./snap-vX.Y.Z-macos-x86_64
+./snap-vX.Y.Z-macos-x86_64 --help
+```
+
 `snap doctor` checks the current Git repository, so run it from inside a Git repository:
 
 ```bash
 git status
 ./snap-vX.Y.Z-linux-x86_64 doctor
 ```
+
+Use the matching macOS binary name when verifying on macOS.
 
 If you build from source, validate the source-built release binary:
 
@@ -96,6 +122,32 @@ snap doctor
 ```
 
 If `where snap` prints more than one path, Windows runs the first one. Remove stale PATH entries or uninstall the older copy before assuming an upgrade worked.
+
+## macOS Install
+
+Choose the asset for your Mac:
+
+- Apple Silicon: `snap-vX.Y.Z-macos-aarch64`
+- Intel: `snap-vX.Y.Z-macos-x86_64`
+
+Portable install:
+
+```bash
+mkdir -p "$HOME/.local/bin"
+install -m 0755 ./snap-vX.Y.Z-macos-aarch64 "$HOME/.local/bin/snap"
+command -v snap
+snap --help
+```
+
+Use the Intel filename on Intel Macs.
+
+The macOS binaries are unsigned and not notarized. If Gatekeeper/quarantine blocks a downloaded binary, verify `SHA256SUMS.txt` first, then remove quarantine only from the downloaded Snap binary you intend to run:
+
+```bash
+xattr -d com.apple.quarantine "$HOME/.local/bin/snap"
+```
+
+If `~/.local/bin` is not on PATH, add it using your shell's normal profile file and open a new terminal.
 
 ## Linux Install
 
@@ -163,6 +215,6 @@ gh workflow run release.yml --repo Glooring/snap -f tag=vX.Y.Z -f publish=true
 gh run watch <run-id> --repo Glooring/snap --exit-status
 ```
 
-The workflow builds Linux and Windows assets on their target runners, generates `SHA256SUMS.txt`, creates the GitHub Release, and uploads all release assets. After publication, download the assets, verify checksums, and smoke-test the Linux binary from a disposable Git repository. Windows executable behavior is validated on the Windows runner during the workflow.
+The workflow builds Linux, Windows, and macOS assets on their target runners, generates `SHA256SUMS.txt`, creates the GitHub Release, and uploads all release assets. After publication, download the assets, verify checksums, and smoke-test the Linux binary from a disposable Git repository. Windows and macOS executable behavior is validated on their target runners during the workflow.
 
-For published releases, the manual `Release Smoke` workflow can also be run with a tag such as `v7.2.1`. It downloads the public assets, verifies checksums on Ubuntu, and smoke-tests the public Linux and Windows portable binaries in disposable Git repositories.
+For published releases, the manual `Release Smoke` workflow can also be run with a tag such as `v7.2.2`. It downloads the public assets, verifies checksums on Ubuntu, and smoke-tests the public Linux, Windows, and macOS portable binaries in disposable Git repositories.

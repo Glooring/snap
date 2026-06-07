@@ -240,6 +240,10 @@ fn create_release_artifacts(dir: &Path) -> PathBuf {
         "snap-v7.2.0-windows-x86_64.msi",
         "snap-v7.2.0-linux-x86_64",
         "snap-v7.2.0-linux-x86_64.tar.gz",
+        "snap-v7.2.0-macos-aarch64",
+        "snap-v7.2.0-macos-aarch64.tar.gz",
+        "snap-v7.2.0-macos-x86_64",
+        "snap-v7.2.0-macos-x86_64.tar.gz",
     ] {
         fs::write(release_dir.join(artifact), artifact).expect("release artifact");
     }
@@ -1247,6 +1251,7 @@ fn help_lists_friendly_git_workflow_commands() {
         .success()
         .stdout(predicate::str::contains("windows"))
         .stdout(predicate::str::contains("linux"))
+        .stdout(predicate::str::contains("macos"))
         .stdout(predicate::str::contains("all"))
         .stdout(predicate::str::contains("upload"))
         .stdout(predicate::str::contains("list"));
@@ -1284,6 +1289,7 @@ fn examples_prints_practical_workflows_without_repo() {
         .stdout(predicate::str::contains("snap list --all-branches"))
         .stdout(predicate::str::contains("snap release windows"))
         .stdout(predicate::str::contains("snap release linux"))
+        .stdout(predicate::str::contains("snap release macos"))
         .stdout(predicate::str::contains("snap release upload"))
         .stdout(predicate::str::contains("snap release list"))
         .stdout(predicate::str::contains("snap delete-repo"))
@@ -1395,6 +1401,31 @@ fn release_linux_uses_script_and_prints_expected_artifacts() {
 }
 
 #[test]
+fn release_macos_uses_script_and_prints_expected_artifacts() {
+    let temp = assert_fs::TempDir::new().expect("tempdir");
+    let fake_bin = assert_fs::TempDir::new().expect("fake release bin");
+    init_release_fixture(temp.path());
+    let fake_bash = create_fake_release_runtime(fake_bin.path(), "fake-bash");
+    let macos_script = temp.path().join("fake-release-macos.sh");
+    fs::write(&macos_script, "#!/usr/bin/env bash\n").expect("fake macos script");
+    let log_path = temp.path().join("release-macos.log");
+
+    snap_cmd(temp.path())
+        .args(["release", "macos"])
+        .env("SNAP_RELEASE_BASH", &fake_bash)
+        .env("SNAP_RELEASE_MACOS_SCRIPT", &macos_script)
+        .env("SNAP_RELEASE_MACOS_TARGET", "macos-aarch64")
+        .env("SNAP_RELEASE_FAKE_LOG", &log_path)
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("snap-v7.2.0-macos-aarch64"))
+        .stdout(predicate::str::contains("snap-v7.2.0-macos-aarch64.tar.gz"));
+
+    let log = fs::read_to_string(log_path).expect("read release macos log");
+    assert!(log.contains(&macos_script.to_string_lossy().to_string()));
+}
+
+#[test]
 fn release_all_preflights_then_runs_windows_and_linux() {
     let temp = assert_fs::TempDir::new().expect("tempdir");
     let fake_bin = assert_fs::TempDir::new().expect("fake release bin");
@@ -1486,7 +1517,7 @@ fn release_upload_infers_origin_and_creates_draft_release() {
         .assert()
         .success()
         .stdout(predicate::str::contains("GitHub release upload"))
-        .stdout(predicate::str::contains("Uploaded 5 release asset"));
+        .stdout(predicate::str::contains("Uploaded 9 release asset"));
 
     let log = fs::read_to_string(log_path).expect("read release upload log");
     assert!(log.contains("auth status"));
@@ -1497,6 +1528,10 @@ fn release_upload_infers_origin_and_creates_draft_release() {
     assert!(log.contains("snap-v7.2.0-windows-x86_64.msi"));
     assert!(log.contains("snap-v7.2.0-linux-x86_64"));
     assert!(log.contains("snap-v7.2.0-linux-x86_64.tar.gz"));
+    assert!(log.contains("snap-v7.2.0-macos-aarch64"));
+    assert!(log.contains("snap-v7.2.0-macos-aarch64.tar.gz"));
+    assert!(log.contains("snap-v7.2.0-macos-x86_64"));
+    assert!(log.contains("snap-v7.2.0-macos-x86_64.tar.gz"));
     assert!(log.contains("--draft"));
     assert!(log.contains("--title"));
     assert!(log.contains("snap v7.2.0"));
@@ -1574,7 +1609,7 @@ fn release_upload_clobber_uploads_to_existing_release() {
         .assert()
         .success()
         .stdout(predicate::str::contains("Existing release found"))
-        .stdout(predicate::str::contains("Uploaded 5 release asset"));
+        .stdout(predicate::str::contains("Uploaded 9 release asset"));
 
     let log = fs::read_to_string(log_path).expect("read release clobber log");
     assert!(log.contains("release upload v7.2.0"));

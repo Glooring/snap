@@ -16,7 +16,7 @@ Workflow groups:
   History:           snap history | snap history --all-branches
   Branches:          snap branch list | snap branch new feature-x | snap branch switch main
   Remote/GitHub:     snap remote status | snap setup-repo owner/repo --private | snap delete-repo owner/repo
-  Release:           snap release windows | snap release upload | snap release list
+  Release:           snap release windows | snap release macos | snap release upload | snap release list
   Diagnostics:       snap doctor | snap doctor --json --ci | snap doctor --repair | snap options
   Command help:      snap list --help | snap history --help | snap branch --help
   Learn by example:  snap examples
@@ -316,6 +316,7 @@ They do not create a GitHub Release and do not commit generated artifacts.
 Examples:
   snap release windows
   snap release linux
+  snap release macos
   snap release all
   snap release upload
   snap release list
@@ -332,7 +333,9 @@ pub enum ReleaseCommands {
     Windows(ReleasePlatformArgs),
     /// Run scripts/release-linux.sh
     Linux(ReleasePlatformArgs),
-    /// Run both local release scripts after checking both runtimes
+    /// Run scripts/release-macos.sh for the native macOS architecture
+    Macos(ReleasePlatformArgs),
+    /// Run both Windows and Linux local release scripts after checking both runtimes
     All(ReleasePlatformArgs),
     /// Upload release-github/vX.Y.Z assets to a GitHub Release
     Upload(ReleaseUploadArgs),

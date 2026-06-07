@@ -1,0 +1,165 @@
+# Snap README visual demo transcript
+# Generated: 2026-06-07 13:44:11
+# Sandbox: disposable /tmp/snap-realistic-demo-* local repository
+# Snap binary: ./target/release/snap
+# Seeded project files: 382
+# Seeded snapshots: 130
+# Generation time: 5.9s
+
+$ git init -b main
+Initialized empty Git repository in /tmp/snap-realistic-demo-*/taskforge/.git/
+
+$ snap init
+[snap] This directory is already a Git repository.
+
+$ snap new s001-baseline "large project baseline"
+[snap] Step 1/4: Scanning for metadata (hidden files, empty dirs)...
+[snap] Step 2/4: Staging all files...
+[snap] Step 3/4: Creating the commit...
+[snap] Step 4/4: Creating the annotated snapshot tag...
+
+[snap] New snapshot created: [e654749] s001-baseline
+
+$ snap status
+[snap] Project status
+  OK Branch: main
+  WARN Remote origin: not configured
+  WARN Upstream: not configured
+  OK Working tree: clean
+  OK Active snapshot: s001-baseline
+  OK Latest snapshot: s001-baseline
+
+$ snap branch new ui-redesign
+[snap] Creating and switching to branch 'ui-redesign'...
+[snap] Now on branch 'ui-redesign'.
+  Next: run `snap sync` when you want to publish this branch.
+
+$ snap new s129-ui-redesign "branch-only UI redesign"
+[snap] Step 1/4: Scanning for metadata (hidden files, empty dirs)...
+[snap] Step 2/4: Staging all files...
+[snap] Step 3/4: Creating the commit...
+[snap] Step 4/4: Creating the annotated snapshot tag...
+
+[snap] New snapshot created: [da1c0fa] s129-ui-redesign
+
+$ snap branch switch main
+[snap] Switching to branch 'main'...
+[snap] Now on branch 'main'.
+
+$ snap new s129-main-release-notes "main release notes"
+[snap] Step 1/4: Scanning for metadata (hidden files, empty dirs)...
+[snap] Step 2/4: Staging all files...
+[snap] Step 3/4: Creating the commit...
+[snap] Step 4/4: Creating the annotated snapshot tag...
+
+[snap] New snapshot created: [df6edd6] s129-main-release-notes
+
+$ snap list --all-branches 12
+[snap] Snapshots for "taskforge":
+
+  Label                    Branch         Description              Timestamp
+  -----------------------  -------------  -----------------------  ----------------
+  s122-agent-pass          main (shared)  agent/refactor pass 122  2026-06-07 13:44
+  s123-agent-pass          main (shared)  agent/refactor pass 123  2026-06-07 13:44
+  s124-agent-pass          main (shared)  agent/refactor pass 124  2026-06-07 13:44
+  s125-agent-pass          main (shared)  agent/refactor pass 125  2026-06-07 13:44
+  s126-agent-pass          main (shared)  agent/refactor pass 126  2026-06-07 13:44
+  s127-agent-pass          main (shared)  agent/refactor pass 127  2026-06-07 13:44
+  s128-agent-pass          main (shared)  agent/refactor pass 128  2026-06-07 13:44
+  s129-main-release-notes  main           main release notes       2026-06-07 13:44   (active)
+  s129-ui-redesign         ui-redesign    branch-only UI redesign  2026-06-07 13:44
+  s098-agent-pass          main (shared)  agent/refactor pass 098  2026-06-07 13:44
+  s099-agent-pass          main (shared)  agent/refactor pass 099  2026-06-07 13:44
+  s100-agent-pass          main (shared)  agent/refactor pass 100  2026-06-07 13:44
+  ...
+  Branch legend: branch, <current> (shared), shared, - = no local branch reaches this snapshot
+
+$ snap history --all-branches 14
+[snap] Project history
+[snap] Scope: all branches
+
+* df6edd6 (HEAD -> main, tag: s129-main-release-notes) Snapshot: s129-main-release-notes
+| * da1c0fa (tag: s129-ui-redesign, ui-redesign) Snapshot: s129-ui-redesign
+|/  
+* 1a2fb9d (tag: s128-agent-pass) Snapshot: s128-agent-pass
+* b878065 (tag: s127-agent-pass) Snapshot: s127-agent-pass
+* ed7f6fd (tag: s126-agent-pass) Snapshot: s126-agent-pass
+* 96457dc (tag: s125-agent-pass) Snapshot: s125-agent-pass
+* f50abd8 (tag: s124-agent-pass) Snapshot: s124-agent-pass
+* 8e1a7e2 (tag: s123-agent-pass) Snapshot: s123-agent-pass
+* db4f937 (tag: s122-agent-pass) Snapshot: s122-agent-pass
+* e77bfe0 (tag: s121-agent-pass) Snapshot: s121-agent-pass
+* ecb175d (tag: s120-agent-pass) Snapshot: s120-agent-pass
+* 4223e57 (tag: s119-agent-pass) Snapshot: s119-agent-pass
+* c06ba0b (tag: s118-agent-pass) Snapshot: s118-agent-pass
+* 2ec1497 (tag: s117-agent-pass) Snapshot: s117-agent-pass
+
+$ snap restore s096-agent-pass --dry-run
+[snap] Restore dry run
+  Target snapshot: s096-agent-pass
+  Target commit: 16a47c0
+  Current HEAD: df6edd6
+  Workspace: clean
+  Rescue snapshot: not needed; current HEAD already has snapshot tag(s): s129-main-release-notes
+  Files changed: no
+  Tags created: no
+
+$ snap doctor
+[snap] Checking 130 snapshot tag(s)...
+[snap] Checking 130 snapshot metadata blob(s)...
+[snap] Checked 100/130 snapshot metadata blob(s)...
+
+[snap] Git health report
+  OK Empty object/ref files: 0 found
+  OK git status
+  OK HEAD commit: df6edd6
+  OK Current branch: main
+  OK current branch ref
+  OK snapshot tag scan
+  OK Snapshot tags: 130 checked, 0 invalid
+  OK Latest valid snapshot: s129-ui-redesign
+  OK snapshot metadata scan
+  OK Snapshot metadata: 130 checked, 0 active invalid, 0 historical invalid, 0 unpinned
+
+[snap] Git repository looks healthy.
+
+$ # selected seed checkpoints
+$ snap new s002-agent-pass "agent/refactor pass 002"
+[snap] Step 1/4: Scanning for metadata (hidden files, empty dirs)...
+[snap] Step 2/4: Staging all files...
+[snap] Step 3/4: Creating the commit...
+[snap] Step 4/4: Creating the annotated snapshot tag...
+
+[snap] New snapshot created: [6552055] s002-agent-pass
+
+$ snap new s003-agent-pass "agent/refactor pass 003"
+[snap] Step 1/4: Scanning for metadata (hidden files, empty dirs)...
+[snap] Step 2/4: Staging all files...
+[snap] Step 3/4: Creating the commit...
+[snap] Step 4/4: Creating the annotated snapshot tag...
+
+[snap] New snapshot created: [41530a7] s003-agent-pass
+
+$ snap new s064-agent-pass "agent/refactor pass 064"
+[snap] Step 1/4: Scanning for metadata (hidden files, empty dirs)...
+[snap] Step 2/4: Staging all files...
+[snap] Step 3/4: Creating the commit...
+[snap] Step 4/4: Creating the annotated snapshot tag...
+
+[snap] New snapshot created: [b582838] s064-agent-pass
+
+$ snap new s096-agent-pass "agent/refactor pass 096"
+[snap] Step 1/4: Scanning for metadata (hidden files, empty dirs)...
+[snap] Step 2/4: Staging all files...
+[snap] Step 3/4: Creating the commit...
+[snap] Step 4/4: Creating the annotated snapshot tag...
+
+[snap] New snapshot created: [16a47c0] s096-agent-pass
+
+$ snap new s128-agent-pass "agent/refactor pass 128"
+[snap] Step 1/4: Scanning for metadata (hidden files, empty dirs)...
+[snap] Step 2/4: Staging all files...
+[snap] Step 3/4: Creating the commit...
+[snap] Step 4/4: Creating the annotated snapshot tag...
+
+[snap] New snapshot created: [1a2fb9d] s128-agent-pass

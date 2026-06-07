@@ -11,12 +11,16 @@ const APP_NAME: &str = "snap";
 const RELEASE_ROOT: &str = "release-github";
 const WINDOWS_TARGET: &str = "windows-x86_64";
 const LINUX_TARGET: &str = "linux-x86_64";
+const MACOS_AARCH64_TARGET: &str = "macos-aarch64";
+const MACOS_X86_64_TARGET: &str = "macos-x86_64";
 const DEFAULT_RELEASE_LIST_LIMIT: usize = 10;
 
 #[derive(Debug, Clone, Copy)]
 enum ReleasePlatform {
     Windows,
     Linux,
+    MacosAarch64,
+    MacosX86_64,
 }
 
 #[derive(Debug, Clone)]
@@ -24,6 +28,7 @@ struct ReleaseScript {
     platform: ReleasePlatform,
     runtime: String,
     script: PathBuf,
+    env: Vec<(String, String)>,
 }
 
 #[derive(Debug, Clone)]
@@ -37,6 +42,7 @@ pub fn execute(args: ReleaseArgs) -> Result<()> {
     match args.command {
         ReleaseCommands::Windows(_) => release_one(ReleasePlatform::Windows),
         ReleaseCommands::Linux(_) => release_one(ReleasePlatform::Linux),
+        ReleaseCommands::Macos(_) => release_one(resolve_native_macos_platform()?),
         ReleaseCommands::All(_) => release_all(),
         ReleaseCommands::Upload(args) => upload(args),
         ReleaseCommands::List(args) => list(args),
@@ -70,7 +76,7 @@ fn release_all() -> Result<()> {
 }
 
 fn upload(args: ReleaseUploadArgs) -> Result<()> {
-    let context = release_context(ReleasePlatform::all())?;
+    let context = release_context(ReleasePlatform::upload_all())?;
     ensure_artifacts_exist(&context)?;
 
     let repo = resolve_repo(args.repo.as_deref())?;
@@ -164,6 +170,7 @@ fn release_script(platform: ReleasePlatform) -> ReleaseScript {
             script: env::var_os("SNAP_RELEASE_WINDOWS_SCRIPT")
                 .map(PathBuf::from)
                 .unwrap_or_else(|| PathBuf::from("scripts").join("release-windows.ps1")),
+            env: Vec::new(),
         },
         ReleasePlatform::Linux => ReleaseScript {
             platform,
@@ -171,6 +178,15 @@ fn release_script(platform: ReleasePlatform) -> ReleaseScript {
             script: env::var_os("SNAP_RELEASE_LINUX_SCRIPT")
                 .map(PathBuf::from)
                 .unwrap_or_else(|| PathBuf::from("scripts").join("release-linux.sh")),
+            env: Vec::new(),
+        },
+        ReleasePlatform::MacosAarch64 | ReleasePlatform::MacosX86_64 => ReleaseScript {
+            platform,
+            runtime: env::var("SNAP_RELEASE_BASH").unwrap_or_else(|_| "bash".into()),
+            script: env::var_os("SNAP_RELEASE_MACOS_SCRIPT")
+                .map(PathBuf::from)
+                .unwrap_or_else(|| PathBuf::from("scripts").join("release-macos.sh")),
+            env: vec![("MACOS_TARGET".to_string(), platform.target().to_string())],
         },
     }
 }
@@ -187,7 +203,9 @@ fn preflight(script: &ReleaseScript) -> Result<()> {
         ReleasePlatform::Windows => Command::new(&script.runtime)
             .args(["-NoProfile", "-Command", "$PSVersionTable.PSVersion"])
             .status(),
-        ReleasePlatform::Linux => Command::new(&script.runtime).arg("--version").status(),
+        ReleasePlatform::Linux | ReleasePlatform::MacosAarch64 | ReleasePlatform::MacosX86_64 => {
+            Command::new(&script.runtime).arg("--version").status()
+        }
     };
 
     match status {
@@ -211,27 +229,29 @@ fn run_script(script: &ReleaseScript) -> Result<()> {
         .bold()
     );
 
-    let status = match script.platform {
-        ReleasePlatform::Windows => Command::new(&script.runtime)
-            .args(["-ExecutionPolicy", "Bypass", "-File"])
-            .arg(&script.script)
-            .status()
-            .with_context(|| {
-                format!(
-                    "Failed to spawn Windows release runtime '{}'.",
-                    script.runtime
-                )
-            })?,
-        ReleasePlatform::Linux => Command::new(&script.runtime)
-            .arg(&script.script)
-            .status()
-            .with_context(|| {
-                format!(
-                    "Failed to spawn Linux release runtime '{}'.",
-                    script.runtime
-                )
-            })?,
+    let mut command = Command::new(&script.runtime);
+    match script.platform {
+        ReleasePlatform::Windows => {
+            command
+                .args(["-ExecutionPolicy", "Bypass", "-File"])
+                .arg(&script.script);
+        }
+        ReleasePlatform::Linux | ReleasePlatform::MacosAarch64 | ReleasePlatform::MacosX86_64 => {
+            command.arg(&script.script);
+        }
     };
+
+    for (key, value) in &script.env {
+        command.env(key, value);
+    }
+
+    let status = command.status().with_context(|| {
+        format!(
+            "Failed to spawn {} release runtime '{}'.",
+            script.platform.label(),
+            script.runtime
+        )
+    })?;
 
     if !status.success() {
         return Err(anyhow!(
@@ -297,8 +317,27 @@ fn ensure_artifacts_exist(context: &ReleaseContext) -> Result<()> {
         message.push_str(&format!("\n  {}", path.display()));
     }
     message.push_str("\nRun `snap release windows` and `snap release linux` before uploading.");
+    message.push_str("\nRun `snap release macos` on both Apple Silicon and Intel macOS, or use the GitHub Actions release workflow, before uploading.");
 
     Err(anyhow!(message))
+}
+
+fn resolve_native_macos_platform() -> Result<ReleasePlatform> {
+    if let Ok(target) = env::var("SNAP_RELEASE_MACOS_TARGET") {
+        return ReleasePlatform::from_macos_target(&target);
+    }
+
+    if env::consts::OS != "macos" {
+        return Err(anyhow!(
+            "`snap release macos` must run on macOS, or set SNAP_RELEASE_MACOS_TARGET when using a controlled test/runtime override."
+        ));
+    }
+
+    match env::consts::ARCH {
+        "aarch64" => Ok(ReleasePlatform::MacosAarch64),
+        "x86_64" => Ok(ReleasePlatform::MacosX86_64),
+        arch => Err(anyhow!("Unsupported macOS architecture '{}'.", arch)),
+    }
 }
 
 fn resolve_repo(repo: Option<&str>) -> Result<String> {
@@ -444,14 +483,43 @@ fn cargo_version() -> Result<String> {
 }
 
 impl ReleasePlatform {
-    fn all() -> &'static [ReleasePlatform] {
-        &[ReleasePlatform::Windows, ReleasePlatform::Linux]
+    fn upload_all() -> &'static [ReleasePlatform] {
+        &[
+            ReleasePlatform::Windows,
+            ReleasePlatform::Linux,
+            ReleasePlatform::MacosAarch64,
+            ReleasePlatform::MacosX86_64,
+        ]
     }
 
     fn label(self) -> &'static str {
         match self {
             ReleasePlatform::Windows => "Windows",
             ReleasePlatform::Linux => "Linux",
+            ReleasePlatform::MacosAarch64 => "macOS Apple Silicon",
+            ReleasePlatform::MacosX86_64 => "macOS Intel",
+        }
+    }
+
+    fn target(self) -> &'static str {
+        match self {
+            ReleasePlatform::Windows => WINDOWS_TARGET,
+            ReleasePlatform::Linux => LINUX_TARGET,
+            ReleasePlatform::MacosAarch64 => MACOS_AARCH64_TARGET,
+            ReleasePlatform::MacosX86_64 => MACOS_X86_64_TARGET,
+        }
+    }
+
+    fn from_macos_target(target: &str) -> Result<ReleasePlatform> {
+        match target {
+            MACOS_AARCH64_TARGET => Ok(ReleasePlatform::MacosAarch64),
+            MACOS_X86_64_TARGET => Ok(ReleasePlatform::MacosX86_64),
+            _ => Err(anyhow!(
+                "Unsupported macOS release target '{}'. Expected '{}' or '{}'.",
+                target,
+                MACOS_AARCH64_TARGET,
+                MACOS_X86_64_TARGET
+            )),
         }
     }
 
@@ -465,6 +533,14 @@ impl ReleasePlatform {
             ReleasePlatform::Linux => vec![
                 format!("{APP_NAME}-{release_version}-{LINUX_TARGET}"),
                 format!("{APP_NAME}-{release_version}-{LINUX_TARGET}.tar.gz"),
+            ],
+            ReleasePlatform::MacosAarch64 => vec![
+                format!("{APP_NAME}-{release_version}-{MACOS_AARCH64_TARGET}"),
+                format!("{APP_NAME}-{release_version}-{MACOS_AARCH64_TARGET}.tar.gz"),
+            ],
+            ReleasePlatform::MacosX86_64 => vec![
+                format!("{APP_NAME}-{release_version}-{MACOS_X86_64_TARGET}"),
+                format!("{APP_NAME}-{release_version}-{MACOS_X86_64_TARGET}.tar.gz"),
             ],
         }
     }

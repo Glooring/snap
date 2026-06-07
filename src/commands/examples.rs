@@ -52,6 +52,7 @@ pub fn execute(_args: ExamplesArgs) -> Result<()> {
     println!("{}", "Prepare release assets:".bold());
     println!("  snap release windows");
     println!("  snap release linux");
+    println!("  snap release macos");
     println!("  snap release upload");
     println!("  snap release list");
     println!("  # Assets are written to release-github/vX.Y.Z");

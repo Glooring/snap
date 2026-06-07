@@ -1,13 +1,14 @@
 # Cross-Platform Notes
 
-Snap is intended for Windows, Linux, and WSL2. The implementation keeps Git as the storage engine and stores Snap-specific metadata as Git blobs pinned under `refs/snap-metadata`.
+Snap is intended for Windows, Linux, macOS, and WSL2. The implementation keeps Git as the storage engine and stores Snap-specific metadata as Git blobs pinned under `refs/snap-metadata`.
 
 ## Current Proof
 
 | Area | Current evidence |
 | --- | --- |
-| Linux | Local source-built validation runs in the OSS-readiness sprints. |
+| Linux | GitHub Actions CI and release assets run on Ubuntu. |
 | Windows | GitHub Actions CI runs on `windows-latest`; Windows-specific metadata code exists in `src/os/windows.rs`. |
+| macOS | GitHub Actions CI runs on macOS; release automation builds Apple Silicon and Intel portable assets. |
 | WSL2 | Install and release docs describe native Linux builds for WSL2; run Linux validation inside WSL2 when preparing releases. |
 | Source validation | Use `cargo run -- ...`, `./target/debug/snap ...`, `./target/release/snap ...`, `cargo test`, and `cargo build --release`. |
 
@@ -23,7 +24,7 @@ Snap records metadata that Git does not normally store:
 
 Platform differences matter:
 
-- On Unix-like systems, hidden paths are names that start with `.`.
+- On Unix-like systems, including Linux and macOS, hidden paths are names that start with `.`.
 - On Windows, hidden paths use the Windows hidden file attribute.
 - Read-only behavior is available on both platforms, but cleanup and restore behavior should be tested carefully because Windows can enforce read-only files more strictly during deletion.
 - WSL2 should use a native Linux Snap binary. A Windows `snap.exe` found through WSL PATH import is not the recommended WSL2 runtime.
@@ -66,3 +67,12 @@ cargo build --release
 ```
 
 For WSL2, run the Linux commands inside WSL2 with a native Linux binary.
+
+For macOS, use the CI result or a macOS local run:
+
+```bash
+cargo test
+cargo build --release
+./target/release/snap --help
+./target/release/snap doctor
+```

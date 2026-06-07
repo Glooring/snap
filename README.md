@@ -8,6 +8,10 @@ Snap is a native Rust CLI for Git-powered local project checkpoints. It helps yo
 
 Snap does not replace Git. It uses Git commits, annotated tags, and Snap metadata refs to provide a smaller, more guided workflow around local checkpoints, restore, diff, health checks, branch helpers, remote helpers, and release helpers.
 
+![Snap terminal demo showing checkpoints, branch-aware listing, graph history, restore dry-run, and doctor](docs/assets/snap-demo.gif)
+
+This demo was generated from a disposable 382-file local Git repository with 130 source-built Snap snapshots. The [MP4 version](docs/assets/snap-demo.mp4) and [command transcript](docs/assets/snap-demo-transcript.txt) are available in `docs/assets/`.
+
 ## Why Snap Exists
 
 Developers often need a quick "known good" point before doing something risky:
@@ -86,7 +90,7 @@ The current source-built CLI exposes these command groups:
 | Daily Git workflow | `status`, `save`, `push`, `pull`, `sync`, `history`, `update-repo` |
 | Branches | `branch list`, `branch new`, `branch switch`, `branch delete`, `branch merge` |
 | GitHub/remotes | `remote`, `setup-repo`, `make-public`, `make-private`, `delete-repo` |
-| Release helpers | `release windows`, `release linux`, `release all`, `release upload`, `release list` |
+| Release helpers | `release windows`, `release linux`, `release macos`, `release all`, `release upload`, `release list` |
 | Diagnostics/config | `doctor`, `options`, `examples` |
 
 Run `snap --help` or `snap <command> --help` for the exact CLI contract of the binary you are using.
@@ -150,12 +154,12 @@ Snap is built for repeated developer workflows. A CLI works well in terminals, e
 ## Prerequisites
 
 - Git must be installed and available on PATH.
-- Windows 10 or later, a modern Linux distribution, or WSL2.
+- Windows 10 or later, a modern Linux distribution, macOS, or WSL2.
 - Rust is required only if you build from source.
 
 ## Installation
 
-See [Installation and release assets](doc/INSTALLATION.md) for Windows, Linux, and WSL2 install paths, release asset names, checksum expectations, and binary verification.
+See [Installation and release assets](doc/INSTALLATION.md) for Windows, Linux, macOS, and WSL2 install paths, release asset names, checksum expectations, and binary verification.
 
 On Linux, be careful with the command name. `snap` may already refer to Canonical Snapcraft. Do not overwrite an existing system command unless you intentionally choose that installation strategy.
 
