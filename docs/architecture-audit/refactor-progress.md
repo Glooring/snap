@@ -21,7 +21,7 @@ Agents are encouraged to test deeply with disposable local projects and, when re
 
 ## Current State
 
-Sprint 13 has published the first current OSS-readiness release, `v7.2.0`, with Linux and Windows assets plus `SHA256SUMS.txt`. Public CI is green on Ubuntu and Windows at commit `17fc054d318a7a78e7388aff1343e761d486d0fe`, the release tag `v7.2.0` points to `108c20397f13a8e37a684e9a6e3d7f0ce6d083a0`, and Release Smoke run `27086213709` passed against the public assets on Ubuntu and Windows. PR #7 remains the active beginner-demo direction and needs a rebase/update, PR #8 was closed as a duplicate, and issue #2 has maintainer guidance.
+Sprint 18 has published the current OSS-readiness release, `v7.2.2`, with Linux, Windows, macOS Apple Silicon, macOS Intel, matching tar archives, and `SHA256SUMS.txt`. Public CI is green on Ubuntu, Windows, and macOS at commit `7a271a093259bceff7b2854f9e3ab48a705864eb`; release workflow run `27091240489` published the release; and Release Smoke run `27091340545` passed against the public assets on Ubuntu, Windows, macOS Apple Silicon, and macOS Intel. The generated README demo GIF/MP4 is now committed under `docs/assets/`.
 
 The next phase is normal issue-driven maintenance plus OpenAI/Codex application submission using the now-current public evidence. Do not continue local-only refactoring for aesthetics.
 
@@ -1151,10 +1151,99 @@ Checkpoint:
 snap new oss-s13-release "sprint 13: current GitHub release"
 ```
 
+### Sprint 18 - macOS Release Readiness
+
+Status: completed
+Snapshot: `oss-s18-macos-release`
+Description: macOS release readiness and public demo assets
+
+Completed:
+
+- Created `docs/architecture-audit/refactor-plans/sprint-18-macos-release-readiness.md`.
+- Linked the Sprint 18 plan from `docs/architecture-audit/refactor-plans/README.md`.
+- Added README demo assets:
+  - `docs/assets/snap-demo.gif`
+  - `docs/assets/snap-demo.mp4`
+  - `docs/assets/snap-demo-transcript.txt`
+- Added `scripts/release-macos.sh` for native macOS portable assets and `.tar.gz` archives.
+- Added `snap release macos` and updated CLI help, examples, release docs, install docs, cross-platform docs, changelog, and release notes.
+- Extended `.github/workflows/ci.yml` to include macOS.
+- Extended `.github/workflows/release.yml` to build Apple Silicon on `macos-15` and Intel on `macos-15-intel`.
+- Extended `.github/workflows/release-smoke.yml` to download and smoke-test public macOS release assets.
+- Published GitHub Release `v7.2.2`: <https://github.com/Glooring/snap/releases/tag/v7.2.2>.
+- Published assets:
+  - `SHA256SUMS.txt`
+  - `snap-v7.2.2-linux-x86_64`
+  - `snap-v7.2.2-linux-x86_64.tar.gz`
+  - `snap-v7.2.2-windows-x86_64.exe`
+  - `snap-v7.2.2-windows-x86_64-setup.exe`
+  - `snap-v7.2.2-windows-x86_64.msi`
+  - `snap-v7.2.2-macos-aarch64`
+  - `snap-v7.2.2-macos-aarch64.tar.gz`
+  - `snap-v7.2.2-macos-x86_64`
+  - `snap-v7.2.2-macos-x86_64.tar.gz`
+- Confirmed release tag `v7.2.2` dereferences to `7a271a093259bceff7b2854f9e3ab48a705864eb`.
+- Confirmed no disposable external GitHub sandbox repositories were created.
+- Did not overwrite, reinstall, or upgrade the global `/usr/local/bin/snap`.
+
+Validation:
+
+| Command / check | Result |
+| --- | --- |
+| `git diff --check` | Passed |
+| `cargo fmt --check` | Passed |
+| `bash -n scripts/release-linux.sh scripts/release-macos.sh` | Passed |
+| GitHub workflow YAML parse with Python/PyYAML | Passed for CI, release, and release-smoke workflows |
+| Demo asset inspection | Passed; GIF is 1100x680, MP4 is H.264 1100x680 at 12 fps, 23s |
+| `cargo clippy --all-targets --all-features` | Passed |
+| `cargo clippy --all-targets --all-features -- -D warnings` | Passed |
+| `cargo test` | Passed, 113 tests |
+| `cargo build --release` | Passed |
+| `./target/release/snap --help` | Passed; release workflow group includes `snap release macos` |
+| `./target/release/snap release --help` | Passed; includes `macos` command |
+| `./target/release/snap examples` | Passed; includes `snap release macos` |
+| `./target/release/snap doctor` | Passed; repo healthy, 25 snapshot tags checked, latest valid snapshot `oss-s17-v721-release-prep` before Sprint 18 checkpoint |
+| `./target/release/snap release macos` on Linux | Failed intentionally with clear message that it must run on macOS or use controlled test override |
+| Public CI run `27091175225` | Passed on Ubuntu, Windows, and macOS for commit `7a271a093259bceff7b2854f9e3ab48a705864eb` |
+| Release workflow run `27091240489` | Passed; Linux assets 1m7s, macOS Apple Silicon assets 1m38s, macOS Intel assets 2m38s, Windows assets 3m59s, publish 7s |
+| `gh release view v7.2.2 --repo Glooring/snap ...` | Passed; release is published, not draft, not prerelease, with 10 assets |
+| `git ls-remote --tags origin 'v7.2.2*'` | Passed; annotated tag exists and dereferences to `7a271a093259bceff7b2854f9e3ab48a705864eb` |
+| Downloaded release checksums | Passed locally from `/tmp/snap-release-v7.2.2-X2Ri3Q`; all Linux, Windows, and macOS assets verified against `SHA256SUMS.txt` |
+| Downloaded Linux/macOS archive listings | Passed; each tar archive contains `snap` |
+| Release Smoke run `27091340545` | Passed on Ubuntu, Windows, macOS Apple Silicon, and macOS Intel against public release assets |
+
+Metrics after Sprint 18:
+
+| Area | Result |
+| --- | ---: |
+| `src/**/*.rs` files | 33 |
+| `tests/**/*.rs` files | 1 |
+| `doc/*.md` files | 24 |
+| `docs/**/*.md` tracked audit files | 20 |
+| `.github` tracked files | 7 |
+| `src` Rust LOC | 6,951 |
+| `tests` Rust LOC | 3,256 |
+| `doc` Markdown LOC | 6,423 |
+| `docs` audit Markdown LOC | 4,726 |
+
+Known remaining gaps after Sprint 18:
+
+- macOS binaries are unsigned and not notarized; install docs include checksum verification and quarantine guidance.
+- The Linux release asset currently targets Ubuntu 24.04/glibc 2.39 or newer; older-glibc/static Linux release work remains a future issue.
+- GitHub Actions reports non-blocking Node.js 20 deprecation warnings for the current action versions.
+- Namespaced snapshot refs, alternate Linux binary naming, and `cargo audit` remain issue/backlog work.
+- External activity is still early interest, not broad adoption.
+
+Checkpoint:
+
+```bash
+snap new oss-s18-macos-release "sprint 18: macOS release readiness"
+```
+
 ## Next Up
 
 Application submission and normal maintainer follow-up:
 
 - Use the updated application package with the current release evidence.
 - Review PR #7 after the contributor rebases/adapts it to the current README/docs.
-- Open issue-driven follow-ups for older-glibc/static Linux artifacts and GitHub Actions Node 20 warnings if desired.
+- Open issue-driven follow-ups for macOS signing/notarization, older-glibc/static Linux artifacts, and GitHub Actions Node 20 warnings if desired.
