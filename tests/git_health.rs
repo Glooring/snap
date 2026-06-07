@@ -1884,7 +1884,9 @@ fn list_help_includes_branch_filters_and_rejects_conflicting_flags() {
         .stdout(predicate::str::contains("--branch"))
         .stdout(predicate::str::contains("--all-branches"))
         .stdout(predicate::str::contains("reachability"))
-        .stdout(predicate::str::contains("unattached"));
+        .stdout(predicate::str::contains(
+            "-                   snapshot tag exists",
+        ));
 
     snap_cmd(temp.path())
         .args(["list", "--branch", "main", "--all-branches"])
@@ -1982,7 +1984,7 @@ fn list_all_branches_adds_branch_column_and_marks_shared_snapshots() {
 }
 
 #[test]
-fn list_all_branches_marks_unreachable_tag_as_unattached() {
+fn list_all_branches_marks_unreachable_tag_with_placeholder() {
     let temp = assert_fs::TempDir::new().expect("tempdir");
     init_snap_repo(temp.path());
     create_snapshot(temp.path(), "v-main", "main.txt", "main");
@@ -2003,7 +2005,9 @@ fn list_all_branches_marks_unreachable_tag_as_unattached() {
         .assert()
         .success()
         .stdout(predicate::str::contains("v-orphan"))
-        .stdout(predicate::str::contains("unattached"));
+        .stdout(predicate::str::contains(
+            "- = no local branch reaches this snapshot",
+        ));
 }
 
 #[test]

@@ -109,7 +109,7 @@ Branch column values:
   <branch>            reachable from one local branch
   <branch> (shared)   reachable from multiple branches, including the current branch
   shared              reachable from multiple branches, not including the current branch
-  unattached          snapshot tag exists, but no local branch reaches it
+  -                   snapshot tag exists, but no local branch reaches it
 
 Examples:
   snap list

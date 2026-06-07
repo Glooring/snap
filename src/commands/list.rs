@@ -212,7 +212,7 @@ pub fn execute(args: ListArgs) -> Result<()> {
     if show_branch_column {
         println!(
             "  {}",
-            "Branch legend: branch, <current> (shared), shared, unattached".dimmed()
+            "Branch legend: branch, <current> (shared), shared, - = no local branch reaches this snapshot".dimmed()
         );
     }
 
@@ -296,7 +296,7 @@ fn branches_for_commit<'a>(
 
 fn format_branch_display(branches: &[String], current_branch: Option<&str>) -> String {
     if branches.is_empty() {
-        return "unattached".to_string();
+        return "-".to_string();
     }
 
     if branches.len() == 1 {

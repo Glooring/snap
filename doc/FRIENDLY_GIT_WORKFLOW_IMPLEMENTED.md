@@ -332,7 +332,7 @@ Reguli:
 - `--branch` si `--all-branches` sunt mutual exclusive;
 - pentru `--all-branches`, output-ul include coloana `Branch`;
 - snapshoturile reachable din mai multe branchuri pot aparea ca `shared` sau `<current> (shared)`;
-- snapshoturile fara branch local reachable apar ca `unattached`.
+- snapshoturile fara branch local reachable apar ca `-`, explicat in legenda outputului.
 
 ## 6. Release workflow local
 
@@ -1131,7 +1131,7 @@ Output tipic:
   --------  ----------------------  ---------------------------  ----------------
   login-v1  feature-login           first stable login version   2026-05-13 18:50
   v2        master (shared)         login form stable            2026-05-13 18:40
-  old-test  unattached              old detached test            2026-05-13 18:35
+  old-test  -                       old detached test            2026-05-13 18:35
 ```
 
 Semnificatie:
@@ -1139,7 +1139,7 @@ Semnificatie:
 - `feature-login`: snapshot reachable din acel branch;
 - `master (shared)`: snapshot reachable din mai multe branchuri, inclusiv branchul curent;
 - `shared`: snapshot reachable din mai multe branchuri, dar nu din branchul curent;
-- `unattached`: snapshotul nu este reachable din niciun branch local.
+- `-`: snapshotul nu este reachable din niciun branch local.
 
 Pentru o vedere vizuala a divergentei dintre branchuri:
 
