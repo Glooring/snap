@@ -1,6 +1,6 @@
 # Sprint 13 - Current GitHub Release
 
-Status: planned at sprint start
+Status: completed
 Sprint checkpoint: `oss-s13-release`
 Date: 2026-06-07
 Scope: publish a current Snap release with Windows and Linux artifacts, checksums, release notes, and validation evidence
@@ -68,7 +68,7 @@ git push origin main
 gh run watch <ci-run-id> --repo Glooring/snap --exit-status
 gh workflow run release.yml --repo Glooring/snap -f tag=v7.2.0 -f publish=true
 gh run watch <release-run-id> --repo Glooring/snap --exit-status
-gh release view v7.2.0 --repo Glooring/snap --json tagName,name,isDraft,isPrerelease,publishedAt,isLatest
+gh release view v7.2.0 --repo Glooring/snap --json tagName,name,isDraft,isPrerelease,publishedAt,createdAt,url,assets,targetCommitish
 ```
 
 Post-release artifact validation:
@@ -99,7 +99,27 @@ git commit -m "initial"
 "$tmpdir/snap-v7.2.0-linux-x86_64" doctor
 ```
 
-Windows executable behavior is validated on the Windows GitHub runner by the release script. Local Linux can verify downloaded Windows files by checksum and presence, but not execute them.
+Windows executable behavior is validated on the Windows GitHub runner by the release script and by the manual `Release Smoke` workflow. Local Linux can verify downloaded Windows files by checksum and presence, but not execute them.
+
+## Results
+
+- Published GitHub Release `v7.2.0`: <https://github.com/Glooring/snap/releases/tag/v7.2.0>.
+- Release tag `v7.2.0` points to `108c20397f13a8e37a684e9a6e3d7f0ce6d083a0`.
+- Release workflow run `27085855559` passed:
+  - Linux assets passed in 1m13s.
+  - Windows assets passed in 4m01s.
+  - Publish job passed in 7s, including downloaded-asset validation and checksum generation.
+- Public release assets:
+  - `SHA256SUMS.txt`
+  - `snap-v7.2.0-linux-x86_64`
+  - `snap-v7.2.0-linux-x86_64.tar.gz`
+  - `snap-v7.2.0-windows-x86_64.exe`
+  - `snap-v7.2.0-windows-x86_64-setup.exe`
+  - `snap-v7.2.0-windows-x86_64.msi`
+- Downloaded release checksums verified locally from `/tmp/snap-release-v7.2.0-esCfZg`.
+- Local Ubuntu 22.04 execution of the Linux asset failed because the GitHub-built asset requires `GLIBC_2.39` and the local machine has glibc 2.35. This is documented in install docs and release notes.
+- Manual `Release Smoke` workflow run `27086213709` passed on Ubuntu and Windows. It downloaded the public release assets and smoke-tested the public Linux and Windows portable binaries in disposable Git repositories.
+- No disposable external GitHub sandbox repositories were created.
 
 ## Acceptance Criteria
 

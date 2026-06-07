@@ -21,9 +21,9 @@ Agents are encouraged to test deeply with disposable local projects and, when re
 
 ## Current State
 
-Sprint 12 has pushed the OSS-readiness work to public `origin/main`, fixed the first live CI workflow failure, and triaged the first contributor activity. Public CI is green on Ubuntu and Windows at commit `0b3918b035c68bb2a4db0767780d625233ae1e0f`; local Snap checkpoint tags were not pushed. PR #7 is the active beginner-demo direction and needs a rebase/update, PR #8 was closed as a duplicate, and issue #2 now has maintainer guidance. No GitHub release exists yet.
+Sprint 13 has published the first current OSS-readiness release, `v7.2.0`, with Linux and Windows assets plus `SHA256SUMS.txt`. Public CI is green on Ubuntu and Windows at commit `17fc054d318a7a78e7388aff1343e761d486d0fe`, the release tag `v7.2.0` points to `108c20397f13a8e37a684e9a6e3d7f0ce6d083a0`, and Release Smoke run `27086213709` passed against the public assets on Ubuntu and Windows. PR #7 remains the active beginner-demo direction and needs a rebase/update, PR #8 was closed as a duplicate, and issue #2 has maintainer guidance.
 
-The next phase is a maintainer decision: submit the application without claiming a release, or create a current GitHub release first with reviewed notes, artifacts, and checksums. Normal contributor work can continue through issue-driven maintenance.
+The next phase is normal issue-driven maintenance plus OpenAI/Codex application submission using the now-current public evidence. Do not continue local-only refactoring for aesthetics.
 
 ## Entries
 
@@ -1069,10 +1069,92 @@ Checkpoint:
 snap new oss-s12-public-ci "sprint 12: public CI and contributor triage"
 ```
 
+### Sprint 13 - Current GitHub Release
+
+Status: completed
+Snapshot: `oss-s13-release`
+Description: Current GitHub release
+
+Completed:
+
+- Created `docs/architecture-audit/refactor-plans/sprint-13-current-release.md`.
+- Linked the Sprint 13 plan from `docs/architecture-audit/refactor-plans/README.md`.
+- Added GitHub Actions release workflow `.github/workflows/release.yml`.
+- Added manual public-asset smoke workflow `.github/workflows/release-smoke.yml`.
+- Added release notes at `doc/releases/v7.2.0.md`.
+- Updated `CHANGELOG.md`, `doc/INSTALLATION.md`, and `doc/BUILD_INSTALLERS_WINDOWS_WSL.md` for the current release workflow and assets.
+- Published GitHub Release `v7.2.0`: <https://github.com/Glooring/snap/releases/tag/v7.2.0>.
+- Published assets:
+  - `SHA256SUMS.txt`
+  - `snap-v7.2.0-linux-x86_64`
+  - `snap-v7.2.0-linux-x86_64.tar.gz`
+  - `snap-v7.2.0-windows-x86_64.exe`
+  - `snap-v7.2.0-windows-x86_64-setup.exe`
+  - `snap-v7.2.0-windows-x86_64.msi`
+- Confirmed release tag `v7.2.0` points to `108c20397f13a8e37a684e9a6e3d7f0ce6d083a0`.
+- Confirmed local Snap checkpoint tags were not pushed to `origin`.
+- Documented the Linux asset compatibility note: `v7.2.0` Linux binary was built on Ubuntu 24.04 and requires glibc 2.39 or newer; older Linux distributions should build from source for now.
+- Confirmed no disposable external GitHub sandbox repositories were created.
+
+Validation:
+
+| Command / check | Result |
+| --- | --- |
+| `git diff --check` | Passed during release workflow fixes and smoke workflow fixes |
+| YAML parse for release workflows | Passed locally with Python/PyYAML |
+| Local release publish-layout simulation | Passed with nested `linux-assets` and `windows-assets` directories |
+| `cargo fmt --check` | Passed before release workflow publication |
+| `cargo clippy --all-targets --all-features` | Passed with no warnings before release workflow publication |
+| `cargo clippy --all-targets --all-features -- -D warnings` | Passed before release workflow publication |
+| `cargo test` | Passed, 107 integration tests, before release workflow publication and inside Linux release asset build |
+| `cargo build --release` | Passed before release workflow publication and inside release asset builds |
+| `./target/release/snap --help` | Passed before release workflow publication |
+| `./target/release/snap doctor` | Passed before release workflow publication |
+| Final post-docs local gates | Passed: `git diff --check`, YAML parse, `cargo fmt --check`, strict Clippy, `cargo test`, `cargo build --release`, source-built help, and source-built doctor |
+| Final source-built doctor | Passed; repo healthy, 20 snapshot tags checked, latest valid snapshot `oss-s12-public-ci` before Sprint 13 checkpoint |
+| Public CI run `27085772488` | Passed on Ubuntu and Windows for release workflow commit `108c20397f13a8e37a684e9a6e3d7f0ce6d083a0` |
+| Public CI run `27086128787` | Passed on Ubuntu and Windows for final smoke-workflow commit `17fc054d318a7a78e7388aff1343e761d486d0fe` |
+| Release workflow run `27085855559` | Passed; Linux assets 1m13s, Windows assets 4m01s, publish 7s |
+| `gh release view v7.2.0 --repo Glooring/snap ...` | Passed; release is published, not draft, not prerelease |
+| `git ls-remote --tags origin 'v7.2.0*'` | Passed; tag exists at `108c20397f13a8e37a684e9a6e3d7f0ce6d083a0` |
+| Downloaded release checksums | Passed locally from `/tmp/snap-release-v7.2.0-esCfZg`; all five assets verified against `SHA256SUMS.txt` |
+| Downloaded Linux archive listing | Passed; tar contains `snap` |
+| Local Linux binary execution | Failed on local Ubuntu glibc 2.35 because artifact requires `GLIBC_2.39`; documented as compatibility limitation, not a checksum/build failure |
+| Release Smoke run `27086213709` | Passed; public Linux and Windows portable binaries downloaded and smoke-tested in disposable Git repositories |
+| Windows public binary smoke | Passed on `windows-latest`; `--version`, `--help`, `init`, `new`, `list`, `diff`, `restore --dry-run`, and `doctor` |
+| Linux public binary smoke | Passed on `ubuntu-latest`; checksums, `--version`, `--help`, archive listing, `init`, `new`, `list`, `diff`, `restore --dry-run`, and `doctor` |
+
+Metrics after Sprint 13:
+
+| Area | Result |
+| --- | ---: |
+| `src/**/*.rs` files | 33 |
+| `tests/**/*.rs` files | 1 |
+| `doc/*.md` files | 22 |
+| `docs/**/*.md` tracked audit files | 19 |
+| `.github` tracked files | 7 |
+| `src` Rust LOC | 6,790 |
+| `tests` Rust LOC | 3,113 |
+| `doc` Markdown LOC | 6,189 |
+| `docs` audit Markdown LOC | 4,637 |
+
+Known remaining gaps after Sprint 13:
+
+- PR #7 still needs a contributor rebase/update before review or merge.
+- The Linux release asset currently targets Ubuntu 24.04/glibc 2.39 or newer; older-glibc/static Linux release work remains a future issue.
+- Namespaced snapshot refs, alternate Linux binary naming, Windows/WSL2 benchmark evidence, Node 20 GitHub Actions deprecation, and `cargo audit` remain issue/backlog work.
+- External activity is still early interest, not broad adoption.
+
+Checkpoint:
+
+```bash
+snap new oss-s13-release "sprint 13: current GitHub release"
+```
+
 ## Next Up
 
-Release/application decision and PR #7 follow-up:
+Application submission and normal maintainer follow-up:
 
-- Decide whether to submit the application without a release or create a current GitHub release first.
-- If creating a release, review notes, build artifacts, generate checksums, and publish deliberately.
+- Use the updated application package with the current release evidence.
 - Review PR #7 after the contributor rebases/adapts it to the current README/docs.
+- Open issue-driven follow-ups for older-glibc/static Linux artifacts and GitHub Actions Node 20 warnings if desired.

@@ -1,30 +1,31 @@
 # OpenAI Application Package
 
-Status: public evidence prepared, not submitted
-Last refreshed: 2026-06-07T06:19:09Z after public CI and contributor triage
+Status: public evidence prepared with current release, not submitted
+Last refreshed: 2026-06-07T07:32:14Z after `v7.2.0` release publication and public release smoke tests
 Repository: <https://github.com/Glooring/snap>
 
 This package intentionally does not rely on a hard-coded local commit SHA or checkpoint label. Before submission, run `git rev-parse HEAD` and verify that the public GitHub repository shows the same content.
 
 ## Submission Readiness
 
-The OSS-readiness commits are now public on `origin/main`, and the public CI workflow has passed on Ubuntu and Windows.
+The OSS-readiness commits are public on `origin/main`, the public CI workflow has passed on Ubuntu and Windows, and the current GitHub Release exists.
 
 Current state:
 
-- local `main` is synced with `origin/main` at `0b3918b035c68bb2a4db0767780d625233ae1e0f` before the Sprint 12 documentation checkpoint;
+- local `main` is synced with `origin/main` at `17fc054d318a7a78e7388aff1343e761d486d0fe` before the Sprint 13 documentation checkpoint;
 - GitHub About description and topics are live;
 - GitHub issues #1-#6 are live;
 - public README/docs/CI/community package changes are visible on GitHub;
-- `gh workflow list --repo Glooring/snap` shows active workflow `CI`;
-- public CI run `27084650490` passed on Ubuntu and Windows for commit `0b3918b035c68bb2a4db0767780d625233ae1e0f`;
+- `gh workflow list --repo Glooring/snap` shows active CI/release workflows;
+- public CI run `27086128787` passed on Ubuntu and Windows for commit `17fc054d318a7a78e7388aff1343e761d486d0fe`;
+- GitHub Release `v7.2.0` is published at <https://github.com/Glooring/snap/releases/tag/v7.2.0>;
+- release workflow run `27085855559` passed and published Linux/Windows assets plus `SHA256SUMS.txt`;
+- release smoke run `27086213709` passed on Ubuntu and Windows against the public release assets;
 - early public interest exists: 4 forks, issue #2 comments, PR #7 open, and PR #8 closed as duplicate;
-- `gh release list --repo Glooring/snap --limit 5 --json tagName,name,isDraft,isPrerelease,publishedAt,isLatest` returned `[]`.
 
 Recommended submission decision:
 
-- Ready to submit if a public release is not required by the application.
-- If the application requires a current release, create one only after a maintainer release decision, validated artifacts, checked release notes, and `SHA256SUMS.txt`.
+- Ready to submit with current public CI, current release, and conservative community-signal caveats.
 
 ## Ready-To-Paste Answers
 
@@ -72,7 +73,8 @@ Local evidence prepared in this branch:
 | Cross-platform notes | `doc/CROSS_PLATFORM.md` |
 | Community feedback readiness | `doc/COMMUNITY_FEEDBACK.md` |
 | Contributor and maintainer files | `AGENTS.md`, `CONTRIBUTING.md`, `SECURITY.md`, `SUPPORT.md`, `CODE_OF_CONDUCT.md`, `CHANGELOG.md`, `LICENSE` |
-| GitHub templates and CI | `.github/ISSUE_TEMPLATE/*`, `.github/pull_request_template.md`, `.github/workflows/ci.yml` |
+| GitHub templates and CI | `.github/ISSUE_TEMPLATE/*`, `.github/pull_request_template.md`, `.github/workflows/ci.yml`, `.github/workflows/release.yml`, `.github/workflows/release-smoke.yml` |
+| Release notes | `doc/releases/v7.2.0.md` |
 | Current validation history | `docs/architecture-audit/refactor-progress.md` |
 | Current audit | `docs/architecture-audit/agent-efficiency-oss-readiness-audit-2026-06-06.md` |
 
@@ -90,13 +92,16 @@ Live GitHub evidence already visible:
 | Safety/hardening issue #5 | <https://github.com/Glooring/snap/issues/5> |
 | Safety/hardening issue #6 | <https://github.com/Glooring/snap/issues/6> |
 | Active CI workflow | `CI`, active |
-| Latest verified CI run | <https://github.com/Glooring/snap/actions/runs/27084650490>, passed on Ubuntu and Windows |
+| Latest verified CI run | <https://github.com/Glooring/snap/actions/runs/27086128787>, passed on Ubuntu and Windows |
+| Current release | <https://github.com/Glooring/snap/releases/tag/v7.2.0> |
+| Release workflow | <https://github.com/Glooring/snap/actions/runs/27085855559>, passed and published Linux/Windows assets plus `SHA256SUMS.txt` |
+| Public release smoke | <https://github.com/Glooring/snap/actions/runs/27086213709>, passed on Ubuntu and Windows |
 | Fork count | 4 |
 | External contributor activity | Issue #2 comments, PR #7 open, PR #8 closed as duplicate |
 
 ## Current Validation Evidence
 
-Sprint 12 validation completed with:
+Sprint 13 validation completed with:
 
 ```text
 git diff --check: passed
@@ -107,7 +112,10 @@ cargo test: passed, 107 integration tests
 cargo build --release: passed
 ./target/release/snap --help: passed
 ./target/release/snap doctor: passed
-public CI run 27084650490: passed on Ubuntu and Windows
+public CI run 27086128787: passed on Ubuntu and Windows
+release workflow run 27085855559: passed and published v7.2.0
+release smoke run 27086213709: passed on Ubuntu and Windows
+downloaded release checksums: passed for all Linux and Windows assets
 ```
 
 Before the Sprint 12 checkpoint, source-built doctor reported:
@@ -120,10 +128,9 @@ Latest valid snapshot: oss-s11-publish-runbook
 
 ## Honest Gaps To Disclose
 
-- No GitHub release exists yet.
 - External activity is early interest, not adoption: 4 forks, one active PR direction, one duplicate PR, and issue comments.
 - PR #7 needs a rebase/update before review or merge.
-- Release checksum automation is documented but not implemented.
+- The `v7.2.0` Linux asset is built on Ubuntu 24.04 and requires glibc 2.39 or newer; older Linux distributions should build from source for now.
 - Snapshot tags use a marker-first filter, but a namespaced snapshot-ref migration is deferred to issue #4.
 - Snap still uses the `snap` binary name; Linux/WSL2 docs explain the Canonical Snapcraft conflict and suggest a local `gitsnap` filename when needed.
 - GitHub Actions reports a non-blocking Node.js 20 deprecation warning for `actions/cache@v4` and `actions/checkout@v4`.
@@ -132,23 +139,20 @@ Latest valid snapshot: oss-s11-publish-runbook
 ## Do Not Claim
 
 - Do not claim broad adoption or third-party production usage.
-- Do not claim a current release exists until one is published.
 - Do not overstate early forks/comments/PRs as production use or broad community traction.
 - Do not claim universal or platform-wide speed improvements.
 - Do not use `blazing-fast`, `guaranteed`, or similar unsupported language.
 - Do not claim snapshot refs have been fully migrated away from ordinary Git tags.
-- Do not claim checksum automation exists.
+- Do not claim broad Linux binary compatibility beyond the documented Ubuntu 24.04/glibc 2.39 release asset baseline.
 
 ## Final Pre-Submission Checklist
 
-- Decide whether a public release is required before submission.
-- If creating a release, build artifacts, generate `SHA256SUMS.txt`, check release notes, and publish deliberately.
-- Rerun source-built validation after any release/package changes.
 - Keep application answers aligned with the actual public repo state on the day of submission.
+- Reconfirm `gh release view v7.2.0 --repo Glooring/snap` and the latest CI/release-smoke run links if submitting later.
 
 ## Publication Decision Runbook
 
-This section is a maintainer runbook. Option A has now been executed for the docs/CI publication path; Option B remains available only if a current release is required before submission.
+This section is a maintainer runbook. Option A was executed for the docs/CI publication path. Option B was later executed in Sprint 13 after the maintainer requested a current release.
 
 ### Option A: Publish Docs And CI Without A Release
 
@@ -178,15 +182,23 @@ Local Snap checkpoint tags were not pushed.
 
 ### Option B: Publish A Current Release
 
-Use this only if the maintainer decides a current release is required before submission.
+Executed on 2026-06-07 after maintainer approval:
 
-Prerequisites:
+```bash
+gh workflow run release.yml --repo Glooring/snap -f tag=v7.2.0 -f publish=true
+gh run watch 27085855559 --repo Glooring/snap --exit-status
+gh release view v7.2.0 --repo Glooring/snap --json tagName,name,isDraft,isPrerelease,publishedAt,createdAt,url,assets,targetCommitish
+gh release download v7.2.0 --repo Glooring/snap --dir /tmp/snap-release-v7.2.0-esCfZg
+sha256sum -c SHA256SUMS.txt
+gh workflow run release-smoke.yml --repo Glooring/snap -f tag=v7.2.0
+gh run watch 27086213709 --repo Glooring/snap --exit-status
+```
 
-- release version/tag decision;
-- release notes checked against current behavior;
-- artifacts built for the supported platforms;
-- `SHA256SUMS.txt` generated and reviewed;
-- source-built validation rerun after release-prep changes;
-- no overwrite of the global `/usr/local/bin/snap`.
+Results:
 
-Do not claim a release exists until `gh release list --repo Glooring/snap` shows it.
+- GitHub Release `v7.2.0` exists and is published.
+- Release assets include Linux, Windows portable, Windows setup, Windows MSI, Linux tar archive, and `SHA256SUMS.txt`.
+- Release workflow built Linux assets on Ubuntu and Windows assets on Windows.
+- Downloaded release checksums verified.
+- Public release smoke passed on Ubuntu and Windows.
+- The global `/usr/local/bin/snap` was not overwritten or upgraded.

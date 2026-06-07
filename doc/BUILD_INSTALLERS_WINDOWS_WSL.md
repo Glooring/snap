@@ -29,7 +29,7 @@ For `v7.2.0`:
 gh workflow run release.yml --repo Glooring/snap -f tag=v7.2.0 -f publish=true
 gh run list --repo Glooring/snap --workflow Release --limit 5
 gh run watch <run-id> --repo Glooring/snap --exit-status
-gh release view v7.2.0 --repo Glooring/snap --json tagName,name,isDraft,isPrerelease,publishedAt,isLatest
+gh release view v7.2.0 --repo Glooring/snap --json tagName,name,isDraft,isPrerelease,publishedAt,createdAt,url,assets,targetCommitish
 ```
 
 The workflow publishes:
@@ -44,6 +44,15 @@ SHA256SUMS.txt
 ```
 
 After publication, download the release, verify checksums, run the Linux binary directly, and smoke-test it in a disposable Git repository. Windows executable behavior is validated by the Windows runner during the release workflow.
+
+For published releases, run the manual smoke workflow too:
+
+```bash
+gh workflow run release-smoke.yml --repo Glooring/snap -f tag=v7.2.0
+gh run watch <run-id> --repo Glooring/snap --exit-status
+```
+
+The `v7.2.0` Linux asset is built on Ubuntu 24.04 and requires glibc 2.39 or newer. Older Linux distributions should build from source until a future release adds an older-glibc or static Linux target.
 
 ## 2. Local release asset scripts
 
