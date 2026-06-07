@@ -123,6 +123,32 @@ For the newer Git/GitHub workflow commands (`snap save`, `snap sync`, `snap bran
 `snap remote`, `snap release`, and related aliases), see
 [`doc/FRIENDLY_GIT_WORKFLOW_IMPLEMENTED.md`](doc/FRIENDLY_GIT_WORKFLOW_IMPLEMENTED.md).
 
+## 🧪 Beginner demo fixture
+
+If you want a tiny practice repo for docs, screenshots, or manual testing, create
+an empty folder with a couple of files and initialize `snap` there first:
+
+```text
+demo-app/
+├── README.md
+└── src/
+    └── main.txt
+```
+
+Example flow:
+
+```cmd
+mkdir demo-app
+cd demo-app
+echo hello>README.md
+mkdir src
+echo first snapshot>src\\main.txt
+snap init
+snap new demo "Initial demo snapshot"
+```
+
+This gives new contributors a low-risk fixture before trying `snap` on a real project.
+
 ### 1. `snap init`
 Initializes the current folder as a `snap` repository. **Must be run once per project.** This command is now non-interactive and much simpler.
 
