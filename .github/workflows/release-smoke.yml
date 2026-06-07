@@ -59,6 +59,7 @@ jobs:
           git commit -m "initial"
 
           "$snap_bin" init
+          echo "release start" >> app.txt
           "$snap_bin" new release-start "release smoke start"
           echo "two" >> app.txt
           "$snap_bin" new release-update "release smoke update"
@@ -116,6 +117,7 @@ jobs:
           git commit -m "initial"
 
           & $snapBin init
+          "release start" | Out-File -Encoding utf8 -Append app.txt
           & $snapBin new release-start "release smoke start"
           "two" | Out-File -Encoding utf8 -Append app.txt
           & $snapBin new release-update "release smoke update"
