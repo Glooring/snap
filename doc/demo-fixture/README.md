@@ -14,40 +14,41 @@ cat > src/hello.txt <<'TXT'
 hello snap
 TXT
 snap init
-snap new v1 "initial commit"
+snap new demo-start "initial commit"
 ```
 
 If `snap` is not in `PATH`, use your installed executable path, for example:
 
 ```bash
 /path/to/snap.exe init
-/path/to/snap.exe new v1 "initial commit"
+/path/to/snap.exe new demo-start "initial commit"
 ```
 
 ## 2. Make a change and capture a second snapshot
 
 ```bash
 echo "hello again" >> src/hello.txt
-snap new v2 "update note"
+snap new demo-change "update note"
 ```
 
 ## 3. Verify health with doctor
 
 ```bash
 snap doctor
+snap list
 ```
 
-If `snap doctor` reports no critical issue, you can try the dry-run restore safely:
+If `snap doctor` and `snap list` show the expected snapshots, you can try the dry-run restore safely:
 
 ```bash
-snap restore --dry-run v1
+snap restore --dry-run demo-start
 ```
 
 ## 4. Restore for real (optional)
 
 ```bash
-snap restore v1
-snap restore --dry-run v2
+snap restore demo-start
+snap restore --dry-run demo-change
 ```
 
 ## 5. Cleanup
