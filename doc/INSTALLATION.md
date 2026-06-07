@@ -19,7 +19,7 @@ SHA256SUMS.txt
 
 The Windows assets are built on Windows. The Linux assets are built on Ubuntu GitHub runners. The tar archive contains the same Linux binary as the standalone `snap-vX.Y.Z-linux-x86_64` asset.
 
-For `v7.2.0`, the Linux binary is built on Ubuntu 24.04 and requires glibc 2.39 or newer. On older distributions, such as Ubuntu 22.04, build from source with `cargo build --release` until a future release adds an older-glibc or static Linux target.
+For `v7.2.1`, the Linux binary is built on Ubuntu 24.04 and requires glibc 2.39 or newer. On older distributions, such as Ubuntu 22.04, build from source with `cargo build --release` until a future release adds an older-glibc or static Linux target.
 
 ## Checksums
 
@@ -165,4 +165,4 @@ gh run watch <run-id> --repo Glooring/snap --exit-status
 
 The workflow builds Linux and Windows assets on their target runners, generates `SHA256SUMS.txt`, creates the GitHub Release, and uploads all release assets. After publication, download the assets, verify checksums, and smoke-test the Linux binary from a disposable Git repository. Windows executable behavior is validated on the Windows runner during the workflow.
 
-For published releases, the manual `Release Smoke` workflow can also be run with a tag such as `v7.2.0`. It downloads the public assets, verifies checksums on Ubuntu, and smoke-tests the public Linux and Windows portable binaries in disposable Git repositories.
+For published releases, the manual `Release Smoke` workflow can also be run with a tag such as `v7.2.1`. It downloads the public assets, verifies checksums on Ubuntu, and smoke-tests the public Linux and Windows portable binaries in disposable Git repositories.

@@ -23,23 +23,23 @@ There are two targets:
 
 The preferred full release path is `.github/workflows/release.yml`. It builds and tests Linux assets on Ubuntu, builds and tests Windows assets on Windows, generates `SHA256SUMS.txt`, and creates the GitHub Release.
 
-For `v7.2.0`:
+For `v7.2.1`:
 
 ```bash
-gh workflow run release.yml --repo Glooring/snap -f tag=v7.2.0 -f publish=true
+gh workflow run release.yml --repo Glooring/snap -f tag=v7.2.1 -f publish=true
 gh run list --repo Glooring/snap --workflow Release --limit 5
 gh run watch <run-id> --repo Glooring/snap --exit-status
-gh release view v7.2.0 --repo Glooring/snap --json tagName,name,isDraft,isPrerelease,publishedAt,createdAt,url,assets,targetCommitish
+gh release view v7.2.1 --repo Glooring/snap --json tagName,name,isDraft,isPrerelease,publishedAt,createdAt,url,assets,targetCommitish
 ```
 
 The workflow publishes:
 
 ```text
-snap-v7.2.0-windows-x86_64.exe
-snap-v7.2.0-windows-x86_64-setup.exe
-snap-v7.2.0-windows-x86_64.msi
-snap-v7.2.0-linux-x86_64
-snap-v7.2.0-linux-x86_64.tar.gz
+snap-v7.2.1-windows-x86_64.exe
+snap-v7.2.1-windows-x86_64-setup.exe
+snap-v7.2.1-windows-x86_64.msi
+snap-v7.2.1-linux-x86_64
+snap-v7.2.1-linux-x86_64.tar.gz
 SHA256SUMS.txt
 ```
 
@@ -48,11 +48,11 @@ After publication, download the release, verify checksums, run the Linux binary 
 For published releases, run the manual smoke workflow too:
 
 ```bash
-gh workflow run release-smoke.yml --repo Glooring/snap -f tag=v7.2.0
+gh workflow run release-smoke.yml --repo Glooring/snap -f tag=v7.2.1
 gh run watch <run-id> --repo Glooring/snap --exit-status
 ```
 
-The `v7.2.0` Linux asset is built on Ubuntu 24.04 and requires glibc 2.39 or newer. Older Linux distributions should build from source until a future release adds an older-glibc or static Linux target.
+The `v7.2.1` Linux asset is built on Ubuntu 24.04 and requires glibc 2.39 or newer. Older Linux distributions should build from source until a future release adds an older-glibc or static Linux target.
 
 ## 2. Local release asset scripts
 
@@ -130,7 +130,7 @@ After the command finishes, verify the artifacts:
 
 ```powershell
 dir target\release\snap.exe
-dir target\wix\snap-7.2.0-x86_64.msi
+dir target\wix\snap-7.2.1-x86_64.msi
 dir snap-setup.exe
 ```
 
@@ -138,7 +138,7 @@ Expected files:
 
 ```text
 D:\Projects\snap\target\release\snap.exe
-D:\Projects\snap\target\wix\snap-7.2.0-x86_64.msi
+D:\Projects\snap\target\wix\snap-7.2.1-x86_64.msi
 D:\Projects\snap\snap-setup.exe
 ```
 
@@ -152,7 +152,7 @@ You can also verify the freshly built executable directly, without installing:
 Expected:
 
 ```text
-snap 7.2.0
+snap 7.2.1
 [snap] Git repository looks healthy.
 ```
 
@@ -209,7 +209,7 @@ If `C:\Program Files\snap\bin\snap.exe` also appears and you do not want to use 
 Use:
 
 ```text
-target\wix\snap-7.2.0-x86_64.msi
+target\wix\snap-7.2.1-x86_64.msi
 ```
 
 The WiX installer installs `snap.exe` under Program Files and includes PATH integration. This is the better installer for normal Windows installation and upgrades.
@@ -217,7 +217,7 @@ The WiX installer installs `snap.exe` under Program Files and includes PATH inte
 Install by double-clicking the MSI, or from an elevated terminal:
 
 ```powershell
-msiexec /i target\wix\snap-7.2.0-x86_64.msi
+msiexec /i target\wix\snap-7.2.1-x86_64.msi
 ```
 
 Then open a new terminal and verify:
@@ -373,7 +373,7 @@ snap doctor
 For a Program Files installer test instead:
 
 ```powershell
-msiexec /i target\wix\snap-7.2.0-x86_64.msi
+msiexec /i target\wix\snap-7.2.1-x86_64.msi
 ```
 
 Open a new terminal:
@@ -405,13 +405,13 @@ The latest Windows build produced:
 ```text
 D:\Projects\snap\snap-setup.exe
 D:\Projects\snap\target\release\snap.exe
-D:\Projects\snap\target\wix\snap-7.2.0-x86_64.msi
+D:\Projects\snap\target\wix\snap-7.2.1-x86_64.msi
 ```
 
 The freshly built Windows executable reported:
 
 ```text
-snap 7.2.0
+snap 7.2.1
 ```
 
 And `snap doctor` reported the repository as healthy.
