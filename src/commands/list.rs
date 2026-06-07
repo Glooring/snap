@@ -209,6 +209,12 @@ pub fn execute(args: ListArgs) -> Result<()> {
     if truncated {
         println!("  {}", "...".dimmed());
     }
+    if show_branch_column {
+        println!(
+            "  {}",
+            "Branch legend: branch, <current> (shared), shared, unattached".dimmed()
+        );
+    }
 
     println!();
     Ok(())
@@ -290,7 +296,7 @@ fn branches_for_commit<'a>(
 
 fn format_branch_display(branches: &[String], current_branch: Option<&str>) -> String {
     if branches.is_empty() {
-        return "-".to_string();
+        return "unattached".to_string();
     }
 
     if branches.len() == 1 {

@@ -12,7 +12,8 @@ use clap::{Args, Parser, Subcommand};
 #[command(after_help = "\
 Workflow groups:
   Daily workflow:    snap status | snap save \"message\" | snap history | snap update-repo \"message\" | snap sync
-  Snapshots:         snap new <label> \"description\" | snap list | snap restore <label> --dry-run
+  Snapshots:         snap new <label> \"description\" | snap list --all-branches | snap list --branch main
+  History:           snap history | snap history --all-branches
   Branches:          snap branch list | snap branch new feature-x | snap branch switch main
   Remote/GitHub:     snap remote status | snap setup-repo owner/repo --private | snap delete-repo owner/repo
   Release:           snap release windows | snap release upload | snap release list
@@ -103,6 +104,12 @@ pub struct NewArgs {
 #[command(after_help = "\
 Branch filters use Git reachability: a snapshot belongs to a branch when the snapshot commit is reachable from that local branch.
 
+Branch column values:
+  <branch>            reachable from one local branch
+  <branch> (shared)   reachable from multiple branches, including the current branch
+  shared              reachable from multiple branches, not including the current branch
+  unattached          snapshot tag exists, but no local branch reaches it
+
 Examples:
   snap list
   snap list 10
@@ -142,16 +149,26 @@ pub struct SyncArgs {}
 
 #[derive(Args, Debug)]
 #[command(after_help = "\
-History is read-only. It shows the current branch/HEAD history using Git decorations, so snapshot tags are visible next to commits.
+History is read-only. It shows Git decorations, so branches and snapshot tags are visible next to commits.
+
+By default, history shows the current branch/HEAD. Use --branch to inspect another local branch, or --all-branches to see a graph across local branches and snapshot tags.
 
 Examples:
   snap history
   snap history 50
   snap history all
+  snap history --branch main
+  snap history --all-branches
 ")]
 pub struct HistoryArgs {
     /// Number of commits to show, or "all". Defaults to 20.
     pub limit: Option<String>,
+    /// Show history for this local branch.
+    #[arg(long, conflicts_with = "all_branches")]
+    pub branch: Option<String>,
+    /// Show history across all local branches and snapshot tags.
+    #[arg(long, conflicts_with = "branch")]
+    pub all_branches: bool,
 }
 
 #[derive(Args, Debug)]

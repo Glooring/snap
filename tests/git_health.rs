@@ -1859,6 +1859,19 @@ fn release_list_reports_github_auth_failure() {
 }
 
 #[test]
+fn top_help_includes_branch_snapshot_discovery() {
+    let temp = assert_fs::TempDir::new().expect("tempdir");
+
+    snap_cmd(temp.path())
+        .arg("--help")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("snap list --all-branches"))
+        .stdout(predicate::str::contains("snap list --branch main"))
+        .stdout(predicate::str::contains("snap history --all-branches"));
+}
+
+#[test]
 fn list_help_includes_branch_filters_and_rejects_conflicting_flags() {
     let temp = assert_fs::TempDir::new().expect("tempdir");
 
@@ -1868,13 +1881,51 @@ fn list_help_includes_branch_filters_and_rejects_conflicting_flags() {
         .success()
         .stdout(predicate::str::contains("--branch"))
         .stdout(predicate::str::contains("--all-branches"))
-        .stdout(predicate::str::contains("reachability"));
+        .stdout(predicate::str::contains("reachability"))
+        .stdout(predicate::str::contains("unattached"));
 
     snap_cmd(temp.path())
         .args(["list", "--branch", "main", "--all-branches"])
         .assert()
         .failure()
         .stderr(predicate::str::contains("cannot be used with"));
+}
+
+#[test]
+fn history_help_includes_branch_graph_options_and_rejects_conflicting_flags() {
+    let temp = assert_fs::TempDir::new().expect("tempdir");
+
+    snap_cmd(temp.path())
+        .args(["history", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("--branch"))
+        .stdout(predicate::str::contains("--all-branches"))
+        .stdout(predicate::str::contains("read-only"))
+        .stdout(predicate::str::contains("snap history --branch main"))
+        .stdout(predicate::str::contains("snap history --all-branches"));
+
+    snap_cmd(temp.path())
+        .args(["history", "--branch", "main", "--all-branches"])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("cannot be used with"));
+}
+
+#[test]
+fn examples_include_branch_snapshot_discovery_commands() {
+    let temp = assert_fs::TempDir::new().expect("tempdir");
+
+    snap_cmd(temp.path())
+        .arg("examples")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains(
+            "Understand snapshots across branches",
+        ))
+        .stdout(predicate::str::contains("snap list --all-branches"))
+        .stdout(predicate::str::contains("snap list --branch master"))
+        .stdout(predicate::str::contains("snap history --all-branches"));
 }
 
 #[test]
@@ -1929,7 +1980,7 @@ fn list_all_branches_adds_branch_column_and_marks_shared_snapshots() {
 }
 
 #[test]
-fn list_all_branches_marks_unreachable_tag_with_dash() {
+fn list_all_branches_marks_unreachable_tag_as_unattached() {
     let temp = assert_fs::TempDir::new().expect("tempdir");
     init_snap_repo(temp.path());
     create_snapshot(temp.path(), "v-main", "main.txt", "main");
@@ -1950,7 +2001,7 @@ fn list_all_branches_marks_unreachable_tag_with_dash() {
         .assert()
         .success()
         .stdout(predicate::str::contains("v-orphan"))
-        .stdout(predicate::str::contains("-"));
+        .stdout(predicate::str::contains("unattached"));
 }
 
 #[test]
@@ -1979,6 +2030,57 @@ fn list_branch_missing_fails_clearly_and_limit_applies_after_filtering() {
         .stdout(predicate::str::contains("v-feature"))
         .stdout(predicate::str::contains("v-main").not())
         .stdout(predicate::str::contains("..."));
+}
+
+#[test]
+fn history_branch_missing_fails_clearly() {
+    let temp = assert_fs::TempDir::new().expect("tempdir");
+    init_snap_repo(temp.path());
+    create_snapshot(temp.path(), "v-main", "main.txt", "main");
+
+    snap_cmd(temp.path())
+        .args(["history", "--branch", "missing"])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains(
+            "Local branch 'missing' does not exist",
+        ));
+}
+
+#[test]
+fn history_branch_filters_and_all_branches_graphs_snapshots() {
+    let temp = assert_fs::TempDir::new().expect("tempdir");
+    init_snap_repo(temp.path());
+    create_snapshot(temp.path(), "v-base", "base.txt", "base");
+    let base = current_branch(temp.path());
+    snap_cmd(temp.path())
+        .args(["branch", "new", "feature-x"])
+        .assert()
+        .success();
+    create_snapshot(temp.path(), "v-feature", "feature.txt", "feature");
+    snap_cmd(temp.path())
+        .args(["branch", "switch", &base])
+        .assert()
+        .success();
+    create_snapshot(temp.path(), "v-main", "main.txt", "main");
+
+    snap_cmd(temp.path())
+        .args(["history", "--branch", &base])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains(format!("Branch: {}", base)))
+        .stdout(predicate::str::contains("v-base"))
+        .stdout(predicate::str::contains("v-main"))
+        .stdout(predicate::str::contains("v-feature").not());
+
+    snap_cmd(temp.path())
+        .args(["history", "--all-branches"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Scope: all branches"))
+        .stdout(predicate::str::contains("v-base"))
+        .stdout(predicate::str::contains("v-main"))
+        .stdout(predicate::str::contains("v-feature"));
 }
 
 #[test]

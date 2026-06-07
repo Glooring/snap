@@ -313,6 +313,19 @@ pub fn has_worktree_changes() -> Result<bool> {
 }
 
 pub fn log_history(limit: Option<usize>) -> Result<String> {
+    log_history_with_refs(limit, &[])
+}
+
+pub fn log_history_all(limit: Option<usize>) -> Result<String> {
+    log_history_with_refs(limit, &["--all"])
+}
+
+pub fn log_history_for_branch(limit: Option<usize>, branch: &str) -> Result<String> {
+    let ref_name = format!("refs/heads/{}", branch);
+    log_history_with_refs(limit, &[&ref_name])
+}
+
+fn log_history_with_refs(limit: Option<usize>, refs: &[&str]) -> Result<String> {
     let mut args = vec![
         "log".to_string(),
         "--graph".to_string(),
@@ -322,9 +335,10 @@ pub fn log_history(limit: Option<usize>) -> Result<String> {
     if let Some(limit) = limit {
         args.push(format!("-n{}", limit));
     }
+    args.extend(refs.iter().map(|value| value.to_string()));
 
-    let refs: Vec<&str> = args.iter().map(String::as_str).collect();
-    run_git_success(&refs, None).context("Failed to read Git history.")
+    let args: Vec<&str> = args.iter().map(String::as_str).collect();
+    run_git_success(&args, None).context("Failed to read Git history.")
 }
 
 pub fn remote_url(remote: &str) -> Result<Option<String>> {

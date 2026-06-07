@@ -60,6 +60,14 @@ snap history
 snap branch list
 ```
 
+To understand which snapshots belong to which local branches:
+
+```bash
+snap list --all-branches
+snap list --branch main
+snap history --all-branches
+```
+
 ### Health checks
 
 ```bash
@@ -126,8 +134,9 @@ Remaining roadmap work includes a future namespaced snapshot-ref migration decis
 Use Git directly when you want full version-control control. Use Snap when you want a focused workflow for local checkpoints:
 
 - human labels and descriptions for restore points;
-- a compact `snap list`;
+- a compact `snap list`, including branch-aware views with `snap list --all-branches`;
 - `snap diff` between checkpoints;
+- a readable Git graph with snapshot tags through `snap history --all-branches`;
 - metadata handling for empty directories and hidden/read-only attributes;
 - `snap doctor` for Git and Snap metadata health;
 - friendlier commands for common branch, remote, and release tasks.

@@ -37,6 +37,11 @@ pub fn execute(_args: ExamplesArgs) -> Result<()> {
     println!("  snap list --all-branches");
     println!("  snap restore v42");
     println!();
+    println!("{}", "Understand snapshots across branches:".bold());
+    println!("  snap list --all-branches");
+    println!("  snap list --branch master");
+    println!("  snap history --all-branches");
+    println!();
     println!("{}", "Work on a local branch:".bold());
     println!("  snap branch new feature-login");
     println!("  snap save \"start login screen\"");

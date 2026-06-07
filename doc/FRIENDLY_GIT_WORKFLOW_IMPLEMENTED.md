@@ -133,6 +133,8 @@ Afiseaza istoricul Git curent intr-o forma scurta, cu decorations si snapshot ta
 snap history
 snap history 50
 snap history all
+snap history --branch main
+snap history --all-branches
 ```
 
 Comportament:
@@ -140,6 +142,9 @@ Comportament:
 - default: ultimele 20 commituri;
 - limita numerica trebuie sa fie pozitiva;
 - `all` afiseaza tot istoricul curent;
+- `--branch <name>` afiseaza istoricul acelui branch local;
+- `--all-branches` afiseaza un graph pentru toate branchurile locale si snapshot tags;
+- `--branch` si `--all-branches` sunt mutual exclusive;
 - merge si cu working tree dirty, fiind read-only;
 - repo fara commituri afiseaza mesaj clar.
 
@@ -327,7 +332,7 @@ Reguli:
 - `--branch` si `--all-branches` sunt mutual exclusive;
 - pentru `--all-branches`, output-ul include coloana `Branch`;
 - snapshoturile reachable din mai multe branchuri pot aparea ca `shared` sau `<current> (shared)`;
-- snapshoturile fara branch local reachable apar cu `-`.
+- snapshoturile fara branch local reachable apar ca `unattached`.
 
 ## 6. Release workflow local
 
@@ -1126,7 +1131,7 @@ Output tipic:
   --------  ----------------------  ---------------------------  ----------------
   login-v1  feature-login           first stable login version   2026-05-13 18:50
   v2        master (shared)         login form stable            2026-05-13 18:40
-  old-test  -                       old detached test            2026-05-13 18:35
+  old-test  unattached              old detached test            2026-05-13 18:35
 ```
 
 Semnificatie:
@@ -1134,7 +1139,13 @@ Semnificatie:
 - `feature-login`: snapshot reachable din acel branch;
 - `master (shared)`: snapshot reachable din mai multe branchuri, inclusiv branchul curent;
 - `shared`: snapshot reachable din mai multe branchuri, dar nu din branchul curent;
-- `-`: snapshotul nu este reachable din niciun branch local.
+- `unattached`: snapshotul nu este reachable din niciun branch local.
+
+Pentru o vedere vizuala a divergentei dintre branchuri:
+
+```powershell
+snap history --all-branches
+```
 
 ### 14.12 Schimbare visibility GitHub
 
