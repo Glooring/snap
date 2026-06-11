@@ -182,6 +182,7 @@ During this repository's OSS-readiness refactor, source behavior is validated wi
 - [Codex workflow](doc/CODEX_WORKFLOW.md)
 - [Codex task recipes](doc/CODEX_TASKS.md)
 - [Beginner workflow](doc/BEGINNER_WORKFLOW.md)
+- [Beginner demo fixture](doc/demo-fixture/README.md)
 - [Why not just Git](doc/WHY_NOT_GIT.md)
 - [Safety model](doc/SAFETY_MODEL.md)
 - [Snap doctor](doc/SNAP_DOCTOR.md)
