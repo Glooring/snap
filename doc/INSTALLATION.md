@@ -27,7 +27,7 @@ For `v7.2.2`, the Linux binary is built on Ubuntu 24.04 and requires glibc 2.39 
 
 ## Checksums
 
-Each public release should include a `SHA256SUMS.txt` file with SHA-256 checksums for every uploaded binary or archive asset.
+The GitHub Actions release workflow generates and uploads `SHA256SUMS.txt` with SHA-256 checksums for every binary or archive asset. When assembling a release with the local platform scripts instead, generating and attaching this file remains a manual step; see `doc/BUILD_INSTALLERS_WINDOWS_WSL.md`.
 
 On Linux or WSL2:
 
@@ -38,11 +38,18 @@ sha256sum -c SHA256SUMS.txt
 On Windows PowerShell:
 
 ```powershell
-Get-FileHash .\snap-vX.Y.Z-windows-x86_64.exe -Algorithm SHA256
-Get-Content .\SHA256SUMS.txt
+$assetName = 'snap-vX.Y.Z-windows-x86_64.exe'
+$entries = @(Get-Content .\SHA256SUMS.txt | Where-Object {
+    $_ -match ('^[0-9a-fA-F]{64} [ *]' + [regex]::Escape($assetName) + '$')
+})
+if ($entries.Count -ne 1) { throw 'Checksum entry is missing or ambiguous.' }
+$expectedHash = ($entries[0] -split '\s+', 2)[0]
+$actualHash = (Get-FileHash -LiteralPath $assetName -Algorithm SHA256).Hash
+if ($actualHash -ine $expectedHash) { throw "Checksum mismatch: $assetName" }
+"Checksum verified: $assetName"
 ```
 
-Compare the hash values before running a downloaded binary. The current release scripts build the platform artifacts; checksum publication remains part of the release checklist until it is automated.
+Replace `vX.Y.Z` with the downloaded release version. Verify the hash before running the binary. The Linux and macOS manifest-check commands verify every listed asset, so download all of those assets into the same directory before checking the complete manifest.
 
 On macOS:
 
