@@ -90,7 +90,9 @@ bash ./scripts/release-macos.sh
 
 The scripts do not delete artifacts from the other platform. Re-running one script only overwrites that script's own files in the release folder. `scripts/release-macos.sh` builds the native Mac architecture only; use the GitHub Actions release workflow to produce both Apple Silicon and Intel macOS assets.
 
-After all platform scripts have produced the binary/archive files, generate `SHA256SUMS.txt` in the release folder before publishing:
+Unlike the GitHub Actions release workflow, the local platform scripts do not generate or upload checksums. Collect all final Windows, Linux, and macOS binary/archive files in the versioned release folder, then manually generate `SHA256SUMS.txt` before publishing. Regenerate it after any rebuild or installer change.
+
+On Linux or WSL2:
 
 ```bash
 cd release-github/vX.Y.Z
@@ -98,7 +100,19 @@ sha256sum snap-vX.Y.Z-* > SHA256SUMS.txt
 sha256sum -c SHA256SUMS.txt
 ```
 
-On Windows PowerShell, use `Get-FileHash -Algorithm SHA256` if `sha256sum` is not available.
+On Windows PowerShell:
+
+```powershell
+Set-Location .\release-github\vX.Y.Z
+$releaseAssets = @(Get-ChildItem -File -Filter 'snap-vX.Y.Z-*' | Sort-Object Name)
+if ($releaseAssets.Count -eq 0) { throw 'No release assets found.' }
+$releaseAssets | ForEach-Object {
+    $hash = (Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
+    "$hash  $($_.Name)"
+} | Set-Content -Encoding ascii .\SHA256SUMS.txt
+```
+
+This writes the same `hash  filename` format as `sha256sum` without including the manifest itself. Verify the generated manifest before uploading; the PowerShell verification example in `doc/INSTALLATION.md` checks a selected downloaded asset and stops on a missing entry or mismatch.
 
 Upload the release assets to a draft GitHub Release with:
 
@@ -106,7 +120,7 @@ Upload the release assets to a draft GitHub Release with:
 snap release upload
 ```
 
-`snap release upload` reads the same Cargo version, expects the Windows, Linux, and macOS platform artifacts in `release-github/vX.Y.Z`, infers the GitHub repository from `origin`, and creates a draft release by default. If checksum upload automation has not been added yet, attach `SHA256SUMS.txt` manually before publishing. Use `--repo owner/repo` if `origin` is not a GitHub URL, `--publish` only when you want to publish immediately, and `--clobber` only for an intentional retry against an existing release.
+`snap release upload` reads the same Cargo version, expects the Windows, Linux, and macOS platform artifacts in `release-github/vX.Y.Z`, infers the GitHub repository from `origin`, and creates a draft release by default. For this local release path, attach the generated `SHA256SUMS.txt` manually before publishing. The GitHub Actions release workflow already generates and uploads its manifest. Use `--repo owner/repo` if `origin` is not a GitHub URL, `--publish` only when you want to publish immediately, and `--clobber` only for an intentional retry against an existing release.
 
 To inspect the latest GitHub Releases from the same repository:
 
